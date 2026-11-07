@@ -23,7 +23,7 @@ export function CorrectionForm({ inspection, onSave, onClose, busy }: {
       <label className={verdict === 'defect' ? 'chosen reject-choice' : ''}><input type="radio" name="verdict" value="defect" checked={verdict === 'defect'} onChange={() => setVerdict('defect')} />Reject part</label>
     </fieldset>
     {verdict === 'defect' && <label className="field-label">Defect class<select value={kind} onChange={e => setKind(e.target.value)} disabled={busy}><option value="print">Ink or print</option><option value="crack">Shell crack</option><option value="hole">Hole</option><option value="cut">Cut or notch</option></select></label>}
-    <label className="field-label">What should the inspector learn?<textarea autoFocus value={rule} onChange={e => setRule(e.target.value)} placeholder="Describe the visual difference and the standard to apply next time." minLength={10} maxLength={2000} required rows={4} disabled={busy} /></label>
+    <label className="field-label">What should the inspector learn?<textarea value={rule} onChange={e => setRule(e.target.value)} placeholder="Describe the visual difference and the standard to apply next time." minLength={10} maxLength={2000} required rows={4} disabled={busy} /></label>
     <label className="field-label">Reviewed by<input value={reviewer} onChange={e => setReviewer(e.target.value)} placeholder="Your name" required maxLength={80} disabled={busy} /></label>
     <button className="button primary full-width" type="submit" disabled={busy || rule.trim().length < 10 || !reviewer.trim()}>{busy ? <LoaderCircle size={16} className="spin" /> : <Check size={16} />}{busy ? 'Saving to memory…' : 'Save correction & remember'}</button>
   </form>

@@ -83,10 +83,11 @@ class Store:
             row = db.execute('SELECT payload FROM inspections WHERE id=?', (id,)).fetchone()
         return json.loads(row['payload']) if row else None
 
-    def inspections(self, scope_id: str, limit: int = 100) -> list[dict]:
+    def inspections(self, scope_id: str, limit: int | None = None) -> list[dict]:
         with self.connection() as db:
-            rows = db.execute('SELECT payload FROM inspections WHERE scope_id=? ORDER BY created_at DESC LIMIT ?',
-                              (scope_id, limit)).fetchall()
+            query = 'SELECT payload FROM inspections WHERE scope_id=? ORDER BY created_at DESC'
+            params = (scope_id,) if limit is None else (scope_id, limit)
+            rows = db.execute(query if limit is None else query + ' LIMIT ?', params).fetchall()
         return [json.loads(r['payload']) for r in rows]
 
     def add_correction(self, inspection_id: str, *, verdict: str, defect_type: str, rule_text: str, reviewer: str) -> dict:
@@ -136,5 +137,5 @@ class Store:
 
     def comparisons(self, scope_id: str) -> list[dict]:
         with self.connection() as db:
-            rows = db.execute('SELECT payload FROM comparisons WHERE scope_id=? ORDER BY created_at DESC LIMIT 50', (scope_id,)).fetchall()
+            rows = db.execute('SELECT payload FROM comparisons WHERE scope_id=? ORDER BY created_at DESC', (scope_id,)).fetchall()
         return [json.loads(r['payload']) for r in rows]

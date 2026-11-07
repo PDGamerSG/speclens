@@ -6,7 +6,7 @@ import io
 import uuid
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from ..inspect.inspector import inspect
 from .memory import HindsightMemory, MemoryUnavailable
@@ -30,8 +30,10 @@ class WorkspaceService:
                      'source_inspection_id': sources[f['source_id']]['inspection_id']}
                     for f in facts if f['source_id'] in sources]
         with Image.open(io.BytesIO(data)) as source:
-            from PIL import ImageOps
             image = ImageOps.exif_transpose(source).convert('RGB')
+        # Metadata and filename changes do not create a new inspection image.
+        # Hash canonical pixels before resizing; this does not detect near-duplicates.
+        image_hash = hashlib.sha256(f'RGB:{image.width}x{image.height}:'.encode() + image.tobytes()).hexdigest()
         image.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
         result = self.inspector(image, scope.spec_text, ['hole', 'crack', 'cut', 'print'],
                                 memory_context=memories, with_mask=False)
@@ -40,7 +42,7 @@ class WorkspaceService:
         image.save(self.media_root / f'{id}.jpg', 'JPEG', quality=94)
         item = {**result, 'id': id, 'scope_id': scope.id, 'factory': scope.factory,
                 'part_family': scope.part_family, 'spec_text': scope.spec_text,
-                'image_sha256': hashlib.sha256(data).hexdigest(), 'filename': filename,
+                'image_sha256': image_hash, 'filename': filename,
                 'image_url': f'/files/workspace/{id}.jpg', 'image_width': image.width, 'image_height': image.height,
                 'memory_enabled': use_memory, 'memory_status': ('recalled' if memories else 'empty') if use_memory else 'disabled',
                 'memories': memories, 'bank_id': scope.bank_id if use_memory else None,

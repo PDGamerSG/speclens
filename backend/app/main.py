@@ -213,16 +213,20 @@ def get_eval():
 app.mount("/files/fixtures", StaticFiles(directory=FIXTURES, check_dir=False), name="fixtures")
 if (DATA / "mvtec").exists():
     app.mount("/files/mvtec", StaticFiles(directory=DATA / "mvtec"), name="mvtec")
-app.mount("/files", StaticFiles(directory=VAR), name="var")
+# Publish media directories individually. VAR also contains private SQLite records
+# and the API ledger, which must never be reachable through StaticFiles.
+for directory in ('workspace', 'parts', 'runs', 'inspections'):
+    app.mount(f'/files/{directory}', StaticFiles(directory=VAR / directory, check_dir=False), name=directory)
 
 _dist = ROOT / "frontend" / "dist"
 if _dist.exists():
     app.mount("/assets", StaticFiles(directory=_dist / "assets", check_dir=False), name="assets")
 
-    @app.get("/{path:path}")
-    def spa(path: str):
-        f = _dist / path
-        if path and f.is_file():
-            return FileResponse(f)
+    @app.get("/favicon.svg")
+    def favicon():
+        return FileResponse(_dist / "favicon.svg")
+
+    @app.get("/")
+    def spa():
         # index.html must never be cached: it points at the current hashed bundle
         return FileResponse(_dist / "index.html", headers={"Cache-Control": "no-cache"})

@@ -28,7 +28,12 @@ class HindsightMemory:
             with httpx.Client(timeout=httpx.Timeout(120, connect=8), headers=headers, transport=self.transport) as client:
                 response = client.post(f'{self.base_url}/v1/default/banks/{scope.bank_id}/{path}', json=payload)
             if empty_if_missing and response.status_code == 404:
-                return {'results': []}
+                missing = response.json()
+                detail = missing.get('detail', '') if isinstance(missing, dict) else ''
+                if (isinstance(detail, str) and scope.bank_id in detail
+                        and 'bank' in detail.casefold()
+                        and any(term in detail.casefold() for term in ('not found', 'does not exist'))):
+                    return {'results': []}
             response.raise_for_status()
             data = response.json()
             if not isinstance(data, dict):

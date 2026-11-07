@@ -216,3 +216,64 @@ def test_comparison_identifies_reused_correction_images_and_keeps_arms_paired(tm
     assert result['baseline']['spec_text'] == result['with_memory']['spec_text'] == s.spec_text
     assert result['baseline']['memory_enabled'] is False
     assert result['with_memory']['memory_enabled'] is True
+
+
+def test_inspector_separates_the_operator_standard_from_an_extracted_fact_about_the_old_mistake(monkeypatch):
+    from app.inspect import inspector
+    captured = []
+    def model(messages, schema, name, **kwargs):
+        captured.extend(messages)
+        return {'data': {'defect': True, 'type': 'print', 'has_box': True,
+                         'x0': 20, 'y0': 20, 'x1': 100, 'y1': 100,
+                         'confidence': 0.9, 'rationale': 'White characters are ink.'}, 'ms': 1, 'cost_usd': .001}
+    monkeypatch.setattr(inspector, 'spark_json', model)
+    inspector.inspect(Image.new('RGB', (100, 100)), 'Reject ink.', ['print'], with_mask=False,
+        memory_context=[{'source_id': 'c1', 'text': 'The old inspector called the white letters gloss.',
+                         'rule_text': 'Reject white characters as ink.'}])
+    record_text = captured[0]['content'].split('HUMAN QUALITY STANDARDS RECALLED FROM HINDSIGHT:\n')[1].split('\nApply')[0]
+    record = json.loads(record_text)[0]
+    assert record['standard'] == 'Reject white characters as ink.'
+    assert record['recalled_evidence'] == 'The old inspector called the white letters gloss.'
+
+
+def test_metadata_only_copy_is_not_counted_as_a_new_comparison_image(tmp_path):
+    from PIL.PngImagePlugin import PngInfo
+    st = fixture_store(tmp_path)
+    _, mm, service = modules()
+    memory = mm.HindsightMemory('https://memory.example', 'key', transport=httpx.MockTransport(lambda req: httpx.Response(200, json={'results': []})))
+    def inspector(img, spec, types, **kw):
+        return {'verdict': 'good', 'defect': False, 'type': 'good', 'confidence': .8,
+                'rationale': 'Texture.', 'box_px': None, 'mask': None, 'ms': 1, 'cost_usd': .001}
+    svc = service.WorkspaceService(st, memory, inspector=inspector, media_root=tmp_path / 'images')
+    first = svc.run(photo(), 'original.png', scope(), use_memory=False)
+    svc.correct(first['id'], verdict='defect', defect_type='print', rule_text='Reject white ink.', reviewer='A')
+    metadata = PngInfo(); metadata.add_text('description', 'The identical photo with a new label')
+    copy = io.BytesIO(); Image.open(io.BytesIO(photo())).save(copy, 'PNG', pnginfo=metadata)
+    result = svc.compare(copy.getvalue(), 'copy.png', scope(), expected_verdict='defect')
+    assert result['held_out'] is False
+
+
+def test_a_missing_hindsight_route_is_not_treated_as_empty_memory():
+    _, mm, _ = modules()
+    memory = mm.HindsightMemory('https://wrong.example', transport=httpx.MockTransport(
+        lambda request: httpx.Response(404, json={'detail': 'Not Found'})))
+    with pytest.raises(mm.MemoryUnavailable):
+        memory.recall(scope())
+
+
+def test_a_recognized_missing_hindsight_bank_has_no_corrections():
+    _, mm, _ = modules()
+    memory = mm.HindsightMemory('https://memory.example', transport=httpx.MockTransport(
+        lambda request: httpx.Response(404, json={'detail': f"Bank '{scope().bank_id}' not found"})))
+    assert memory.recall(scope()) == []
+
+
+def test_history_does_not_silently_drop_older_records(tmp_path):
+    st = fixture_store(tmp_path)
+    s = scope()
+    for i in range(101):
+        add_inspection(st, s, id=f'i-{i}')
+    for i in range(51):
+        st.add_comparison({'id': f'pair-{i}', 'scope_id': s.id, 'created_at': f'2026-11-07T12:{i:02d}:00Z'})
+    assert len(st.inspections(s.id)) == 101
+    assert len(st.comparisons(s.id)) == 51

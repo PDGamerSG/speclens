@@ -1,0 +1,35 @@
+[
+  {
+    "id": "white-print-01",
+    "source": "parts/hazelnut_gen_01.jpg",
+    "image": "speclens/white-print-01.png",
+    "mask": "speclens/white-print-01-mask.png",
+    "expected_verdict": "defect",
+    "defect_type": "print",
+    "changed_pixels": 258,
+    "sha256": "37f6aa3ac174d23635f12204e14d252e57e4045f42422126085852a677237fc6",
+    "provenance": "Generated part photo with a deterministic ink overlay. Synthetic test sample, not a real production defect."
+  },
+  {
+    "id": "white-print-02",
+    "source": "parts/hazelnut_gen_02.jpg",
+    "image": "speclens/white-print-02.png",
+    "mask": "speclens/white-print-02-mask.png",
+    "expected_verdict": "defect",
+    "defect_type": "print",
+    "changed_pixels": 265,
+    "sha256": "de023562ff8e32a5b6ddc8ac7828c1c378e41e94048758e2fc3988a3acb7169f",
+    "provenance": "Generated part photo with a deterministic ink overlay. Synthetic test sample, not a real production defect."
+  },
+  {
+    "id": "white-print-03",
+    "source": "parts/hazelnut_gen_03.jpg",
+    "image": "speclens/white-print-03.png",
+    "mask": "speclens/white-print-03-mask.png",
+    "expected_verdict": "defect",
+    "defect_type": "print",
+    "changed_pixels": 309,
+    "sha256": "a276031c3d535032301dc391deaa1a674176748a9132c784036e231972324810",
+    "provenance": "Generated part photo with a deterministic ink overlay. Synthetic test sample, not a real production defect."
+  }
+]

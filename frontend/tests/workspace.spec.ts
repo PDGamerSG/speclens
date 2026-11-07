@@ -1,0 +1,97 @@
+import { expect, test } from '@playwright/test'
+
+test('a correction is retained, recalled on a new part, and compared against the baseline', async ({ page }) => {
+  await page.addInitScript((factory) => localStorage.setItem('speclens-scope', JSON.stringify({ factory, part_family: 'Whole hazelnut', spec_text: '' })), 'UI acceptance ' + Date.now())
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Inspection desk', exact: true })).toBeVisible()
+  await page.getByRole('switch', { name: 'Use quality memory' }).click()
+  await page.getByRole('button', { name: 'Inspect part', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Accept part', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Correct this decision' }).click()
+  await page.getByLabel('What should the inspector learn?').fill('Sharp printed characters are ink and must be rejected, including faint markings.')
+  await page.getByLabel('Reviewed by').fill('QA test operator')
+  await page.getByRole('button', { name: 'Save correction & remember' }).click()
+  await expect(page.getByRole('status')).toContainText('now available in Hindsight')
+  await page.getByRole('button', { name: 'Quality memory', exact: true }).click()
+  await expect(page.getByText('Sharp printed characters are ink and must be rejected, including faint markings.', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Summarize standards' }).click()
+  await expect(page.getByRole('heading', { name: 'What your inspector has learned' })).toBeVisible()
+  await page.getByRole('button', { name: 'Inspection desk', exact: true }).click()
+  await page.getByRole('button', { name: 'Another marking', exact: true }).click()
+  await page.getByRole('switch', { name: 'Use quality memory' }).click()
+  await page.getByRole('button', { name: 'Inspect part', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Reject part', exact: true })).toBeVisible()
+  await expect(page.locator('.recalled-standard')).toContainText('Sharp printed characters')
+  await page.getByRole('button', { name: 'Memory comparison', exact: true }).click()
+  await page.getByRole('button', { name: 'Run comparison', exact: true }).click()
+  await expect(page.locator('.comparison-arm').first()).toContainText('Accept part')
+  await expect(page.locator('.comparison-arm').last()).toContainText('Reject part')
+  await expect(page.locator('.comparison-disclosure')).toContainText('decisions differ')
+  await page.getByRole('button', { name: 'Inspection history', exact: true }).click()
+  await expect(page.locator('tbody tr')).toHaveCount(4)
+  await page.reload()
+  await page.getByRole('button', { name: 'Quality memory', exact: true }).click()
+  await expect(page.getByText('Sharp printed characters are ink and must be rejected, including faint markings.', { exact: true })).toBeVisible()
+})
+
+test('mobile navigation, part selection and settings work without horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Small hole', exact: true }).click()
+  await expect(page.locator('.viewer-label')).toContainText('Small hole')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.getByRole('button', { name: 'Quality memory', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Quality memory', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Workspace settings', exact: true }).first().click()
+  await page.getByLabel('Factory or workspace').fill('Mobile factory')
+  await page.getByRole('button', { name: 'Save workspace' }).click()
+  await expect(page.locator('.breadcrumb')).toContainText('Mobile factory')
+  await expect(page.locator('.empty-state')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})
+
+test('a pending correction can be retried after an interrupted sync without an error message', async ({ page }) => {
+  await page.route('**/api/workspace/overview?*', route => route.fulfill({ json: {
+    scope_id: 'scope', bank_id: 'bank', inspections: [], comparisons: [],
+    stats: { inspections: 1, corrections: 1, synced: 0, pending: 1 },
+    corrections: [{ id: 'correction-pending', inspection_id: 'insp-source', scope_id: 'scope',
+      rule_text: 'Reject sharp ink characters on the shell.', reviewer: 'QA operator',
+      original_verdict: 'good', original_type: 'good', original_rationale: 'Natural gloss.',
+      image_url: '/files/fixtures/parts/hazelnut_gen_01.jpg', verdict: 'defect', defect_type: 'print',
+      created_at: '2026-11-07T12:00:00Z', sync_status: 'pending', sync_error: null }],
+  } }))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Quality memory', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Retry sync', exact: true })).toBeVisible()
+})
+
+test('workspace settings cannot change scopes during an inspection', async ({ page }) => {
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/api/workspace/inspect', async route => { await gate; await route.continue() })
+  await page.goto('/')
+  await page.getByRole('switch', { name: 'Use quality memory' }).click()
+  await page.getByRole('button', { name: 'Inspect part', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Inspecting part…', exact: true })).toBeDisabled()
+  try {
+    for (const button of await page.getByRole('button', { name: 'Workspace settings', exact: true }).all()) {
+      await expect(button).toBeDisabled()
+    }
+    await expect(page.locator('.workspace-switch')).toBeDisabled()
+  } finally { release() }
+  await expect(page.getByRole('heading', { name: 'Accept part', exact: true })).toBeVisible()
+})
+
+test('opening a historical comparison restores its own image identity', async ({ page }) => {
+  await page.addInitScript(factory => localStorage.setItem('speclens-scope', JSON.stringify({ factory, part_family: 'Whole hazelnut', spec_text: '' })), 'Comparison history ' + Date.now())
+  await page.goto('/')
+  await page.getByRole('button', { name: 'White marking', exact: true }).click()
+  await page.getByRole('button', { name: 'Memory comparison', exact: true }).click()
+  await page.getByRole('button', { name: 'Run comparison', exact: true }).click()
+  await expect(page.locator('.comparison-history-row')).toHaveCount(1)
+  await page.getByLabel('Choose comparison sample').selectOption({ label: 'Small hole' })
+  await expect(page.locator('.compare-input strong')).toHaveText('Small hole')
+  await page.locator('.comparison-history-row').click()
+  await expect(page.locator('.compare-input strong')).toHaveText('white-print.jpg')
+  await expect(page.getByRole('button', { name: 'Run comparison', exact: true })).toBeDisabled()
+})

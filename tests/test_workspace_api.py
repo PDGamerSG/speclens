@@ -68,3 +68,28 @@ def test_api_does_not_label_an_inspection_live_without_a_model_key(tmp_path, mon
     r = client.post('/api/workspace/inspect', files={'file': ('part.png', png(), 'image/png')})
     assert r.status_code == 503
     assert 'MODEL_API_KEY' in r.json()['detail']
+
+
+def test_internal_database_files_are_not_downloadable(tmp_path, monkeypatch):
+    client, _ = setup_client(tmp_path, monkeypatch)
+    from app.config import VAR
+    private = VAR / 'private-store-probe.sqlite'
+    private.write_bytes(b'private quality records')
+    try:
+        r = client.get('/files/private-store-probe.sqlite')
+        assert r.status_code == 404
+    finally:
+        private.unlink(missing_ok=True)
+
+
+def test_frontend_asset_paths_cannot_escape_the_build_directory(tmp_path, monkeypatch):
+    client, _ = setup_client(tmp_path, monkeypatch)
+    from app.main import _dist
+    import os
+    from urllib.parse import quote
+    private = tmp_path / 'private-credential-probe.txt'
+    private.write_text('private server credential probe')
+    relative = os.path.relpath(private, _dist)
+    r = client.get('/' + quote(relative, safe=''))
+    assert r.status_code == 404
+    assert 'private server credential probe' not in r.text

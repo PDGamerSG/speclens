@@ -36,3 +36,7 @@ frontend/dist-static/
 
 # Vercel local link
 .vercel/
+
+# Browser test artifacts
+frontend/test-results/
+frontend/playwright-report/
