@@ -3,37 +3,58 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "https://speclens.13-236-192-155.sslip.io/api/:path*"
+      "src": "/(.*)",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "same-origin",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      },
+      "continue": true
     },
     {
-      "source": "/files/:path*",
-      "destination": "https://speclens.13-236-192-155.sslip.io/files/:path*"
+      "src": "/api/(.*)",
+      "headers": {
+        "Cache-Control": "private, no-store"
+      },
+      "continue": true
     },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "headers": [
     {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "same-origin" },
+      "src": "/files/workspace/(.*)",
+      "headers": {
+        "Cache-Control": "private, no-store"
+      },
+      "continue": true
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "https://speclens.13-236-192-155.sslip.io/api/$1",
+      "transforms": [
         {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+          "type": "request.headers",
+          "op": "set",
+          "target": {
+            "key": "x-speclens-proxy-secret"
+          },
+          "args": "$SPECLENS_PROXY_SECRET",
+          "env": [
+            "SPECLENS_PROXY_SECRET"
+          ]
         }
       ]
     },
     {
-      "source": "/api/:path*",
-      "headers": [{ "key": "Cache-Control", "value": "private, no-store" }]
+      "src": "/files/(.*)",
+      "dest": "https://speclens.13-236-192-155.sslip.io/files/$1"
     },
     {
-      "source": "/files/workspace/:path*",
-      "headers": [{ "key": "Cache-Control", "value": "private, no-store" }]
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }

@@ -129,7 +129,7 @@ It targets the public site unless you set `SPECLENS_BASE_URL`. Set `SPECLENS_RES
 
 - **Real providers in CI:** Meta and Hindsight are simulated in every automated test. An API change would show up only in a live check.
 - **The budget guard on the server:** no Python test mentions the budget or `BudgetExceeded`. The 402 is tested only as a faked reply in the browser (`frontend/tests/output.spec.ts:82`).
-- **Security header values:** the tests assert `X-Content-Type-Options` only (`tests/test_public_workspace.py:102`). The CSP, `X-Frame-Options`, `Referrer-Policy` and `Cache-Control` values have no assertion.
+- **Security header values:** the tests assert `X-Content-Type-Options` only (`tests/test_public_workspace.py:104`). The CSP, `X-Frame-Options`, `Referrer-Policy` and `Cache-Control` values have no assertion.
 - **Rate limit expiry:** tests check that limits block requests, but not that the window clears after an hour.
 - **Cookie lifetime:** no test checks the 30-day age or the fact that return visits do not renew it.
 - **Routes left open in public mode:** `/api/health` is tested only in local mode (`tests/test_pipeline.py:103`). `/docs`, `/redoc` and `/openapi.json` have no test.

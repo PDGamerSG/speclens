@@ -1,5 +1,7 @@
 """Public visitors must not read or teach one another's inspection memory."""
 import asyncio
+import json
+from pathlib import Path
 
 import httpx
 from fastapi.testclient import TestClient
@@ -180,3 +182,67 @@ def test_invalid_new_cookie_falls_back_to_valid_legacy_session(tmp_path, monkeyp
     first.cookies.set('speclens_workspace', 'invalid', domain='testserver.local', path='/')
     first.get('/api/workspace/status')
     assert first.cookies.get('speclens_workspace') == legacy
+
+
+PROXY_SECRET = 'test-proxy-secret'
+
+
+def post_as(address, *, secret=PROXY_SECRET):
+    """One write from a new browser, so only the address limit can stop it."""
+    from app.main import app
+    headers = {'x-real-ip': address}
+    if secret is not None:
+        headers['x-speclens-proxy-secret'] = secret
+    return TestClient(app).post('/api/workspace/corrections', json={}, headers=headers).status_code
+
+
+def limited_to_four_per_address(tmp_path, monkeypatch, *, secret=PROXY_SECRET):
+    public_clients(tmp_path, monkeypatch)
+    import app.public as public
+    monkeypatch.setattr(public, 'CALL_LIMIT', 1)
+    monkeypatch.setenv('SPECLENS_PROXY_SECRET', secret)
+
+
+def test_trusted_proxy_limits_each_visitor_by_their_own_address(tmp_path, monkeypatch):
+    limited_to_four_per_address(tmp_path, monkeypatch)
+    assert [post_as('203.0.113.5') for _ in range(4)] == [422] * 4
+    assert post_as('203.0.113.5') == 429
+    assert post_as('203.0.113.9') == 422
+
+
+def test_forged_visitor_address_without_the_proxy_secret_is_ignored(tmp_path, monkeypatch):
+    limited_to_four_per_address(tmp_path, monkeypatch)
+    assert [post_as(f'203.0.113.{n}', secret='wrong') for n in range(4)] == [422] * 4
+    assert post_as('203.0.113.200', secret='wrong') == 429
+    assert post_as('203.0.113.201', secret=None) == 429
+
+
+def test_visitor_address_is_never_trusted_when_no_proxy_secret_is_configured(tmp_path, monkeypatch):
+    limited_to_four_per_address(tmp_path, monkeypatch, secret='')
+    assert [post_as(f'203.0.113.{n}', secret='') for n in range(4)] == [422] * 4
+    assert post_as('203.0.113.200', secret='') == 429
+
+
+def test_unreadable_visitor_address_falls_back_to_the_connecting_address(tmp_path, monkeypatch):
+    limited_to_four_per_address(tmp_path, monkeypatch)
+    assert [post_as(f'not-an-address-{n}') for n in range(4)] == [422] * 4
+    assert post_as('also-not-an-address') == 429
+
+
+def test_one_ipv6_network_shares_a_limit(tmp_path, monkeypatch):
+    limited_to_four_per_address(tmp_path, monkeypatch)
+    assert [post_as(f'2001:db8:1:1::{n}') for n in range(1, 5)] == [422] * 4
+    assert post_as('2001:db8:1:1::ff') == 429
+    assert post_as('2001:db8:1:2::1') == 422
+
+
+def test_vercel_sends_the_proxy_secret_from_its_environment_on_api_requests():
+    config = json.loads((Path(__file__).parents[1] / 'frontend' / 'vercel.json').read_text())
+    assert not {'rewrites', 'headers', 'redirects'} & set(config)
+    routes = config['routes']
+    api = next(r for r in routes if r.get('dest', '').endswith('/api/$1'))
+    transform = api['transforms'][0]
+    assert transform == {'type': 'request.headers', 'op': 'set', 'target': {'key': 'x-speclens-proxy-secret'},
+                         'args': '$SPECLENS_PROXY_SECRET', 'env': ['SPECLENS_PROXY_SECRET']}
+    assert routes.index({'handle': 'filesystem'}) < routes.index({'src': '/(.*)', 'dest': '/index.html'})
+    assert routes.index(api) < routes.index({'handle': 'filesystem'})
