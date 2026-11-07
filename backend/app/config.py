@@ -31,7 +31,7 @@ MODELS = {
 # USD, from dev.meta.ai/docs/pricing-rate-limits
 PRICE = {
     "muse-spark-1.3": {"in": 1.25e-6, "cached": 0.15e-6, "out": 4.25e-6},
-    "muse-wonder-1.0": {"in": 4.0e-6, "cached": 0.4e-6, "out": 20.0e-6},
+    "muse-wonder-1.0": {"in": 4.0e-6, "cached": 0.2e-6, "out": 20.0e-6},
     "muse-image-1.0": {"image": 0.01},
     "sam-3.1": {"image": 0.0025},
 }

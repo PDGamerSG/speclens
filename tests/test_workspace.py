@@ -193,10 +193,11 @@ def test_recalled_rule_reaches_the_real_inspector_without_rewriting_the_spec(mon
     base_spec = 'Reject every ink marking.'
     inspector.inspect(Image.new('RGB', (30, 30)), base_spec, ['print'], with_mask=False,
                       memory_context=[{'source_id': 'correction-123', 'text': 'Sharp white characters are ink.'}])
-    prompt = captured[0]['content']
-    assert 'correction-123' in prompt
-    assert 'Sharp white characters are ink.' in prompt
-    assert base_spec in prompt
+    system, user = captured
+    assert base_spec in system['content']
+    recalled = user['content'][-1]['text']
+    assert 'correction-123' in recalled
+    assert 'Sharp white characters are ink.' in recalled
 
 
 def test_comparison_identifies_reused_correction_images_and_keeps_arms_paired(tmp_path):
@@ -230,7 +231,7 @@ def test_inspector_separates_the_operator_standard_from_an_extracted_fact_about_
     inspector.inspect(Image.new('RGB', (100, 100)), 'Reject ink.', ['print'], with_mask=False,
         memory_context=[{'source_id': 'c1', 'text': 'The old inspector called the white letters gloss.',
                          'rule_text': 'Reject white characters as ink.'}])
-    record_text = captured[0]['content'].split('HUMAN QUALITY STANDARDS RECALLED FROM HINDSIGHT:\n')[1].split('\nApply')[0]
+    record_text = captured[1]['content'][-1]['text'].split('HUMAN QUALITY STANDARDS RECALLED FROM HINDSIGHT:\n')[1]
     record = json.loads(record_text)[0]
     assert record['standard'] == 'Reject white characters as ink.'
     assert record['recalled_evidence'] == 'The old inspector called the white letters gloss.'

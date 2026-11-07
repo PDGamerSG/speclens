@@ -61,6 +61,23 @@ def spark_cost(model: str, prompt_tokens: int, completion_tokens: int, cached: i
     return (prompt_tokens - cached) * p["in"] + cached * p["cached"] + completion_tokens * p["out"]
 
 
+def cache_stats() -> dict:
+    """Input tokens served from the Model API prefix cache, and what that saved against the full input price."""
+    prompt = cached = 0
+    saved = 0.0
+    for r in _rows():
+        tokens = r.get("prompt_tokens") or 0
+        if not tokens:
+            continue
+        reused = r.get("cached_tokens") or 0
+        price = PRICE.get(r["model"], PRICE["muse-spark-1.3"])
+        prompt += tokens
+        cached += reused
+        saved += reused * (price["in"] - price["cached"])
+    return {"prompt_tokens": prompt, "cached_tokens": cached, "hit_rate": round(cached / prompt, 4) if prompt else 0.0,
+            "saved_usd": round(saved, 6)}
+
+
 def record(model: str, op: str, ms: float, status, cost_usd: float, run_id: str | None = None, **extra) -> dict:
     global _spent
     rec = {"t": round(time.time(), 3), "model": model, "op": op, "ms": round(ms), "status": status,
