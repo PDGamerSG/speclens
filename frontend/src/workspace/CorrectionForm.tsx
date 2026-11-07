@@ -1,5 +1,5 @@
 import { Check, LoaderCircle, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Inspection } from './types'
 
 export function CorrectionForm({ inspection, onSave, onClose, busy }: {
@@ -11,13 +11,15 @@ export function CorrectionForm({ inspection, onSave, onClose, busy }: {
   const [kind, setKind] = useState(inspection.type === 'good' ? 'print' : inspection.type)
   const [rule, setRule] = useState('')
   const [reviewer, setReviewer] = useState(() => localStorage.getItem('speclens-reviewer') || '')
-  return <form className="correction-form" onSubmit={e => {
+  const form = useRef<HTMLFormElement>(null)
+  useEffect(() => { form.current?.scrollIntoView({ block: 'nearest' }) }, [])
+  return <form ref={form} className="correction-form" onSubmit={e => {
     e.preventDefault()
     localStorage.setItem('speclens-reviewer', reviewer.trim())
     void onSave({ verdict, defect_type: verdict === 'good' ? 'good' : kind, rule_text: rule.trim(), reviewer: reviewer.trim() })
   }}>
-    <div className="section-heading"><h3>Teach a quality standard</h3><button type="button" className="icon-button" aria-label="Close correction" onClick={onClose} disabled={busy}><X size={17} /></button></div>
-    <p className="muted small">Your correction becomes a standard for the next matching part.</p>
+    <div className="form-head"><h3>Teach a quality standard</h3><button type="button" className="icon-button" aria-label="Close correction" onClick={onClose} disabled={busy}><X size={17} /></button></div>
+    <p className="form-note">Your correction becomes a standard for the next matching part.</p>
     <fieldset className="disposition-options" disabled={busy}><legend>Correct decision</legend>
       <label className={verdict === 'good' ? 'chosen' : ''}><input type="radio" name="verdict" value="good" checked={verdict === 'good'} onChange={() => setVerdict('good')} />Accept part</label>
       <label className={verdict === 'defect' ? 'chosen reject-choice' : ''}><input type="radio" name="verdict" value="defect" checked={verdict === 'defect'} onChange={() => setVerdict('defect')} />Reject part</label>

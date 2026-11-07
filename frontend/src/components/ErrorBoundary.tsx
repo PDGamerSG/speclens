@@ -9,12 +9,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <main className="px-4 lg:px-6 py-10 max-w-2xl">
-        <h1 className="text-[20px] font-bold">This screen hit an error</h1>
-        <p className="num text-[12.5px] text-miss mt-2 break-words">{this.state.error.message}</p>
-        <button type="button" className="mt-4 h-9 px-3.5 rounded-[3px] border border-rule-2 text-[13px] font-semibold hover:bg-raised" onClick={() => this.setState({ error: null })}>
-          Try again
-        </button>
+      <main className="crash-screen">
+        <h1>This screen hit an error</h1>
+        <p>{this.state.error.message}</p>
+        <button type="button" className="button secondary" onClick={() => this.setState({ error: null })}>Try again</button>
       </main>
     )
   }

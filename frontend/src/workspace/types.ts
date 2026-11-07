@@ -2,6 +2,7 @@ export interface ScopeSettings { factory: string; part_family: string; spec_text
 export interface Status {
   ok: boolean; model_configured: boolean; memory_configured: boolean; model: string;
   spent_usd: number; budget_usd: number; default_factory: string; default_part: string; default_spec: string;
+  cache?: { prompt_tokens: number; cached_tokens: number; hit_rate: number; saved_usd: number };
 }
 export interface Sample { id: string; name: string; detail: string; image_url: string; expected_verdict: 'good' | 'defect' }
 export interface MemoryFact { id: string; text: string; source_id: string; type: string; reviewer?: string; rule_text?: string; source_inspection_id?: string }
@@ -12,6 +13,7 @@ export interface Inspection {
   memory_enabled: boolean; memory_status: 'disabled' | 'empty' | 'recalled'; memories: MemoryFact[];
   source_kind?: 'synthetic_sample' | 'upload' | 'unknown'; source_group?: string | null; sample_id?: string | null;
   filename: string; image_sha256: string; ms: number; cost_usd: number; created_at: string; model: string;
+  part_visible?: boolean; prompt_tokens?: number; cached_tokens?: number;
 }
 export interface Correction {
   id: string; inspection_id: string; scope_id: string; rule_text: string; reviewer: string;
@@ -27,5 +29,5 @@ export interface Overview {
   scope_id: string; bank_id: string; inspections: Inspection[]; corrections: Correction[]; comparisons: Comparison[];
   stats: { inspections: number; corrections: number; synced: number; pending: number };
 }
-export type View = 'inspect' | 'standards' | 'history' | 'compare';
+export type Section = 'inspect' | 'standards' | 'compare' | 'history';
 export type PartInput = { sample: Sample; file?: never } | { file: File; sample?: never };

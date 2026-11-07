@@ -46,4 +46,4 @@ def vision(image, spec_text, types, **kwargs):
 routes.API_KEY = 'e2e-configured'
 routes.service.inspector = vision
 routes.service.memory = HindsightMemory('https://memory.example', 'e2e-key', transport=httpx.MockTransport(respond))
-uvicorn.run(app, host='127.0.0.1', port=8771, log_level='warning')
+uvicorn.run(app, host='127.0.0.1', port=int(os.environ.get('E2E_PORT', '8771')), log_level='warning')

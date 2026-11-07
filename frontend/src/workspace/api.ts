@@ -43,6 +43,6 @@ export const workspaceApi = {
     return request<Comparison>('/compare', { method: 'POST', body: form })
   },
 }
-export function time(value: string) { return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+export function shortId(id: string) { return id.replace(/^(insp-|correction-|compare-)/, '').slice(0, 8).toUpperCase() }
 export function dateTime(value: string) { return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }
 export function decision(verdict: string) { return verdict === 'good' ? 'Accept' : verdict === 'defect' ? 'Reject' : 'Review' }

@@ -133,7 +133,7 @@ async function step(name, operation) {
 }
 
 async function screenshot(name, screenshotPage = page) {
-  await check(screenshotPage.locator('.spin, .is-scanning')).toHaveCount(0)
+  await check(screenshotPage.locator('.spin')).toHaveCount(0)
   await screenshotPage.waitForFunction(() => Array.from(document.images)
     .every(image => image.complete && image.naturalWidth > 0), undefined, { timeout: UI_TIMEOUT })
   await screenshotPage.evaluate(() => window.scrollTo(0, 0))
@@ -216,7 +216,7 @@ async function checkSettings(currentPage = page) {
   await currentPage.keyboard.press('Escape')
   await check(dialog).toHaveCount(0)
   await check(opener).toBeFocused()
-  await check(currentPage.locator('.breadcrumb')).toContainText(scope.factory)
+  await check(currentPage.locator('.workspace-switch')).toContainText(scope.factory)
   await opener.click()
   await check(dialog.getByLabel('Factory or workspace')).toHaveValue(scope.factory)
   await currentPage.keyboard.press('Escape')
@@ -262,7 +262,7 @@ try {
       for (const item of finalOverview.inspections) rememberInspection(item)
       await page.goto('/')
       await check(page.getByRole('button', { name: 'Inspect part', exact: true })).toBeEnabled()
-      await check(page.locator('.breadcrumb')).toContainText(scope.factory)
+      await check(page.locator('.workspace-switch')).toContainText(scope.factory)
       return { restored_inspections: finalOverview.inspections.length, new_vision_calls: 0 }
     })
   } else {
@@ -279,7 +279,7 @@ try {
     await page.goto('/')
     await check(page.getByRole('heading', { name: 'Inspection desk', exact: true })).toBeVisible()
     await check(page.getByRole('button', { name: 'Inspect part', exact: true })).toBeEnabled()
-    await check(page.locator('.breadcrumb')).toContainText(scope.factory)
+    await check(page.locator('.workspace-switch')).toContainText(scope.factory)
     const overview = await requestJson(context.request, overviewPath())
     check(overview.stats.inspections).toBe(0)
     check(overview.corrections.length).toBe(0)
