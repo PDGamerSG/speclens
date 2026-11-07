@@ -20,6 +20,7 @@ class Scope:
     factory: str
     part_family: str
     spec_text: str
+    owner_id: str = ''
 
     def __post_init__(self):
         for field in ('factory', 'part_family', 'spec_text'):
@@ -30,7 +31,10 @@ class Scope:
 
     @property
     def id(self) -> str:
-        data = json.dumps([self.factory.casefold(), self.part_family.casefold(), self.spec_text], ensure_ascii=False)
+        identity = [self.factory.casefold(), self.part_family.casefold(), self.spec_text]
+        if self.owner_id:
+            identity.append(self.owner_id)
+        data = json.dumps(identity, ensure_ascii=False)
         return hashlib.sha256(data.encode()).hexdigest()[:24]
 
     @property
@@ -95,6 +99,7 @@ class Store:
         if original is None:
             raise KeyError('Inspection not found.')
         item = {'id': f'correction-{uuid.uuid4().hex}', 'inspection_id': inspection_id,
+                'owner_id': original.get('owner_id', ''),
                 'scope_id': original['scope_id'], 'factory': original['factory'],
                 'part_family': original['part_family'], 'spec_text': original['spec_text'],
                 'original_verdict': original['verdict'], 'original_type': original['type'],
@@ -123,10 +128,14 @@ class Store:
 
     def mark_sync(self, id: str, status: str, error: str | None = None) -> dict:
         with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
             row = db.execute('SELECT payload FROM corrections WHERE id=?', (id,)).fetchone()
             if row is None:
                 raise KeyError('Correction not found.')
-            item = {**json.loads(row['payload']), 'sync_status': status, 'sync_error': error}
+            item = json.loads(row['payload'])
+            if item['sync_status'] == 'synced':
+                return item
+            item = {**item, 'sync_status': status, 'sync_error': error}
             db.execute('UPDATE corrections SET payload=? WHERE id=?', (json.dumps(item), id))
         return item
 

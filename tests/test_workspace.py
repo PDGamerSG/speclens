@@ -303,3 +303,40 @@ def test_variants_of_the_same_source_photo_are_disclosed_in_comparisons(tmp_path
     assert pair['reuse_reason'] == 'shared_source_photo'
     independent = svc.compare(second.getvalue(), 'other.png', scope(), source_group='source-photo-2')
     assert independent['held_out'] is True
+
+
+def test_a_late_failed_sync_retry_cannot_revert_a_successful_retain(tmp_path):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    st = fixture_store(tmp_path)
+    add_inspection(st, scope())
+    correction = st.add_correction('i-one', verdict='defect', defect_type='print',
+                                   rule_text='Reject printed ink.', reviewer='QA')
+    _, mm, service = modules()
+    failed_request_started = threading.Event()
+    release_failure = threading.Event()
+
+    def respond(request):
+        if not failed_request_started.is_set():
+            failed_request_started.set()
+            assert release_failure.wait(timeout=5)
+            return httpx.Response(503)
+        return httpx.Response(200, json={'success': True, 'items_count': 1})
+
+    memory = mm.HindsightMemory('https://memory.example', 'key', transport=httpx.MockTransport(respond))
+    svc = service.WorkspaceService(st, memory, media_root=tmp_path / 'images')
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        late_failure = workers.submit(svc.sync_correction, correction['id'])
+        try:
+            assert failed_request_started.wait(timeout=5)
+            successful = workers.submit(svc.sync_correction, correction['id']).result(timeout=5)
+        finally:
+            release_failure.set()
+        late_result = late_failure.result(timeout=5)
+
+    assert successful['sync_status'] == 'synced'
+    assert late_result['sync_status'] == 'synced'
+    saved = st.correction(correction['id'])
+    assert saved['sync_status'] == 'synced'
+    assert saved['sync_error'] is None

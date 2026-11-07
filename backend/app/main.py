@@ -8,7 +8,7 @@ import json
 import time
 
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -25,10 +25,13 @@ from .forge.spec import DEFAULT_SPEC, taxonomy
 from .inspect.inspector import inspect
 from .meta import ledger
 from .runs import manager
+from .public import PUBLIC_MODE, PublicWorkspaceMiddleware, owner
+from .workspace import routes as workspace_routes
 from .workspace.routes import router as workspace_router
 
 app = FastAPI(title="Chief Skill", version="1.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=[] if PUBLIC_MODE else ["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(PublicWorkspaceMiddleware)
 app.include_router(workspace_router)
 
 
@@ -215,8 +218,21 @@ if (DATA / "mvtec").exists():
     app.mount("/files/mvtec", StaticFiles(directory=DATA / "mvtec"), name="mvtec")
 # Publish media directories individually. VAR also contains private SQLite records
 # and the API ledger, which must never be reachable through StaticFiles.
-for directory in ('workspace', 'parts', 'runs', 'inspections'):
+for directory in ('parts', 'runs', 'inspections'):
     app.mount(f'/files/{directory}', StaticFiles(directory=VAR / directory, check_dir=False), name=directory)
+
+
+@app.get('/files/workspace/{filename}')
+def workspace_image(filename: str, request: Request):
+    if not filename.endswith('.jpg'):
+        raise HTTPException(404, 'Photo not found.')
+    item = workspace_routes.service.store.inspection(filename[:-4])
+    if item is None or item.get('owner_id', '') != owner(request):
+        raise HTTPException(404, 'Photo not found.')
+    path = workspace_routes.service.media_root / filename
+    if not path.is_file():
+        raise HTTPException(404, 'Photo not found.')
+    return FileResponse(path, media_type='image/jpeg', headers={'Cache-Control': 'no-store'})
 
 _dist = ROOT / "frontend" / "dist"
 if _dist.exists():

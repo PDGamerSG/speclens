@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from openai import APIError
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -16,6 +16,7 @@ from ..config import API_KEY, BUDGET_USD, FIXTURES, VAR
 from ..forge.spec import DEFAULT_SPEC
 from ..meta import ledger
 from ..meta.client import MetaAPIError
+from ..public import owner
 from .memory import HindsightMemory, MemoryUnavailable
 from .service import WorkspaceService
 from .store import Scope, Store
@@ -46,11 +47,11 @@ SAMPLES = [
 ]
 
 
-def make_scope(factory: str, part_family: str, spec_text: str) -> Scope:
+def make_scope(factory: str, part_family: str, spec_text: str, owner_id: str = '') -> Scope:
     if len(factory) > 100 or len(part_family) > 100 or len(spec_text) > 12000:
         raise HTTPException(422, 'Factory and part names are limited to 100 characters, and the specification to 12,000.')
     try:
-        return Scope(factory, part_family, spec_text.strip() or DEFAULT_SPEC)
+        return Scope(factory, part_family, spec_text.strip() or DEFAULT_SPEC, owner_id)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
 
@@ -113,8 +114,8 @@ def samples():
 
 
 @router.get('/overview')
-def overview(factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, spec_text: str = ''):
-    scope = make_scope(factory, part_family, spec_text)
+def overview(request: Request, factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, spec_text: str = ''):
+    scope = make_scope(factory, part_family, spec_text, owner(request))
     inspections = service.store.inspections(scope.id)
     corrections = service.store.corrections(scope.id)
     comparisons = service.store.comparisons(scope.id)
@@ -128,12 +129,12 @@ def overview(factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, sp
 
 
 @router.post('/inspect')
-async def inspect_part(file: UploadFile | None = File(None), sample_id: str = Form(''),
+async def inspect_part(request: Request, file: UploadFile | None = File(None), sample_id: str = Form(''),
                        factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
                        spec_text: str = Form(''), memory_enabled: bool = Form(True)):
     data, name, source = await read_input(file, sample_id)
     require_model()
-    scope = make_scope(factory, part_family, spec_text)
+    scope = make_scope(factory, part_family, spec_text, owner(request))
     return await asyncio.to_thread(run_operation, service.run, data, name, scope, use_memory=memory_enabled, **source)
 
 
@@ -161,7 +162,10 @@ class CorrectionIn(BaseModel):
 
 
 @router.post('/corrections', status_code=201)
-def correct(body: CorrectionIn):
+def correct(body: CorrectionIn, request: Request):
+    item = service.store.inspection(body.inspection_id)
+    if item is None or item.get('owner_id', '') != owner(request):
+        raise HTTPException(404, 'Inspection not found.')
     try:
         return service.correct(**body.model_dump())
     except KeyError:
@@ -171,7 +175,10 @@ def correct(body: CorrectionIn):
 
 
 @router.post('/corrections/{id}/sync')
-def sync_correction(id: str):
+def sync_correction(id: str, request: Request):
+    item = service.store.correction(id)
+    if item is None or item.get('owner_id', '') != owner(request):
+        raise HTTPException(404, 'Correction not found.')
     try:
         return service.sync_correction(id)
     except KeyError:
@@ -183,28 +190,28 @@ class ScopeIn(BaseModel):
     part_family: str = Field(default=DEFAULT_PART, min_length=1, max_length=100)
     spec_text: str = Field(default='', max_length=12000)
 
-    def scope(self) -> Scope:
-        return make_scope(self.factory, self.part_family, self.spec_text)
+    def scope(self, owner_id: str = '') -> Scope:
+        return make_scope(self.factory, self.part_family, self.spec_text, owner_id)
 
 
 @router.post('/recall')
-def recall(body: ScopeIn):
-    scope = body.scope()
+def recall(body: ScopeIn, request: Request):
+    scope = body.scope(owner(request))
     facts = run_operation(service.memory.recall, scope)
     sources = {c['id']: c for c in service.store.corrections(scope.id) if c['sync_status'] == 'synced'}
     return {'bank_id': scope.bank_id, 'memories': [f for f in facts if f['source_id'] in sources]}
 
 
 @router.post('/reflect')
-def reflect(body: ScopeIn):
-    return run_operation(service.memory.reflect, body.scope())
+def reflect(body: ScopeIn, request: Request):
+    return run_operation(service.memory.reflect, body.scope(owner(request)))
 
 
 @router.post('/compare')
-async def compare(file: UploadFile | None = File(None), sample_id: str = Form(''),
+async def compare(request: Request, file: UploadFile | None = File(None), sample_id: str = Form(''),
                   factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
                   spec_text: str = Form(''), expected_verdict: Literal['good', 'defect', ''] = Form('')):
     data, name, source = await read_input(file, sample_id)
     require_model()
     return await asyncio.to_thread(run_operation, service.compare, data, name,
-        make_scope(factory, part_family, spec_text), expected_verdict=expected_verdict or None, **source)
+        make_scope(factory, part_family, spec_text, owner(request)), expected_verdict=expected_verdict or None, **source)

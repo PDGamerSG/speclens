@@ -42,6 +42,7 @@ class WorkspaceService:
         id = f'insp-{uuid.uuid4().hex[:16]}'
         image.save(self.media_root / f'{id}.jpg', 'JPEG', quality=94)
         item = {**result, 'id': id, 'scope_id': scope.id, 'factory': scope.factory,
+                'owner_id': scope.owner_id,
                 'part_family': scope.part_family, 'spec_text': scope.spec_text,
                 'image_sha256': image_hash, 'filename': filename,
                 'source_kind': source_kind, 'source_group': source_group, 'sample_id': sample_id,
@@ -61,7 +62,7 @@ class WorkspaceService:
             raise KeyError('Correction not found.')
         if c['sync_status'] == 'synced':
             return c
-        scope = Scope(c['factory'], c['part_family'], c['spec_text'])
+        scope = Scope(c['factory'], c['part_family'], c['spec_text'], c.get('owner_id', ''))
         try:
             self.memory.retain(scope, c)
         except MemoryUnavailable as exc:
