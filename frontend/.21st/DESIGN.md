@@ -1,30 +1,29 @@
 # SpecLens design context
 
-Light operator workspace with navy navigation, teal actions, and Public Sans.
+A one-page inspection bench: frost page, black stage, safety yellow actions, and a grease pencil for human marks.
 
 ## Tokens
 
-- `--font-sans`: `'Public Sans',ui-sans-serif,system-ui,sans-serif`
-- `--font-mono`: `ui-monospace,monospace`
-- `--color-page`: `#f5f7fa`
-- `--color-panel`: `#fff`
-- `--color-raised`: `#eef3f6`
-- `--color-well`: `#142d42`
-- `--color-rule`: `#e2e8ed`
-- `--color-rule-2`: `#c6d1da`
-- `--color-fg`: `#1a2b3c`
-- `--color-fg-2`: `#526678`
-- `--color-fg-3`: `#6a7c8c`
-- `--color-signal`: `#087f76`
-- `--color-signal-ink`: `#fff`
-- `--color-pass`: `#087f76`
-- `--color-miss`: `#bf4548`
-- `--color-part`: `#315c83`
+- `--sans`: `'Archivo Variable',Arial,sans-serif`, with `font-stretch` up to 125% for headings
+- `--hand`: `'Kalam',cursive`, used for anything a person wrote and for marks on the part
+- `--frost`: `#dee3e8`
+- `--frost-deep`: `#cdd4db`
+- `--tag`: `#f8fafb`
+- `--ink`: `#17202b`
+- `--ink-soft`: `#4b5866`
+- `--rule`: `#b9c2cb`
+- `--stage`: `#0c0c0d`
+- `--marker`: `#ffcf1a`
+- `--marker-deep`: `#f2b900`
+- `--accept`: `#0b7f56`
+- `--reject`: `#cf2a1e`
+- `--review`: `#1d5fd1`
+- `--pencil`: `#ff5a47`
 
 ## Patterns
 
-Inspection desk, human correction form, cited quality memory, persistent history, paired memory comparison.
+Stage with a WebGL point cloud of the real photo, pencil ring on the defect, rubber stamp verdict, hover loupe, inspection ticket, part rail, hanging standard tags, paired comparison, and records table. The inspector character reports the current state.
 
 ## Constraints
 
-Keep synthetic sample provenance visible. Show empty and connection-error states. Keep credentials on the server. Display observed results without invented counters or accuracy claims.
+Keep synthetic sample provenance visible. Show empty and connection-error states. Keep credentials on the server. Display observed results without invented counters or accuracy claims. Reduced motion skips the point cloud.

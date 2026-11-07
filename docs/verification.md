@@ -2,7 +2,7 @@
 
 ## Automated application checks
 
-The current SpecLens release passed **65 Python tests**, **15 browser scenarios**, the production build, and clean lint. The same checks run in CI. The two new backend regressions verify that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
+The current SpecLens release passed **73 Python tests**, **24 browser scenarios**, the production build, and clean lint. The same checks run in CI. The two new backend regressions verify that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
 
 The [GitHub run for 4bd3a5e](https://github.com/PDGamerSG/speclens/actions/runs/42385604175) passed 63 Python tests and 14 browser scenarios before the final mobile-history regression was added. [Current main checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml) run the full suite. These tests simulate external vision and Hindsight calls.
 
@@ -11,6 +11,10 @@ The browser suite covers valid uploads, correction and history exports, image zo
 The macOS setup script completed successfully. The Docker image built on Linux ARM64 and served its UI, status, and sample images. Direct requests for the SQLite database and ledger returned 404. A missing model key produced the expected 503 setup response.
 
 ## Public deployment
+
+The one-page release passed all 11 steps of `frontend/scripts/live-smoke.mjs` against the public site on November 7, 2026, with real Meta vision and Hindsight calls. The run covered inspection, a synced correction, a recalled citation on a different part, the Hindsight summary, an upload, a comparison, export, reload, phone layout, and a second browser that could not read the first browser's records. A separate public upload of a diagram returned **Review part** with the reason shown, and the page logged no console errors or failed requests.
+
+The notes below describe the earlier release. Its recorded demo shows the previous interface.
 
 The canonical public app is [SpecLens](https://speclens.13-236-192-155.sslip.io). A fresh [SpecLens release record](evidence/speclens-release.json) verifies the current name and hostname with real Meta and Hindsight calls: sample and uploaded-photo inspections, retain, cited recall, reflection, unlabeled comparison export, history, viewer controls, settings, mobile behavior, and isolation from a second browser. All eleven live scenarios passed. Existing visitor history also remained readable after the cookie-name migration on the earlier hostname. A further container restart preserved the current five inspections, correction, comparison, and private photos; Hindsight still recalled the correction.
 

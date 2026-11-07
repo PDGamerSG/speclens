@@ -4,7 +4,7 @@
 
 - **Meta Model API** (`https://api.meta.ai/v1`): `muse-spark-1.3` supplies vision decisions. Image-generation and segmentation utilities support `muse-image-1.0` and `sam-3.1`. Meta’s service and model terms apply.
 - **Hindsight**: the backend calls the documented retain, recall, and reflect HTTP APIs. Hindsight Cloud operates its own configured inference; self-hosted inference is configured by the operator. See the [Hindsight repository](https://github.com/vectorize-io/hindsight) and service terms.
-- **Public Sans**: Google Fonts, SIL Open Font License 1.1. System fonts provide a fallback.
+- **Archivo** and **Kalam**: SIL Open Font License 1.1, self-hosted through Fontsource. System fonts provide a fallback.
 
 ## Python packages
 
@@ -12,7 +12,7 @@ See `backend/requirements.txt` for exact versions. FastAPI, Uvicorn, HTTPX, pyth
 
 ## Web packages
 
-React, Vite, Tailwind CSS, Lucide, and the corresponding tools retain their upstream licenses. TypeScript is Apache-2.0 and Playwright is Apache-2.0. Lucide icons are ISC-licensed. The dependency lockfile records exact package versions.
+React, Vite, Lucide, and the corresponding tools retain their upstream licenses. TypeScript is Apache-2.0 and Playwright is Apache-2.0. Lucide icons are ISC-licensed. The dependency lockfile records exact package versions.
 
 ## Images and evaluation data
 
