@@ -1,0 +1,147 @@
+{
+  "verified_at": "2026-11-07T17:15:05.444314+00:00",
+  "canonical_url": "https://speclens.pallabdas.me",
+  "public_vercel_url": "https://speclens-lake.vercel.app",
+  "immutable_deployment_url": "https://speclens-hq6uzzu71-pallab-das-projects-d3f377fd.vercel.app",
+  "deployment_id": "dpl_562nqBC6GWAHFp1V7EqAmAfb2CyW",
+  "project": "speclens",
+  "team": "pallab-das-projects-d3f377fd",
+  "root_directory": "frontend",
+  "node_version": "22.x",
+  "production_ready": true,
+  "source_base_revision": "18a203c54e47066d2f4779e434f32ba7d806db8a",
+  "deployed_backend_code_sha256": "0bd1a68f2a992916925821142e67d0c07f6f716c310fdbca3a036018b78ce4f9",
+  "production_assets": [
+    "/assets/index-D988E-Ym.js",
+    "/assets/index-DBqLpJy0.css"
+  ],
+  "matches_current_local_build": true,
+  "dns": {
+    "provider": "Namecheap",
+    "host": "speclens",
+    "type": "CNAME",
+    "value": "373f7f09bde82a9c.vercel-dns-017.com.",
+    "ttl": "Automatic",
+    "conflicting_A_removed": "13.236.192.155",
+    "unrelated_records_preserved": 26,
+    "vercel_verification": "configured-correctly",
+    "certificate_created": true
+  },
+  "https_and_api": {
+    "page": {
+      "tls_validation": true,
+      "vercel_response": true,
+      "vercel_request_id": true,
+      "assets": [
+        "/assets/index-D988E-Ym.js",
+        "/assets/index-DBqLpJy0.css"
+      ],
+      "matches_immutable_release": true
+    },
+    "api": {
+      "tls_validation": true,
+      "vercel_response": true,
+      "vercel_request_id": true,
+      "ok": true,
+      "model_configured": true,
+      "memory_configured": true
+    }
+  },
+  "custom_domain_browser": {
+    "url": "https://speclens.pallabdas.me/",
+    "title": "SpecLens \u00b7 Quality inspection workspace",
+    "server": "Vercel",
+    "vercel_id": true,
+    "assets": [
+      "/assets/index-D988E-Ym.js",
+      "/assets/index-DBqLpJy0.css"
+    ],
+    "settings_open_and_close": true,
+    "sample_selection": true,
+    "memory_toggle": true,
+    "api": {
+      "ok": true,
+      "recall_status": 200
+    },
+    "errors": [],
+    "dns_resolution": "Chromium-only mapping to verified public Vercel IP 216.198.79.1; system DNS unchanged; normal HTTPS certificate validation enabled",
+    "part_choice_count": 7
+  },
+  "automated_checks": {
+    "python_tests_passed": 76,
+    "playwright_tests_passed": 24,
+    "production_build": "passed",
+    "lint": "passed"
+  },
+  "live_provider_checks": {
+    "base_url": "https://speclens-lake.vercel.app",
+    "status": "passed",
+    "vision_calls": 5,
+    "checks": [
+      {
+        "name": "public workspace and real provider configuration",
+        "status": "passed",
+        "duration_ms": 2004
+      },
+      {
+        "name": "sample inspection with memory off",
+        "status": "passed",
+        "duration_ms": 8207
+      },
+      {
+        "name": "human white-print correction retained in Hindsight",
+        "status": "passed",
+        "duration_ms": 5118
+      },
+      {
+        "name": "different sample recalls and cites the saved correction",
+        "status": "passed",
+        "duration_ms": 8799
+      },
+      {
+        "name": "Hindsight standards summary",
+        "status": "passed",
+        "duration_ms": 7748
+      },
+      {
+        "name": "valid uploaded photo inspection",
+        "status": "passed",
+        "duration_ms": 7770
+      },
+      {
+        "name": "unlabeled comparison and JSON export",
+        "status": "passed",
+        "duration_ms": 16680
+      },
+      {
+        "name": "history search, complete export, and reopening after reload",
+        "status": "passed",
+        "duration_ms": 2193
+      },
+      {
+        "name": "zoom, model outline, and settings focus and Escape",
+        "status": "passed",
+        "duration_ms": 2726
+      },
+      {
+        "name": "mobile navigation, settings, and horizontal overflow",
+        "status": "passed",
+        "duration_ms": 579
+      },
+      {
+        "name": "second browser cannot read records, images, or corrections",
+        "status": "passed",
+        "duration_ms": 9108
+      }
+    ],
+    "note": "Real Meta and Hindsight integration checks; these results do not establish an accuracy improvement."
+  },
+  "hosting": {
+    "frontend": "Vercel",
+    "api_and_storage": "existing Lightsail service and persistent Docker volume",
+    "api_proxy_target": "https://speclens.13-236-192-155.sslip.io",
+    "backend_release": "20261107T170610Z-42350",
+    "secrets": "server-only; excluded from frontend uploads and images"
+  },
+  "browser_cache_note": "The local system resolver retained NXDOMAIN. The custom-host Chromium check mapped only this hostname to its verified public Vercel IP and retained normal TLS validation. Authoritative/public DNS and Vercel verification were checked independently; system DNS and hosts were unchanged."
+}

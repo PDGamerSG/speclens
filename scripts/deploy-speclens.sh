@@ -10,7 +10,7 @@ Usage: scripts/deploy-speclens.sh [options]
   --user USER          SSH user (default: ubuntu)
   --key PATH           SSH identity (default: ~/.ssh/chief-skill/chief-skill.pem)
   --env-file PATH      Copy a runtime environment file privately; required initially
-  --hostname HOST      HTTPS name (default: speclens.pallabdas.me)
+  --hostname HOST      Backend HTTPS name (default: speclens.13-236-192-155.sslip.io)
   --alias HOST         Override aliases; repeat for each (empty disables aliases)
   --publish            Start Caddy and open this Lightsail instance's ports 80/443
   --instance NAME      Lightsail instance (default: chief-skill)
@@ -27,8 +27,8 @@ ssh_host=13.236.192.155
 ssh_user=ubuntu
 ssh_key="$HOME/.ssh/chief-skill/chief-skill.pem"
 env_file=
-hostname=speclens.pallabdas.me
-alias_hostnames=(speclens.13-236-192-155.sslip.io chief-skill.13-236-192-155.sslip.io)
+hostname=speclens.13-236-192-155.sslip.io
+alias_hostnames=(chief-skill.13-236-192-155.sslip.io)
 aliases_overridden=0
 publish=0
 instance_name=chief-skill
@@ -84,7 +84,7 @@ ssh_target="$ssh_user@$ssh_host"
 
 tar -C "$project_root" \
   --exclude=.git --exclude=.env --exclude='.env.*' --exclude=.venv \
-  --exclude=node_modules --exclude=dist --exclude=dist-static --exclude=.21st \
+  --exclude=node_modules --exclude=dist --exclude=dist-static --exclude=.21st --exclude=.vercel \
   --exclude=__pycache__ --exclude=.pytest_cache --exclude=var --exclude=data \
   --exclude=runs --exclude=reports --exclude=research_notes --exclude=spikes \
   --exclude=test-results --exclude=playwright-report --exclude='*.sqlite3*' \

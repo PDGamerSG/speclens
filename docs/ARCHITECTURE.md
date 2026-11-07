@@ -252,7 +252,7 @@ The dashed line is not a foreign key. A comparison's `payload` holds full copies
 
 ## Deployment
 
-The public site runs on one AWS Lightsail server. An operator deploys it by hand with a script. CI checks the code but does not deploy.
+Vercel serves the public frontend and deploys it from the connected GitHub repository. Same-origin rewrites proxy API and media requests to the existing AWS Lightsail service. An operator deploys that persistent backend with a script; GitHub Actions runs code checks independently.
 
 ```mermaid
 flowchart LR
@@ -269,7 +269,10 @@ flowchart LR
   hind["Hindsight"]
 
   dev -- "source archive over SSH" --> host
-  visitor -- "HTTPS" --> caddy
+  edge["Vercel frontend<br/>frontend/vercel.json"]
+  push --> edge
+  visitor -- "HTTPS" --> edge
+  edge -- "/api/* and /files/*" --> caddy
   caddy --> app
   app --> vol
   env -.-> app
@@ -277,7 +280,7 @@ flowchart LR
   app --> hind
 ```
 
-Sources: `scripts/deploy-speclens.sh`, `compose.yaml`, `compose.public.yaml`, `Dockerfile`, `.github/workflows/ci.yml`.
+Sources: `frontend/vercel.json`, `scripts/deploy-speclens.sh`, `compose.yaml`, `compose.public.yaml`, `Dockerfile`, `.github/workflows/ci.yml`.
 
 - **Build:** the `Dockerfile` builds the page with Node 22, then copies it into a Python 3.13 image that runs as a non-root user (`Dockerfile:1-6`, `Dockerfile:8`, `Dockerfile:16-18`). Its health check calls `/api/workspace/status` (`Dockerfile:21`).
 - **Ports:** Compose binds the app to `127.0.0.1:8770` on the host (`compose.yaml:5`). Only Caddy faces the internet.

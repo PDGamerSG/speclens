@@ -1,5 +1,7 @@
+.git/
 .env
 .env.*
+**/.env*
 .venv/
 var/
 data/
@@ -10,7 +12,12 @@ spikes/
 backend/
 tests/
 eval/
+fixtures/
+docs/
 frontend/node_modules/
 frontend/dist/
 frontend/dist-static/
-docs/results/raw/
+frontend/.vercel/
+frontend/.env*
+frontend/test-results/
+frontend/playwright-report/

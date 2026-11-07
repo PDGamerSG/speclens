@@ -78,7 +78,11 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
                 or (path.startswith('/files/') and not path.startswith(('/files/fixtures/', '/files/workspace/')))):
             response = JSONResponse({'detail': 'Not found.'}, status_code=404)
         elif request.method not in {'GET', 'HEAD', 'OPTIONS'} and request.headers.get('origin') and (
-                urlsplit(request.headers['origin']).netloc != request.url.netloc):
+                urlsplit(request.headers['origin']).netloc != request.url.netloc
+                and request.headers['origin'] not in {
+                    value.strip().rstrip('/') for value in os.environ.get('SPECLENS_ALLOWED_ORIGINS', '').split(',')
+                    if value.strip()
+                }):
             response = JSONResponse({'detail': 'Open this workspace directly to make changes.'}, status_code=403)
         elif request.method == 'POST' and not allow_call(visitor, request.client.host if request.client else 'unknown'):
             response = JSONResponse({'detail': 'This public workspace has reached its hourly request limit. Please try again later.'},

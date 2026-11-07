@@ -1,6 +1,8 @@
 .git
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
 .venv
 **/node_modules
@@ -12,4 +14,5 @@ data
 frontend/test-results
 frontend/playwright-report
 frontend/.21st
+**/.vercel
 docs/screenshots

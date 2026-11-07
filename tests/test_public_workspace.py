@@ -70,6 +70,28 @@ def test_public_cross_origin_writes_are_rejected(tmp_path, monkeypatch):
     assert response.status_code == 403
 
 
+def test_public_proxy_accepts_only_the_configured_frontend_origin(tmp_path, monkeypatch):
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    monkeypatch.setenv('SPECLENS_ALLOWED_ORIGINS', ' https://speclens.pallabdas.me, https://speclens-lake.vercel.app ')
+    response = first.post('/api/workspace/inspect',
+        data={'sample_id': 'white-print', 'memory_enabled': 'false'},
+        headers={'Origin': 'https://speclens.pallabdas.me'})
+    assert response.status_code == 200
+    assert first.get(response.json()['image_url']).status_code == 200
+    assert first.get('/api/workspace/overview').json()['stats']['inspections'] == 1
+
+
+def test_public_proxy_origin_configuration_does_not_allow_lookalike_hosts(tmp_path, monkeypatch):
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    monkeypatch.setenv('SPECLENS_ALLOWED_ORIGINS', 'https://speclens.pallabdas.me,https://speclens-lake.vercel.app')
+    for origin in ['https://speclens.pallabdas.me.attacker.example',
+                   'https://another-project.vercel.app', 'http://speclens.pallabdas.me']:
+        response = first.post('/api/workspace/inspect',
+            data={'sample_id': 'white-print', 'memory_enabled': 'false'}, headers={'Origin': origin})
+        assert response.status_code == 403
+    assert first.get('/api/workspace/overview').json()['stats']['inspections'] == 0
+
+
 def test_public_cookie_is_http_only_and_private_files_stay_blocked(tmp_path, monkeypatch):
     first, _, _ = public_clients(tmp_path, monkeypatch)
     response = first.get('/')

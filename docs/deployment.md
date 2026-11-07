@@ -2,13 +2,28 @@
 
 Public demo: https://speclens.pallabdas.me
 
-SpecLens uses one server for the React interface and FastAPI API. The browser's relative `/api/workspace` requests therefore reach the same origin. SQLite, uploaded images, and the model spend ledger live on persistent storage.
+Vercel serves the React interface. Its same-origin rewrites send `/api/*` and `/files/*` to the persistent FastAPI service at `https://speclens.13-236-192-155.sslip.io`. SQLite, uploaded images, and the model spend ledger remain on the existing server volume. Model and Hindsight keys stay on that server.
 
 The dedicated AWS Lightsail instance is `chief-skill` in `ap-southeast-2a`: Ubuntu 24.04, the `small_3_2` bundle with 2 GB RAM and a 60 GB disk, priced at US$12/month before tax or excess usage. It has a 2 GB swap file for builds. Static IP `13.236.192.155` is attached as `chief-skill-ip`; keep it attached to avoid the charge for an unattached static IP.
 
 These existing infrastructure names, key paths, Compose project, and volumes remain unchanged by the SpecLens product name.
 
-The canonical public hostname is `speclens.pallabdas.me`. Namecheap Advanced DNS for `pallabdas.me` has an A record with host `speclens`, value `13.236.192.155`, and Automatic TTL. Keep the static IP attached to this server. Caddy obtains and renews the hostname’s certificate on the existing HTTPS proxy; ports 80 and 443 must remain reachable. No nameserver, mail, or unrelated host records need changing.
+The canonical public hostname is `speclens.pallabdas.me`. Namecheap has one CNAME with host `speclens`, target `373f7f09bde82a9c.vercel-dns-017.com.`, and Automatic TTL. The former A record was removed. Vercel manages the custom-domain certificate. Preserve all unrelated Namecheap records. The backend keeps its static IP and Caddy HTTPS aliases.
+
+## Vercel production
+
+The project is `speclens` under `pallab-das-projects-d3f377fd`. Its root directory is `frontend`, with Node 22, framework Vite, build command `npm run build`, and output `dist`. The public Vercel alias is https://speclens-lake.vercel.app.
+
+From the repository root:
+
+```bash
+npx --yes vercel@latest link --yes --project speclens --scope pallab-das-projects-d3f377fd
+npx --yes vercel@latest deploy --prod --yes --scope pallab-das-projects-d3f377fd
+```
+
+The project is connected to `PDGamerSG/speclens`; pushes deploy the frontend from its configured root directory. GitHub Actions runs its independent checks. `.vercelignore` excludes runtime data, backend files, local environment files, and dependencies from the frontend upload. `frontend/vercel.json` defines API/media rewrites, the SPA fallback, security headers, and no-store API/media responses.
+
+The backend runtime file sets `SPECLENS_ALLOWED_ORIGINS` to exact approved frontend origins, including `https://speclens.pallabdas.me` and `https://speclens-lake.vercel.app`. Existing same-origin requests still work; other origins remain blocked. Add a new origin explicitly before using another deployment URL for writes. Production aliases are public, while preview and immutable deployment URLs retain Vercel authentication protection.
 
 ## Visitor workspaces
 
@@ -16,7 +31,7 @@ Public mode assigns each browser an HttpOnly cookie. Its visitor identity scopes
 
 The current cookie is `speclens_workspace`. On the same hostname, a valid legacy cookie migrates to that name while preserving the exact visitor identity and stored records. The legacy cookie is then expired.
 
-Both `speclens.13-236-192-155.sslip.io` and `chief-skill.13-236-192-155.sslip.io` remain aliases without redirects. Browser cookies belong to their hostname, so revisit the same hostname for visitor history created there. The custom domain starts a separate visitor workspace. The canonical public hostname is `speclens.pallabdas.me`.
+Both `speclens.13-236-192-155.sslip.io` and `chief-skill.13-236-192-155.sslip.io` remain aliases without redirects. Browser cookies belong to their hostname, so revisit the same hostname for visitor history created there. Cookies created on the custom domain continue through the Vercel proxy to the same persistent backend. Moving between different hostnames starts a separate visitor workspace. The canonical public hostname is `speclens.pallabdas.me`.
 
 The public server limits POST requests to 30 per browser per hour and 120 per IP per hour. These request limits are separate from the persisted vision budget and Hindsight billing. The default local mode remains a shared single-team workspace with `SPECLENS_PUBLIC=0`.
 
@@ -85,7 +100,7 @@ ssh -i ~/.ssh/chief-skill/chief-skill.pem -o IdentitiesOnly=yes \
 
 Open `http://localhost:8870`. Verify session isolation, request limits, the sample inspection flow, and the expected live-provider behavior before publication.
 
-## Publish and update
+## Backend HTTPS and updates
 
 Once the public app is verified:
 
@@ -96,12 +111,12 @@ Once the public app is verified:
 This deploys the current source using the saved runtime environment file, starts the Caddy container, and opens only this instance's TCP ports 80 and 443 through the AWS CLI. Allow certificate issuance to complete, then verify the page and API:
 
 ```bash
-curl --fail https://speclens.pallabdas.me/api/workspace/status
+curl --fail https://speclens.13-236-192-155.sslip.io/api/workspace/status
 ```
 
-Open `https://speclens.pallabdas.me` in a browser and complete the inspection/correction flow. Use the same deployment command for later updates. Include `--env-file .env` only when changing runtime settings. Run `./scripts/deploy-speclens.sh --help` for host, key, hostname, instance, and region overrides.
+Open `https://speclens.13-236-192-155.sslip.io` to check the backend directly. Use the same server deployment command for later backend updates. Use the Vercel commands above for frontend publication. Include `--env-file .env` only when changing runtime settings. Run `./scripts/deploy-speclens.sh --help` for host, key, hostname, instance, and region overrides.
 
-The deployment script preserves both existing aliases by default. To replace that list, repeat `--alias HOST` for each desired alias; use `--alias ""` to disable aliases. `--hostname HOST` changes the primary name. Domain-only changes reuse the running app image and persistent data: validate the updated Caddyfile and reload Caddy instead of rebuilding the service. The active proxy configuration is `/opt/chief-skill/shared/Caddyfile`.
+The server deployment script uses the backend sslip.io hostname and preserves the earlier `chief-skill` alias by default. The frontend custom domain stays on Vercel. To replace that list, repeat `--alias HOST` for each desired alias; use `--alias ""` to disable aliases. `--hostname HOST` changes the primary name. Domain-only changes reuse the running app image and persistent data: validate the updated Caddyfile and reload Caddy instead of rebuilding the service. The active proxy configuration is `/opt/chief-skill/shared/Caddyfile`.
 
 The AWS CLI must be authenticated to publish. SSH access alone is sufficient for a private deployment. If source publication or Git commits are subject to a review or timing rule, that rule is separate from deployment; this script does not stage, commit, or push anything.
 
