@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 
 test('a correction is retained, recalled on a new part, and compared against the baseline', async ({ page }) => {
   await page.addInitScript((factory) => localStorage.setItem('speclens-scope', JSON.stringify({ factory, part_family: 'Whole hazelnut', spec_text: '' })), 'UI acceptance ' + Date.now())
@@ -29,6 +30,13 @@ test('a correction is retained, recalled on a new part, and compared against the
   await expect(page.locator('.comparison-arm').first()).toContainText('Differs from the selected label: reject')
   await expect(page.locator('.comparison-arm').last()).toContainText('Matches the selected label: reject')
   await expect(page.locator('.comparison-disclosure')).toContainText('decisions differ')
+  const downloadEvent = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export comparison', exact: true }).click()
+  const download = await downloadEvent
+  const artifact = JSON.parse(await readFile((await download.path())!, 'utf8'))
+  expect(artifact.format_version).toBe(1)
+  expect(artifact.baseline.image_sha256).toBe(artifact.with_memory.image_sha256)
+  expect(artifact.with_memory.memories[0].source_id).toContain('correction-')
   await page.getByRole('button', { name: 'Inspection history', exact: true }).click()
   await expect(page.locator('tbody tr')).toHaveCount(4)
   const reviewed = page.locator('tbody tr').filter({ hasText: 'QA test operator' })
