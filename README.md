@@ -16,7 +16,7 @@ Live link: [speclens.pallabdas.me](https://speclens.pallabdas.me/)
 
 A quality engineer should not have to explain the same inspection mistake twice. SpecLens checks a part photo against your specification, explains its decision, and marks any defect. When the decision is wrong, you correct it once. SpecLens remembers that standard and cites it when it checks the next part. It is for quality teams who inspect parts by eye and want each correction to count.
 
-This repository holds the whole app: a one-page React interface, a FastAPI server that keeps the model and memory keys off the browser, SQLite records, synthetic sample parts with exact masks, automated tests, and the deployment script for the public server.
+This repository holds the whole app: a one-page React interface, a FastAPI server that keeps the model and memory keys off the browser, SQLite records, synthetic sample parts with exact masks, automated tests, and the deployment setup for the public site.
 
 ## Features
 
@@ -37,7 +37,8 @@ A visitor picks a part photo, and the server sends it to the vision model with t
 ```mermaid
 flowchart TB
   visitor["Visitor<br/>browser"]
-  proxy["HTTPS proxy<br/>Caddy"]
+  edge["Page and rewrites<br/>Vercel, frontend/vercel.json"]
+  proxy["HTTPS proxy<br/>Caddy on AWS Lightsail"]
   subgraph server["Server · FastAPI"]
     direction LR
     routes["Workspace routes<br/>backend/app/workspace/routes.py"] --> service["Inspection service<br/>backend/app/workspace/service.py"]
@@ -48,7 +49,8 @@ flowchart TB
   vision["Meta Model API<br/>muse-spark-1.3"]
   memory["Hindsight<br/>retain, recall, reflect"]
 
-  visitor --> proxy
+  visitor --> edge
+  edge -- "/api/* and /files/*" --> proxy
   proxy --> routes
   service --> db
   inspector --> vision
@@ -56,7 +58,7 @@ flowchart TB
   service --> memory
 ```
 
-The browser only talks to the server, through the proxy, on relative `/api/workspace` routes. The service recalls standards from Hindsight when memory is on, keeps only facts tied to a synced correction in that workspace, and passes them to the inspector. The inspector calls the vision model and records the cost in the ledger. The service saves the result in SQLite. A correction saves in SQLite first, then goes to Hindsight, so a failed memory write loses nothing. [The architecture notes](docs/ARCHITECTURE.md) have the component diagram, the request flow, and the data model.
+Vercel serves the page. The browser calls relative `/api` and `/files` paths on that same origin, and Vercel rewrites them to the FastAPI server on AWS Lightsail, so the model and memory keys never reach the browser. The service recalls standards from Hindsight when memory is on, keeps only facts tied to a synced correction in that workspace, and passes them to the inspector. The inspector calls the vision model and records the cost in the ledger. The service saves the result in SQLite. A correction saves in SQLite first, then goes to Hindsight, so a failed memory write loses nothing. [The architecture notes](docs/ARCHITECTURE.md) have the component diagram, the request flow, and the data model.
 
 ### How memory is isolated
 
@@ -107,7 +109,9 @@ Taken from the live site with real model and memory calls in headless Chromium, 
 | SQLite | Inspection, correction, and comparison records | Public domain |
 | Meta Model API, `muse-spark-1.3` | Vision decisions | Hosted service |
 | Hindsight | Retain, recall, and reflect for quality memory | Hosted service |
-| Caddy | HTTPS proxy on the public server | Apache-2.0 |
+| Vercel | Serves the interface and rewrites API and media requests to the server | Hosted service |
+| AWS Lightsail | Runs the FastAPI server with its SQLite data and photos | Hosted service |
+| Caddy | HTTPS proxy in front of the FastAPI server | Apache-2.0 |
 | Playwright | Browser acceptance tests | Apache-2.0 |
 
 ## Quick start
@@ -173,9 +177,9 @@ node frontend/scripts/live-smoke.mjs
 
 ### Deploy
 
-The live site runs on one AWS Lightsail server, with Docker Compose and Caddy. `./scripts/deploy-speclens.sh` archives the current source, builds it on the server, and checks its health. Runtime credentials stay in a private server file. [The deployment guide](docs/deployment.md) covers access, publishing, backups, and recovery.
+The live site has two parts. Vercel builds `frontend/` and publishes it from the connected GitHub repository, with the settings in `frontend/vercel.json`. The API, SQLite records, and photos stay on one AWS Lightsail server, with Docker Compose and Caddy. To update the server, `./scripts/deploy-speclens.sh` archives the current source, builds it there, and checks its health. Runtime credentials stay in a private server file, and `SPECLENS_ALLOWED_ORIGINS` lists the frontend origins the server accepts writes from. [The deployment guide](docs/deployment.md) covers access, publishing, backups, and recovery.
 
-The public site allows 30 POST requests per browser per hour and 120 per IP per hour. Keep the same browser and cookies to revisit your history.
+The public site allows 30 POST requests per browser per hour. A second limit of 120 per hour counts the IP address that reaches the server, and behind Vercel that is a Vercel address, not the visitor's. Keep the same browser and cookies to revisit your history.
 
 ## Repository map
 
@@ -187,6 +191,7 @@ The public site allows 30 POST requests per browser per hour and 120 per IP per 
 | `backend/app/forge/` | Image compositing, labels, and severity utilities |
 | `backend/app/public.py` | Visitor cookie, request limits, and security headers |
 | `frontend/src/workspace/` | One-page workspace: stage and point cloud scan, inspection ticket, quality memory, comparison, history |
+| `frontend/vercel.json` | Vercel build settings, the API and media rewrites, and response headers |
 | `fixtures/speclens/` | Synthetic white-print examples and exact masks |
 | `tests/`, `frontend/tests/` | Backend regression tests and browser acceptance tests |
 | `scripts/` | Setup, local run, checks, live checks, and deployment |
@@ -213,6 +218,7 @@ The public site allows 30 POST requests per browser per hour and 120 per IP per 
 - An identical decoded image is marked as a reused correction image, but unknown near-duplicates still need manual exclusion from an independent evaluation.
 - The current workflow covers one part family, with four fixed defect classes: hole, crack, cut, and print.
 - Corrections are immutable. Use another inspection to add a further clarification.
+- The page and the API are hosted apart, so the page can load while the one Lightsail server is down. Inspections then fail with a visible error.
 - Local mode serves one team without sign-in. Public visitors are separated only by a browser cookie, so clearing cookies starts a new workspace.
 - People remain responsible for disposition.
 

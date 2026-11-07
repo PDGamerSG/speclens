@@ -27,7 +27,7 @@ Where to find each part of the SpecLens documentation. Everything here describes
 | [Configuration](CONFIGURATION.md) | Every environment variable, its default and what reads it |
 | [HTTP API](api/README.md) | Every route, its input and output, and which routes public mode blocks |
 | [Design](design.md) | The product's acceptance rules, boundaries and visual direction |
-| [Deployment](deployment.md) | The Lightsail server, publishing, backups and recovery |
+| [Deployment](deployment.md) | The Vercel frontend, the Lightsail server, publishing, backups and recovery |
 | [Threat model](security/threat-model.md) | What data the site stores and sends, and how it is protected |
 | [Test plan](testing/test-plan.md) | What is tested, how to run it and what CI runs |
 

@@ -5,9 +5,9 @@ Every route the SpecLens server answers, with its input and output. The page use
 ## Basics
 
 - **Base URL:** the same origin as the page. Locally that is `http://localhost:8770`. The live site is `https://speclens.pallabdas.me`.
-- **Authentication:** there are no accounts. In local mode every route is open to anyone who can reach the server. In public mode the server sets a `speclens_workspace` cookie on the first response, and that cookie selects your records (`backend/app/public.py:71-75`, `backend/app/public.py:92-94`).
+- **Authentication:** there are no accounts. In local mode every route is open to anyone who can reach the server. In public mode the server sets a `speclens_workspace` cookie on the first response, and that cookie selects your records (`backend/app/public.py:71-75`, `backend/app/public.py:96-98`).
 - **Scope:** most routes take `factory`, `part_family` and `spec_text`. Together they select one workspace. Leave them out to use `Bangalore Foods`, `Whole hazelnut` and the default specification (`backend/app/workspace/routes.py:25-26`, `backend/app/workspace/routes.py:50-56`).
-- **Limits in public mode:** every POST counts toward 30 per browser and 120 per IP address per hour, and a request from another origin gets 403 (`backend/app/public.py:80-85`).
+- **Limits in public mode:** every POST counts toward 30 per browser and 120 per IP address per hour, and a write from an origin outside `SPECLENS_ALLOWED_ORIGINS` gets 403 (`backend/app/public.py:80-89`).
 
 ## Workspace routes
 
@@ -139,7 +139,7 @@ Each arm saves its own inspection. If the second arm fails, the first stays save
 | `GET` | `/files/fixtures/*` | Serves sample images | Available | `backend/app/main.py:216` |
 | `GET` | `/files/workspace/{id}.jpg` | Serves an inspection photo to its owner, with `Cache-Control: no-store` | Available | `backend/app/main.py:225-235` |
 | `GET` | `/files/parts/*`, `/files/runs/*`, `/files/inspections/*`, `/files/mvtec/*` | Serves media for the earlier run routes. The `mvtec` mount exists only if `data/mvtec` does | 404 | `backend/app/main.py:217-222` |
-| `GET` | `/docs`, `/redoc`, `/openapi.json` | FastAPI's generated API pages and schema | Available. The security policy blocks the outside scripts `/docs` and `/redoc` load, so use `/openapi.json` there | `backend/app/main.py:32`, `backend/app/public.py:100-103` |
+| `GET` | `/docs`, `/redoc`, `/openapi.json` | FastAPI's generated API pages and schema | Available. The security policy blocks the outside scripts `/docs` and `/redoc` load, so use `/openapi.json` there | `backend/app/main.py:32`, `backend/app/public.py:104-107` |
 
 ## Other `/api` routes
 
@@ -186,13 +186,13 @@ Errors return JSON with a `detail` field. It is usually a string. Pydantic valid
 | --- | --- | --- |
 | 400 | The file is not a readable JPG, PNG or WebP still photo, or it is over 25 megapixels | `backend/app/workspace/routes.py:75-83` |
 | 402 | Recorded vision spend passed `BUDGET_USD` | `backend/app/workspace/routes.py:97-98`, `backend/app/meta/ledger.py:54-56` |
-| 403 | Public mode: a write came from another origin | `backend/app/public.py:80-82` |
+| 403 | Public mode: a write came from another origin | `backend/app/public.py:80-86` |
 | 404 | The sample, inspection, correction or photo does not exist, or belongs to another visitor. Public mode also uses it for blocked routes | `backend/app/workspace/routes.py:63`, `backend/app/workspace/routes.py:168-169`, `backend/app/workspace/routes.py:181-182`, `backend/app/main.py:228-234`, `backend/app/public.py:77-79` |
 | 409 | The inspection already has a correction | `backend/app/workspace/routes.py:174-175`, `backend/app/workspace/store.py:115-116` |
-| 413 | The photo is over 8 MiB, or in public mode the request body is over 9 MiB | `backend/app/workspace/routes.py:71-72`, `backend/app/public.py:86-91` |
+| 413 | The photo is over 8 MiB, or in public mode the request body is over 9 MiB | `backend/app/workspace/routes.py:71-72`, `backend/app/public.py:90-95` |
 | 422 | A field failed validation, or neither a file nor a sample was sent | `backend/app/workspace/routes.py:51-56`, `backend/app/workspace/routes.py:70`, `backend/app/workspace/routes.py:142-162` |
-| 429 | Public mode: the hourly limit is reached. `Retry-After` is 3600 | `backend/app/public.py:83-85` |
+| 429 | Public mode: the hourly limit is reached. `Retry-After` is 3600 | `backend/app/public.py:87-89` |
 | 502 | The vision model call failed | `backend/app/workspace/routes.py:99-100` |
 | 503 | `MODEL_API_KEY` is missing, or a required Hindsight call failed | `backend/app/workspace/routes.py:87-89`, `backend/app/workspace/routes.py:95-96` |
 
-In a public request, the middleware checks run in this order: blocked route, other origin, hourly limit, declared body size (`backend/app/public.py:77-91`). A blocked route does not use up your limit, and any other POST does, even if it then fails validation.
+In a public request, the middleware checks run in this order: blocked route, other origin, hourly limit, declared body size (`backend/app/public.py:77-95`). A blocked route does not use up your limit, and any other POST does, even if it then fails validation.

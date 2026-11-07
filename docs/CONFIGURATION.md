@@ -25,6 +25,7 @@ These are the settings the running app reads. "Code default" applies when the va
 | `DEMO_MODE` | `0` | `0` | `backend/app/config.py:14` | Replays recorded data on the earlier `/api/*` routes (`backend/app/main.py:67-68`, `backend/app/main.py:170-174`, `backend/app/runs.py:132-133`). It is also on whenever `MODEL_API_KEY` is empty. The workspace routes ignore it: they never replay a result |
 | `SPECLENS_PUBLIC` | Falls back to `CHIEF_SKILL_PUBLIC`, then `0` | `0` | `backend/app/public.py:18` | `1` turns on public mode: visitor cookies, request limits, security headers, and 404 for the earlier routes. Also clears the CORS allow list (`backend/app/main.py:33`) |
 | `CHIEF_SKILL_PUBLIC` | `0` | Not listed | `backend/app/public.py:18` | Legacy name. Read only when `SPECLENS_PUBLIC` is not set at all, so the `0` in `.env.example` overrides it |
+| `SPECLENS_ALLOWED_ORIGINS` | Empty | Empty | `backend/app/public.py:83` | Comma-separated frontend origins that may send writes in public mode. Each must match exactly, including `https://`. The live server lists the custom domain and the Vercel alias. |
 | `HINDSIGHT_BASE_URL` | Empty | `https://api.hindsight.vectorize.io` | `backend/app/workspace/routes.py:28` | Hindsight endpoint. If it is empty and `HINDSIGHT_API_KEY` is set, the server uses `https://api.hindsight.vectorize.io` (`backend/app/workspace/routes.py:29-30`) |
 | `HINDSIGHT_API_KEY` | Empty | Empty | `backend/app/workspace/routes.py:29`, `backend/app/workspace/routes.py:32` | Sent as a bearer token when set (`backend/app/workspace/memory.py:26`). Hindsight Cloud counts as configured only with a key. A self-hosted URL counts as configured without one (`backend/app/workspace/memory.py:19-21`) |
 | `SPECLENS_VAR` | `var` at the repository root | Not listed | `backend/app/config.py:18` | Directory for all runtime data. The Docker image and `compose.yaml` set it to `/app/var` (`Dockerfile:9`, `compose.yaml:8`) |
@@ -49,7 +50,7 @@ The live check scripts write under `var/` at the repository root, whatever `SPEC
 
 | Variable | Default | Set in | Read by | What it does |
 | --- | --- | --- | --- | --- |
-| `FORWARDED_ALLOW_IPS` | `127.0.0.1,::1` (Uvicorn's own default) | `compose.public.yaml:7`, as `*` | Uvicorn, not the app code | Lets Uvicorn trust forwarded headers from Caddy. The app needs them for the real client address, which sets the IP limit, and for the `https` scheme, which sets the `Secure` cookie flag (`backend/app/public.py:83`, `backend/app/public.py:94`). Keep the host port on loopback when this is `*` |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1,::1` (Uvicorn's own default) | `compose.public.yaml:7`, as `*` | Uvicorn, not the app code | Lets Uvicorn trust forwarded headers from Caddy. The app needs them for the real client address, which sets the IP limit, and for the `https` scheme, which sets the `Secure` cookie flag (`backend/app/public.py:87`, `backend/app/public.py:98`). Keep the host port on loopback when this is `*` |
 | `PYTHONDONTWRITEBYTECODE`, `PYTHONUNBUFFERED` | Not set outside the image | `Dockerfile:9`, as `1` | Python | Standard Python options: no `.pyc` files, and logs appear at once |
 
 The container port is fixed. Compose publishes `127.0.0.1:8770:8770` and the image starts Uvicorn on port 8770 (`compose.yaml:5`, `Dockerfile:22`), so `SPECLENS_PORT` has no effect there.
@@ -102,7 +103,7 @@ These are constants in the code. Change the file to change them.
 | --- | --- | --- |
 | Requests per browser | 30 POST requests per hour | `backend/app/public.py:19-20` |
 | Requests per IP address | 120 POST requests per hour, four times the browser limit | `backend/app/public.py:41` |
-| Visitor cookie | `speclens_workspace`, 30 days | `backend/app/public.py:21`, `backend/app/public.py:93` |
+| Visitor cookie | `speclens_workspace`, 30 days | `backend/app/public.py:21`, `backend/app/public.py:97` |
 | Public request body | 9 MiB | `backend/app/public.py:23` |
 | Photo upload | 8 MiB, 25 megapixels, JPG, PNG or WebP | `backend/app/workspace/routes.py:27`, `backend/app/workspace/routes.py:75-80` |
 | Text limits | Factory and part family 100 characters, specification 12,000 | `backend/app/workspace/routes.py:51` |

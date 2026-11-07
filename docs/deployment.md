@@ -33,7 +33,7 @@ The current cookie is `speclens_workspace`. On the same hostname, a valid legacy
 
 Both `speclens.13-236-192-155.sslip.io` and `chief-skill.13-236-192-155.sslip.io` remain aliases without redirects. Browser cookies belong to their hostname, so revisit the same hostname for visitor history created there. Cookies created on the custom domain continue through the Vercel proxy to the same persistent backend. Moving between different hostnames starts a separate visitor workspace. The canonical public hostname is `speclens.pallabdas.me`.
 
-The public server limits POST requests to 30 per browser per hour and 120 per IP per hour. These request limits are separate from the persisted vision budget and Hindsight billing. The default local mode remains a shared single-team workspace with `SPECLENS_PUBLIC=0`.
+The public server limits POST requests to 30 per browser per hour and 120 per IP per hour. Behind Vercel, the server sees a Vercel address instead of the visitor's, so visitors can share that IP limit. These request limits are separate from the persisted vision budget and Hindsight billing. The default local mode remains a shared single-team workspace with `SPECLENS_PUBLIC=0`.
 
 ## Server access
 
