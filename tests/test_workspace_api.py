@@ -54,6 +54,20 @@ def test_non_image_upload_is_rejected_before_inference(tmp_path, monkeypatch):
     assert r.status_code == 400
 
 
+@pytest.mark.parametrize('animated', [False, True])
+def test_only_supported_still_photos_can_reach_inference(tmp_path, monkeypatch, animated):
+    client, _ = setup_client(tmp_path, monkeypatch)
+    data = io.BytesIO()
+    first = Image.new('RGB', (20, 20), 'red')
+    if animated:
+        first.save(data, 'PNG', save_all=True, append_images=[Image.new('RGB', (20, 20), 'blue')], duration=100)
+    else:
+        first.save(data, 'GIF')
+    response = client.post('/api/workspace/inspect', files={'file': ('photo.png', data.getvalue(), 'image/png')})
+    assert response.status_code == 400
+    assert 'still' in response.json()['detail'].lower() or 'jpg' in response.json()['detail'].lower()
+
+
 def test_unknown_sample_and_blank_rule_are_rejected(tmp_path, monkeypatch):
     client, _ = setup_client(tmp_path, monkeypatch)
     assert client.post('/api/workspace/inspect', data={'sample_id': '../../.env'}).status_code == 404

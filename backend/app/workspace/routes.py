@@ -69,6 +69,10 @@ async def read_input(file: UploadFile | None, sample_id: str) -> tuple[bytes, st
         raise HTTPException(413, 'Choose an image smaller than 8 MB.')
     try:
         with Image.open(io.BytesIO(data)) as image:
+            if image.format not in {'JPEG', 'PNG', 'WEBP'}:
+                raise HTTPException(400, 'Upload a JPG, PNG or WebP still photo.')
+            if getattr(image, 'is_animated', False):
+                raise HTTPException(400, 'Use one still photo for each inspection. Animated images are not supported.')
             if image.width * image.height > 25_000_000:
                 raise HTTPException(400, 'Choose a photo smaller than 25 megapixels.')
             image.verify()
