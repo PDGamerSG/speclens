@@ -137,7 +137,7 @@ The page works the same way on a phone. The first screen holds the photo, the pa
 
 SpecLens has no accounts and no sign-in.
 
-- **On the public site**, a cookie gives your browser a private workspace: your own records, photos and memory (`backend/app/public.py:71-75`). Keep the same browser and cookies to come back to your history. Clearing cookies or changing browser starts a new workspace, and the old one cannot be recovered. The cookie lasts 30 days from when it was set, and return visits do not renew it (`backend/app/public.py:92-94`). The site allows 30 POST requests per browser per hour and 120 per IP address.
+- **On the public site**, a cookie gives your browser a private workspace: your own records, photos and memory (`backend/app/public.py:71-75`). Keep the same browser and cookies to come back to your history. Clearing cookies or changing browser starts a new workspace, and the old one cannot be recovered. The cookie lasts 30 days from when it was set, and return visits do not renew it (`backend/app/public.py:96-98`). The site allows 30 POST requests per browser per hour and 120 per IP address.
 - **On a local install**, everyone who can reach the server shares one workspace set (`backend/app/public.py:29-30`).
 
 Your browser also stores two conveniences in local storage: your workspace fields (`speclens-scope`) and your reviewer name (`speclens-reviewer`).

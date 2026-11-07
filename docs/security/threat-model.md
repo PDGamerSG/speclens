@@ -27,6 +27,7 @@ How long Meta and Hindsight keep this data is not recorded in the repository.
 ```mermaid
 flowchart LR
   visitor["Visitor browser<br/>untrusted"]
+  edge["Vercel frontend<br/>frontend/vercel.json"]
   subgraph server["AWS Lightsail server"]
     caddy["HTTPS proxy<br/>Caddy"]
     gate["Public boundary<br/>backend/app/public.py"]
@@ -36,7 +37,8 @@ flowchart LR
   vision["Meta Model API"]
   hind["Hindsight"]
 
-  visitor -- "HTTPS with visitor cookie" --> caddy
+  visitor -- "HTTPS with visitor cookie" --> edge
+  edge -- "/api/* and /files/*" --> caddy
   caddy -- "loopback 127.0.0.1:8770" --> gate
   gate --> routes
   routes --> db
@@ -51,28 +53,28 @@ Sources: `scripts/deploy-speclens.sh:148-161`, `compose.yaml:5`, `compose.public
 Public mode separates visitors with one cookie, and no sign-in.
 
 - **Token:** a first visit gets a random 64-character hex token from `secrets.token_hex(32)`. A cookie that does not match that shape is ignored (`backend/app/public.py:26`, `backend/app/public.py:73`).
-- **Cookie:** `speclens_workspace`, `HttpOnly`, `SameSite=Lax`, and `Secure` over HTTPS (`backend/app/public.py:93-94`). It lasts 30 days from when it was set. It is written only when new or changed, so return visits do not extend it (`backend/app/public.py:92`).
-- **Owner ID:** the server hashes the token with SHA-256 and uses the hash as `owner_id` (`backend/app/public.py:75`). Records and JSON exports contain the hash, never the cookie value. The hash cannot be used as a cookie (`tests/test_public_workspace.py:106-113`).
+- **Cookie:** `speclens_workspace`, `HttpOnly`, `SameSite=Lax`, and `Secure` over HTTPS (`backend/app/public.py:97-98`). It lasts 30 days from when it was set. It is written only when new or changed, so return visits do not extend it (`backend/app/public.py:96`).
+- **Owner ID:** the server hashes the token with SHA-256 and uses the hash as `owner_id` (`backend/app/public.py:75`). Records and JSON exports contain the hash, never the cookie value. The hash cannot be used as a cookie (`tests/test_public_workspace.py:128-135`).
 - **Scope:** `owner_id` is part of the scope hash, so two visitors with the same factory name get different records and different Hindsight banks (`backend/app/workspace/store.py:32-42`).
 - **Direct IDs:** routes that take an ID check the owner, and return 404 on a mismatch, so a visitor cannot confirm that another visitor's record exists (`backend/app/workspace/routes.py:167-169`, `backend/app/workspace/routes.py:180-182`, `backend/app/main.py:229-231`).
-- **Legacy cookie:** a valid `chief_skill_workspace` cookie keeps its identity under the new name, and the old cookie is deleted (`backend/app/public.py:72-73`, `backend/app/public.py:95-96`).
+- **Legacy cookie:** a valid `chief_skill_workspace` cookie keeps its identity under the new name, and the old cookie is deleted (`backend/app/public.py:72-73`, `backend/app/public.py:99-100`).
 
 ## Request limits
 
 | Limit | Value | Where |
 | --- | --- | --- |
 | POST requests per browser | 30 per hour | `backend/app/public.py:19-20`, `backend/app/public.py:41` |
-| POST requests per IP address | 120 per hour | `backend/app/public.py:41` |
-| Request body | 9 MiB, checked on the declared size and while streaming | `backend/app/public.py:23`, `backend/app/public.py:55-64`, `backend/app/public.py:86-91` |
+| POST requests per connecting IP address | 120 per hour. Behind Vercel this is a Vercel address, so visitors can share it | `backend/app/public.py:41` |
+| Request body | 9 MiB, checked on the declared size and while streaming | `backend/app/public.py:23`, `backend/app/public.py:55-64`, `backend/app/public.py:90-95` |
 | Photo | 8 MiB, 25 megapixels, JPEG, PNG or WebP, still images only | `backend/app/workspace/routes.py:27`, `backend/app/workspace/routes.py:71-83` |
 | Text | Factory and part 100 characters, specification 12,000, rule 2,000 | `backend/app/workspace/routes.py:51`, `backend/app/workspace/routes.py:146` |
 | Vision spend | `BUDGET_USD`, across all visitors | `backend/app/meta/ledger.py:54-56`, `backend/app/meta/client.py:62` |
 
-The IP limit exists because the browser limit is easy to reset: dropping the cookie creates a new visitor (`tests/test_public_workspace.py:95-103`).
+The IP limit exists because the browser limit is easy to reset: dropping the cookie creates a new visitor (`tests/test_public_workspace.py:117-125`).
 
 ## Response headers
 
-Public mode adds these to every response (`backend/app/public.py:97-105`).
+Public mode adds these to every response (`backend/app/public.py:101-109`).
 
 | Header | Value |
 | --- | --- |
@@ -103,19 +105,19 @@ Public mode adds these to every response (`backend/app/public.py:97-105`).
 | --- | --- | --- | --- |
 | A visitor reads another visitor's records or photos | `backend/app/workspace/routes.py:117-122`, `backend/app/main.py:225-235` | Owner ID in the scope hash, owner check on each ID route. Tested in `tests/test_public_workspace.py:19-32` | Implemented |
 | A visitor changes another visitor's memory | `backend/app/workspace/store.py:32-42` | One Hindsight bank per scope, with the owner in the scope. Tested in `tests/test_public_workspace.py:35-51` | Implemented |
-| A stolen cookie gives access to a workspace | `backend/app/public.py:93-94` | `HttpOnly`, `Secure` and `SameSite=Lax`. The cookie is still a bearer token, and the server cannot revoke one | Partial |
-| Another site makes a visitor's browser write | `backend/app/public.py:80-82` | Writes with a foreign `Origin` return 403, and `SameSite=Lax` holds the cookie back on cross-site POSTs. A request with no `Origin` header passes this check, but a browser form post from another site has one | Implemented |
+| A stolen cookie gives access to a workspace | `backend/app/public.py:97-98` | `HttpOnly`, `Secure` and `SameSite=Lax`. The cookie is still a bearer token, and the server cannot revoke one | Partial |
+| Another site makes a visitor's browser write | `backend/app/public.py:80-86` | Writes with a foreign `Origin` return 403, and `SameSite=Lax` holds the cookie back on cross-site POSTs. A request with no `Origin` header passes this check, but a browser form post from another site has one | Implemented |
 | Someone runs up the Model API bill | `backend/app/public.py:33-46`, `backend/app/meta/ledger.py:54-56` | Request limits and a persisted budget. A comparison counts as one POST but makes two vision calls. The guard checks spend before a call, so calls in progress can pass it (`docs/setup.md:15`) | Partial |
 | One visitor uses up the budget for everyone | `backend/app/meta/ledger.py:54-56` | The budget is global, with no per-visitor share. The request limits slow this down. Once the budget is reached, all visitors get 402 | Open |
 | Someone runs up the Hindsight bill | `backend/app/workspace/memory.py` | Request limits only. `BUDGET_USD` does not cover Hindsight | Open |
 | Limits reset or split | `backend/app/public.py:24` | Limits live in process memory. A restart clears them, and they would not be shared across several processes. The image runs one (`Dockerfile:22`) | Partial |
-| A hostile upload, such as a decompression bomb or an oversized stream | `backend/app/workspace/routes.py:59-84`, `backend/app/public.py:55-64` | Size, format, animation and pixel checks before any model call, and a streaming body cap. Tested in `tests/test_public_workspace.py:116-136` and `tests/test_workspace_api.py:51-68` | Implemented |
+| A hostile upload, such as a decompression bomb or an oversized stream | `backend/app/workspace/routes.py:59-84`, `backend/app/public.py:55-64` | Size, format, animation and pixel checks before any model call, and a streaming body cap. Tested in `tests/test_public_workspace.py:138-158` and `tests/test_workspace_api.py:51-68` | Implemented |
 | Path traversal through `sample_id` or a file name | `backend/app/workspace/routes.py:61`, `backend/app/workspace/routes.py:67`, `backend/app/main.py:227-232` | Samples come from a fixed list, upload names keep only the base name, and photo paths come from a looked-up inspection ID. Tested in `tests/test_workspace_api.py:71-73` | Implemented |
-| Download of the database, ledger or other private files | `backend/app/main.py:216-223`, `backend/app/public.py:77-79` | The `var` root is never mounted. Each media folder is mounted on its own, and public mode allows only fixtures and owner-checked photos. Tested in `tests/test_public_workspace.py:73-80` and `tests/test_workspace_api.py:94-103` | Implemented |
+| Download of the database, ledger or other private files | `backend/app/main.py:216-223`, `backend/app/public.py:77-79` | The `var` root is never mounted. Each media folder is mounted on its own, and public mode allows only fixtures and owner-checked photos. Tested in `tests/test_public_workspace.py:95-102` and `tests/test_workspace_api.py:94-103` | Implemented |
 | Abuse of the earlier expensive routes | `backend/app/public.py:77-79` | Public mode returns 404 for them. Tested in `tests/test_public_workspace.py:54-58` | Implemented |
 | Information shown to anyone | `backend/app/public.py:77`, `backend/app/main.py:32`, `backend/app/workspace/routes.py:103-108` | `/api/health` and `/api/workspace/status` show spend and budget, and `/openapi.json` lists every route, including the blocked ones. None of them show a key or a record | Accepted |
-| Script injection into the page | `frontend/src/workspace/`, `backend/app/public.py:100-103` | React escapes model and user text, and `frontend/src` uses no `dangerouslySetInnerHTML`. The CSP blocks inline scripts | Implemented |
-| Clickjacking | `backend/app/public.py:99-103` | `X-Frame-Options: DENY` and `frame-ancestors 'none'` | Implemented |
+| Script injection into the page | `frontend/src/workspace/`, `backend/app/public.py:104-107` | React escapes model and user text, and `frontend/src` uses no `dangerouslySetInnerHTML`. The CSP blocks inline scripts | Implemented |
+| Clickjacking | `backend/app/public.py:103-107` | `X-Frame-Options: DENY` and `frame-ancestors 'none'` | Implemented |
 | Prompt injection through a photo, specification or rule | `backend/app/inspect/inspector.py:35-39`, `backend/app/inspect/inspector.py:16-23` | The prompt calls recalled records evidence, not instructions. The reply must fit a strict schema, the model has no tools, and people make the final call. A crafted input can still mislead the decision, but in public mode only inside the visitor's own workspace | Partial |
 | An API key reaches the browser | `backend/app/workspace/routes.py:103-108`, `frontend/vite.config.ts:7` | Keys stay in server variables. The API reports only whether each is set, and no setting enters the page build | Implemented |
 | A key leaks through a deployment | `scripts/deploy-speclens.sh:85-99`, `.dockerignore:2` | See [keys and secrets](#keys-and-secrets) | Implemented |
@@ -127,7 +129,7 @@ Public mode adds these to every response (`backend/app/public.py:97-105`).
 Two small items for the next review:
 
 - The CSP allows Google Fonts, but the page loads no font from Google. Fonts are bundled from Fontsource (`frontend/src/index.css:1-3`), and neither `frontend/src` nor `frontend/index.html` mentions Google's font hosts. The two entries could go.
-- `style-src` keeps `'unsafe-inline'`. The tests do not check whether the page needs it. `tests/test_public_workspace.py:80` asserts only `X-Content-Type-Options`.
+- `style-src` keeps `'unsafe-inline'`. The tests do not check whether the page needs it. `tests/test_public_workspace.py:102` asserts only `X-Content-Type-Options`.
 
 ## Keys and secrets
 
