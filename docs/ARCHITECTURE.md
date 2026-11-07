@@ -52,7 +52,7 @@ flowchart LR
 Sources: `frontend/src/workspace/Workspace.tsx`, `frontend/src/workspace/api.ts`, `backend/app/main.py`, `backend/app/public.py`, `backend/app/workspace/routes.py`, `backend/app/workspace/service.py`, `backend/app/workspace/memory.py`, `backend/app/workspace/store.py`, `backend/app/inspect/inspector.py`, `backend/app/meta/client.py`, `backend/app/meta/ledger.py`.
 
 - **`frontend/src/workspace/`**: the page, in React 19 and TypeScript, built with Vite (`frontend/package.json:7-18`). `Workspace.tsx` holds the page state. `api.ts` sends every API request, always to `/api/workspace` on the same origin (`frontend/src/workspace/api.ts:3-6`).
-- **`backend/app/public.py`**: one middleware added in `backend/app/main.py:34`. In local mode it passes every request through (`backend/app/public.py:85-86`).
+- **`backend/app/public.py`**: one middleware added in `backend/app/main.py:32`. In local mode it passes every request through (`backend/app/public.py:87-88`).
 - **`backend/app/workspace/`**: `routes.py` validates input, `service.py` runs inspect, correct and compare, `memory.py` calls Hindsight over HTTP, and `store.py` reads and writes SQLite.
 - **`backend/app/inspect/inspector.py`**: builds the prompt, defines the strict JSON reply, and turns the reply into a verdict.
 - **`backend/app/meta/`**: `client.py` calls the Model API with server-side keys. `ledger.py` records the cost of each call and stops new calls past the budget (`backend/app/meta/ledger.py:54-56`).
@@ -294,11 +294,11 @@ Sources: `frontend/vercel.json`, `scripts/deploy-speclens.sh`, `compose.yaml`, `
 
 | Part | Status | Evidence |
 | --- | --- | --- |
-| Synthetic defect pipeline: runs, stress tests, COCO export | Partial. The routes work in local mode, the page never calls them, and public mode returns 404 | `backend/app/main.py:91-164`, `frontend/src/workspace/api.ts:3`, `backend/app/public.py:93-95` |
+| Synthetic defect pipeline: runs, stress tests, COCO export | Partial. The routes work in local mode, the page never calls them, and public mode returns 404 | `backend/app/main.py:89-162`, `frontend/src/workspace/api.ts:3`, `backend/app/public.py:95-98` |
 | SAM 3.1 defect masks | Partial. `inspect()` supports masks, and the workspace turns them off | `backend/app/inspect/inspector.py:84-87`, `backend/app/workspace/service.py:40` |
 | `POST /api/workspace/recall` in the page | Partial. `api.ts` defines the call but no component uses it. `scripts/system_check.py` uses the route | `frontend/src/workspace/api.ts:38`, `scripts/system_check.py:64` |
-| Evaluation report | Partial. `/api/eval` reads `docs/results/eval.json` and names `eval/run_eval.py`. Neither file is in the repository | `backend/app/main.py:207-213`, `backend/app/config.py:21` |
+| Evaluation report | Partial. `/api/eval` reads `docs/results/eval.json` and names `eval/run_eval.py`. Neither file is in the repository | `backend/app/main.py:205-211`, `backend/app/config.py:21` |
 | More than four defect classes | Not built. The classes are fixed in the service and the correction route | `backend/app/workspace/service.py:39`, `backend/app/workspace/routes.py:145` |
 | Editing or deleting records | Not built. The store has no update for a saved rule and no delete, and the routes offer neither | `backend/app/workspace/store.py:78-151`, `backend/app/workspace/routes.py:103-218` |
 | Accounts, roles and team administration | Not built, by design | `docs/design.md:22` |
-| More than one server process | Not built. The request limiter lives in process memory, and the container starts one Uvicorn process | `backend/app/public.py:25`, `Dockerfile:22` |
+| More than one server process | Not built. The request limiter lives in process memory, and the container starts one Uvicorn process | `backend/app/public.py:27`, `Dockerfile:22` |

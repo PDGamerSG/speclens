@@ -246,3 +246,55 @@ def test_vercel_sends_the_proxy_secret_from_its_environment_on_api_requests():
                          'args': '$SPECLENS_PROXY_SECRET', 'env': ['SPECLENS_PROXY_SECRET']}
     assert routes.index({'handle': 'filesystem'}) < routes.index({'src': '/(.*)', 'dest': '/index.html'})
     assert routes.index(api) < routes.index({'handle': 'filesystem'})
+
+
+def test_public_mode_hides_the_generated_api_docs(tmp_path, monkeypatch):
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    for path in ('/docs', '/redoc', '/openapi.json'):
+        assert first.get(path).status_code == 404
+
+
+def test_a_comparison_counts_as_two_requests_because_it_makes_two_vision_calls(tmp_path, monkeypatch):
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    import app.public as public
+    monkeypatch.setattr(public, 'CALL_LIMIT', 3)
+    form = {'sample_id': 'white-print'}
+    assert first.post('/api/workspace/compare', data=form).status_code == 200
+    assert first.post('/api/workspace/compare', data=form).status_code == 429
+    assert first.post('/api/workspace/inspect', data={**form, 'memory_enabled': 'false'}).status_code == 200
+    assert first.post('/api/workspace/inspect', data={**form, 'memory_enabled': 'false'}).status_code == 429
+
+
+def test_each_api_visit_renews_the_workspace_cookie(tmp_path, monkeypatch):
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    token = first.get('/api/workspace/status').cookies['speclens_workspace']
+    renewed = first.get('/api/workspace/status')
+    assert renewed.cookies['speclens_workspace'] == token
+    assert 'Max-Age=2592000' in renewed.headers['set-cookie']
+
+
+def test_https_responses_ask_browsers_to_stay_on_https(tmp_path, monkeypatch):
+    public_clients(tmp_path, monkeypatch)
+    from app.main import app
+    secure = TestClient(app, base_url='https://testserver').get('/api/workspace/status')
+    assert 'max-age=' in secure.headers['strict-transport-security']
+    plain = TestClient(app).get('/api/workspace/status')
+    assert 'strict-transport-security' not in plain.headers
+
+
+def test_content_security_policy_allows_only_self_hosted_fonts(tmp_path, monkeypatch):
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    policy = first.get('/api/workspace/status').headers['content-security-policy']
+    config = (Path(__file__).parents[1] / 'frontend' / 'vercel.json').read_text()
+    assert "font-src 'self';" in policy
+    assert 'fonts.g' not in policy
+    assert 'fonts.g' not in config
+
+
+def test_local_mode_does_not_let_other_websites_read_the_api(tmp_path, monkeypatch):
+    client, _ = setup_client(tmp_path, monkeypatch)
+    response = client.get('/api/workspace/status', headers={'Origin': 'https://attacker.example'})
+    assert 'access-control-allow-origin' not in response.headers
+    preflight = client.options('/api/workspace/inspect', headers={
+        'Origin': 'https://attacker.example', 'Access-Control-Request-Method': 'POST'})
+    assert 'access-control-allow-origin' not in preflight.headers
