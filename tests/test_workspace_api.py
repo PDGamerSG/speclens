@@ -114,3 +114,20 @@ def test_frontend_asset_paths_cannot_escape_the_build_directory(tmp_path, monkey
     r = client.get('/' + quote(relative, safe=''))
     assert r.status_code == 404
     assert 'private server credential probe' not in r.text
+
+
+def test_sample_provenance_is_preserved_without_guessing_for_uploads(tmp_path, monkeypatch):
+    client, _ = setup_client(tmp_path, monkeypatch)
+    def inspect_sample(id):
+        r = client.post('/api/workspace/inspect', data={'sample_id': id, 'memory_enabled': 'false'})
+        assert r.status_code == 200
+        return r.json()
+    natural = inspect_sample('natural-shell')
+    marked = inspect_sample('white-print')
+    assert marked['source_kind'] == 'synthetic_sample'
+    assert marked['source_group'] == natural['source_group']
+    uploaded = client.post('/api/workspace/inspect', files={'file': ('white-print.jpg', png(), 'image/png')},
+                           data={'memory_enabled': 'false'}).json()
+    assert uploaded['source_kind'] == 'upload'
+    assert uploaded['source_group'] is None
+    assert uploaded['sample_id'] is None

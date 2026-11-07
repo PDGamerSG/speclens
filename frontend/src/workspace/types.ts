@@ -10,6 +10,7 @@ export interface Inspection {
   verdict: 'good' | 'defect' | 'uncertain'; defect: boolean; type: string; confidence: number;
   rationale: string; box_px: number[] | null; image_url: string; image_width: number; image_height: number;
   memory_enabled: boolean; memory_status: 'disabled' | 'empty' | 'recalled'; memories: MemoryFact[];
+  source_kind?: 'synthetic_sample' | 'upload' | 'unknown'; source_group?: string | null; sample_id?: string | null;
   filename: string; image_sha256: string; ms: number; cost_usd: number; created_at: string; model: string;
 }
 export interface Correction {

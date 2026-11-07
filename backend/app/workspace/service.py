@@ -21,7 +21,8 @@ class WorkspaceService:
         self.media_root = Path(media_root)
         self.media_root.mkdir(parents=True, exist_ok=True)
 
-    def run(self, data: bytes, filename: str, scope: Scope, *, use_memory: bool) -> dict:
+    def run(self, data: bytes, filename: str, scope: Scope, *, use_memory: bool, source_kind: str = 'upload',
+            source_group: str | None = None, sample_id: str | None = None) -> dict:
         # Fail a required recall visibly; never label a baseline result as memory-enabled.
         facts = self.memory.recall(scope) if use_memory else []
         sources = {c['id']: c for c in self.store.corrections(scope.id) if c['sync_status'] == 'synced'}
@@ -43,6 +44,7 @@ class WorkspaceService:
         item = {**result, 'id': id, 'scope_id': scope.id, 'factory': scope.factory,
                 'part_family': scope.part_family, 'spec_text': scope.spec_text,
                 'image_sha256': image_hash, 'filename': filename,
+                'source_kind': source_kind, 'source_group': source_group, 'sample_id': sample_id,
                 'image_url': f'/files/workspace/{id}.jpg', 'image_width': image.width, 'image_height': image.height,
                 'memory_enabled': use_memory, 'memory_status': ('recalled' if memories else 'empty') if use_memory else 'disabled',
                 'memories': memories, 'bank_id': scope.bank_id if use_memory else None,
@@ -66,13 +68,15 @@ class WorkspaceService:
             return self.store.mark_sync(id, 'pending', str(exc))
         return self.store.mark_sync(id, 'synced')
 
-    def compare(self, data: bytes, filename: str, scope: Scope, *, expected_verdict: str | None = None) -> dict:
+    def compare(self, data: bytes, filename: str, scope: Scope, *, expected_verdict: str | None = None,
+                source_kind: str = 'upload', source_group: str | None = None, sample_id: str | None = None) -> dict:
         # Alternate order across comparisons so the same arm is not always called first.
         id = f'compare-{uuid.uuid4().hex[:16]}'
         order = [False, True] if int(id[-1], 16) % 2 else [True, False]
         arms = {}
         for use_memory in order:
-            arms[use_memory] = self.run(data, filename, scope, use_memory=use_memory)
+            arms[use_memory] = self.run(data, filename, scope, use_memory=use_memory,
+                                        source_kind=source_kind, source_group=source_group, sample_id=sample_id)
         result = {'id': id, 'scope_id': scope.id, 'created_at': now(),
                   'baseline': arms[False], 'with_memory': arms[True],
                   'expected_verdict': expected_verdict,

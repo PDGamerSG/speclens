@@ -115,7 +115,7 @@ export default function Workspace() {
     return `${item.filename} ${item.id} ${reviewer}`.toLowerCase().includes(historyQuery.trim().toLowerCase())
   })
   const title = NAV.find(n => n.id === view)?.label || 'Inspection desk'
-  const generated = !!input?.sample
+  const generated = result ? result.source_kind === 'synthetic_sample' : !!input?.sample
   const partName = result?.filename || input?.file?.name || input?.sample?.name || ''
   const sourceCounts = new Set(result?.memories.map(m => m.source_id) || []).size
   const exportHistory = () => downloadJson('speclens-inspection-records.json', { format_version: 1, exported_at: new Date().toISOString(), scope, ...overview })

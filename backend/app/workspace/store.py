@@ -99,6 +99,7 @@ class Store:
                 'part_family': original['part_family'], 'spec_text': original['spec_text'],
                 'original_verdict': original['verdict'], 'original_type': original['type'],
                 'original_rationale': original['rationale'], 'image_url': original['image_url'],
+                'source_kind': original.get('source_kind', 'unknown'), 'source_group': original.get('source_group'),
                 'image_sha256': original['image_sha256'], 'verdict': verdict, 'defect_type': defect_type,
                 'rule_text': rule_text.strip(), 'reviewer': reviewer.strip(), 'created_at': now(),
                 'sync_status': 'pending', 'sync_error': None}

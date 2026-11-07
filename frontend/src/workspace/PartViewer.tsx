@@ -11,7 +11,7 @@ export function PartViewer({ url, name, result, busy, generated }: {
   return <div className="part-viewer">
     <div className="viewer-toolbar">
       <span className="viewer-label"><Crosshair size={15} /> {name || 'Part image'}</span>
-      <span className="viewer-tag">{generated ? 'Generated sample' : 'Uploaded image'}</span>
+      <span className="viewer-tag">{result && !result.source_kind ? 'Recorded image' : generated ? 'Generated sample' : 'Uploaded image'}</span>
     </div>
     <div className={'image-stage' + (busy ? ' is-scanning' : '')} aria-busy={busy}>
       <div className="stage-grid" aria-hidden="true" />

@@ -32,17 +32,17 @@ service = WorkspaceService(Store(VAR / 'speclens.sqlite3'),
 
 SAMPLES = [
     {'id': 'natural-shell', 'name': 'Natural shell', 'detail': 'Good part · generated sample',
-     'path': 'parts/hazelnut_gen_01.jpg', 'expected_verdict': 'good'},
+     'path': 'parts/hazelnut_gen_01.jpg', 'source_group': 'generated-hazelnut-01', 'expected_verdict': 'good'},
     {'id': 'white-print', 'name': 'White marking', 'detail': 'Print defect · generated sample',
-     'path': 'speclens/white-print-01.png', 'expected_verdict': 'defect'},
+     'path': 'speclens/white-print-01.png', 'source_group': 'generated-hazelnut-01', 'expected_verdict': 'defect'},
     {'id': 'fine-crack', 'name': 'Shell crack', 'detail': 'Crack defect · generated sample',
-     'path': 'demo_run/samples/s001_composite.jpg', 'expected_verdict': 'defect'},
+     'path': 'demo_run/samples/s001_composite.jpg', 'source_group': 'generated-hazelnut-02', 'expected_verdict': 'defect'},
     {'id': 'small-hole', 'name': 'Small hole', 'detail': 'Hole defect · generated sample',
-     'path': 'demo_run/samples/s000_composite.jpg', 'expected_verdict': 'defect'},
+     'path': 'demo_run/samples/s000_composite.jpg', 'source_group': 'generated-hazelnut-01', 'expected_verdict': 'defect'},
     {'id': 'second-print', 'name': 'Another marking', 'detail': 'Print defect · generated sample',
-     'path': 'speclens/white-print-02.png', 'expected_verdict': 'defect'},
+     'path': 'speclens/white-print-02.png', 'source_group': 'generated-hazelnut-02', 'expected_verdict': 'defect'},
     {'id': 'second-natural', 'name': 'Natural texture', 'detail': 'Good part · generated sample',
-     'path': 'parts/hazelnut_gen_02.jpg', 'expected_verdict': 'good'},
+     'path': 'parts/hazelnut_gen_02.jpg', 'source_group': 'generated-hazelnut-02', 'expected_verdict': 'good'},
 ]
 
 
@@ -55,14 +55,16 @@ def make_scope(factory: str, part_family: str, spec_text: str) -> Scope:
         raise HTTPException(422, str(e)) from None
 
 
-async def read_input(file: UploadFile | None, sample_id: str) -> tuple[bytes, str]:
+async def read_input(file: UploadFile | None, sample_id: str) -> tuple[bytes, str, dict]:
     if sample_id:
         sample = next((s for s in SAMPLES if s['id'] == sample_id), None)
         if sample is None:
             raise HTTPException(404, 'Sample part not found.')
         data, name = (FIXTURES / sample['path']).read_bytes(), f'{sample_id}.jpg'
+        source = {'source_kind': 'synthetic_sample', 'source_group': sample['source_group'], 'sample_id': sample_id}
     elif file is not None:
         data, name = await file.read(MAX_UPLOAD + 1), Path(file.filename or 'part.jpg').name
+        source = {'source_kind': 'upload', 'source_group': None, 'sample_id': None}
     else:
         raise HTTPException(422, 'Choose a sample or upload a part photo.')
     if len(data) > MAX_UPLOAD:
@@ -78,7 +80,7 @@ async def read_input(file: UploadFile | None, sample_id: str) -> tuple[bytes, st
             image.verify()
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise HTTPException(400, 'This file is not a readable image. Upload a JPG, PNG or WebP photo.') from None
-    return data, name
+    return data, name, source
 
 
 def require_model():
@@ -129,10 +131,10 @@ def overview(factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, sp
 async def inspect_part(file: UploadFile | None = File(None), sample_id: str = Form(''),
                        factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
                        spec_text: str = Form(''), memory_enabled: bool = Form(True)):
-    data, name = await read_input(file, sample_id)
+    data, name, source = await read_input(file, sample_id)
     require_model()
     scope = make_scope(factory, part_family, spec_text)
-    return await asyncio.to_thread(run_operation, service.run, data, name, scope, use_memory=memory_enabled)
+    return await asyncio.to_thread(run_operation, service.run, data, name, scope, use_memory=memory_enabled, **source)
 
 
 class CorrectionIn(BaseModel):
@@ -202,7 +204,7 @@ def reflect(body: ScopeIn):
 async def compare(file: UploadFile | None = File(None), sample_id: str = Form(''),
                   factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
                   spec_text: str = Form(''), expected_verdict: Literal['good', 'defect', ''] = Form('')):
-    data, name = await read_input(file, sample_id)
+    data, name, source = await read_input(file, sample_id)
     require_model()
     return await asyncio.to_thread(run_operation, service.compare, data, name,
-        make_scope(factory, part_family, spec_text), expected_verdict=expected_verdict or None)
+        make_scope(factory, part_family, spec_text), expected_verdict=expected_verdict or None, **source)
