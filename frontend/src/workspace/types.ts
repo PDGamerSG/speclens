@@ -20,6 +20,7 @@ export interface Correction {
 }
 export interface Comparison {
   id: string; baseline: Inspection; with_memory: Inspection; created_at: string;
+  reuse_reason?: 'reused_image' | 'shared_source_photo' | 'not_used_for_correction';
   changed: boolean; held_out: boolean; expected_verdict: 'good' | 'defect' | null; note: string;
 }
 export interface Overview {

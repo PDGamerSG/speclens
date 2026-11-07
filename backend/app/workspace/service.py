@@ -77,10 +77,14 @@ class WorkspaceService:
         for use_memory in order:
             arms[use_memory] = self.run(data, filename, scope, use_memory=use_memory,
                                         source_kind=source_kind, source_group=source_group, sample_id=sample_id)
+        corrections = self.store.corrections(scope.id)
+        reused_image = any(c['image_sha256'] == arms[False]['image_sha256'] for c in corrections)
+        shared_source = bool(source_group) and any(c.get('source_group') == source_group for c in corrections)
+        reuse_reason = 'reused_image' if reused_image else 'shared_source_photo' if shared_source else 'not_used_for_correction'
         result = {'id': id, 'scope_id': scope.id, 'created_at': now(),
                   'baseline': arms[False], 'with_memory': arms[True],
                   'expected_verdict': expected_verdict,
                   'changed': arms[False]['verdict'] != arms[True]['verdict'],
-                  'held_out': not any(c['image_sha256'] == arms[False]['image_sha256'] for c in self.store.corrections(scope.id)),
+                  'held_out': not reused_image and not shared_source, 'reuse_reason': reuse_reason,
                   'note': 'One paired inspection. Model outputs can vary; this is not an accuracy benchmark.'}
         return self.store.add_comparison(result)

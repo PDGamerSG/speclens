@@ -283,3 +283,23 @@ def test_history_does_not_silently_drop_older_records(tmp_path):
         st.add_comparison({'id': f'pair-{i}', 'scope_id': s.id, 'created_at': f'2026-11-07T12:{i:02d}:00Z'})
     assert len(st.inspections(s.id)) == 101
     assert len(st.comparisons(s.id)) == 51
+
+
+def test_variants_of_the_same_source_photo_are_disclosed_in_comparisons(tmp_path):
+    st = fixture_store(tmp_path)
+    _, mm, service = modules()
+    memory = mm.HindsightMemory('https://memory.example', transport=httpx.MockTransport(
+        lambda req: httpx.Response(200, json={'success': True, 'results': []})))
+    def inspector(img, spec, types, **kw):
+        return {'verdict': 'good', 'type': 'good', 'rationale': 'Texture.', 'confidence': .8, 'ms': 1, 'cost_usd': 0}
+    svc = service.WorkspaceService(st, memory, inspector=inspector, media_root=tmp_path / 'images')
+    first = svc.run(photo(), 'source.png', scope(), use_memory=False,
+                    source_kind='synthetic_sample', source_group='source-photo-1')
+    svc.correct(first['id'], verdict='defect', defect_type='print', rule_text='Reject ink markings.', reviewer='QA')
+    second = io.BytesIO(); Image.new('RGB', (80, 80), 'blue').save(second, 'PNG')
+    pair = svc.compare(second.getvalue(), 'variant.png', scope(), source_group='source-photo-1')
+    assert pair['baseline']['image_sha256'] != first['image_sha256']
+    assert pair['held_out'] is False
+    assert pair['reuse_reason'] == 'shared_source_photo'
+    independent = svc.compare(second.getvalue(), 'other.png', scope(), source_group='source-photo-2')
+    assert independent['held_out'] is True

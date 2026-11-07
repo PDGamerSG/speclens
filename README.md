@@ -98,7 +98,7 @@ This makes billable vision calls, creates an isolated connection-check workspace
 
 The included white-print images have deterministic overlays and exact changed-pixel masks. Their [manifest](fixtures/speclens/manifest.json) records provenance; `scripts/make_samples.py` regenerates them. They are synthetic test inputs, not production validation data.
 
-A paired comparison is one observation from a stochastic model. An identical decoded image is marked as a reused correction image even if its metadata or filename changes. Near-duplicate photos, common source photos, and correlated variants still need manual exclusion from an independent evaluation. The [live integration check](docs/verification.md) confirms real Meta and Hindsight calls. Both comparison arms rejected its marked part; no production accuracy or learning improvement is claimed.
+A paired comparison is one observation from a stochastic model. An identical decoded image is marked as a reused correction image even if its metadata or filename changes. Bundled variants sharing a known source photo are also marked as reused. Unknown near-duplicate uploads and correlated variants still need manual exclusion from an independent evaluation. The [live integration check](docs/verification.md) confirms real Meta and Hindsight calls. Both comparison arms rejected its marked part; no production accuracy or learning improvement is claimed.
 
 The current scope is one part family, human review, and one team. Corrections are immutable; use another inspection to add a further clarification. People remain responsible for disposition. See [the demo walkthrough](docs/demo.md), [submission materials](docs/submission/README.md), and [dependency and data notices](THIRD_PARTY.md).
 
