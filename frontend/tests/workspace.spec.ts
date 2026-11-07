@@ -95,3 +95,13 @@ test('opening a historical comparison restores its own image identity', async ({
   await expect(page.locator('.compare-input strong')).toHaveText('white-print.jpg')
   await expect(page.getByRole('button', { name: 'Run comparison', exact: true })).toBeDisabled()
 })
+
+test('invalid uploads show a useful error without replacing the selected part', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.viewer-label')).toContainText('White marking')
+  await page.getByLabel('Upload part photo').setInputFiles({ name: 'report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('not a photo') })
+  await expect(page.getByRole('alert')).toContainText('JPG, PNG or WebP')
+  await expect(page.locator('.viewer-label')).toContainText('White marking')
+  await page.getByLabel('Upload part photo').setInputFiles({ name: 'huge.png', mimeType: 'image/png', buffer: Buffer.alloc(8 * 1024 * 1024 + 1) })
+  await expect(page.getByRole('alert')).toContainText('smaller than 8 MB')
+})
