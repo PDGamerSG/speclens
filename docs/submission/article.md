@@ -113,4 +113,4 @@ These are four synthetic cases from two source photos in one pass. They are corr
 
 [Agent memory](https://vectorize.io/what-is-agent-memory) is useful here because the quality judgment belongs to a continuing workflow. A reviewer’s explanation should be available when the next relevant part arrives, with enough context to inspect why it was used.
 
-The [Chief Skill repository](https://github.com/PDGamerSG/speclens) contains the inspection desk, Hindsight adapter, durable correction store, synthetic inputs, and verification commands. The central record is small: what the model said, what the engineer corrected, and which later inspection recalled that standard.
+Try the [public Chief Skill app](https://chief-skill.13-236-192-155.sslip.io). The [repository](https://github.com/PDGamerSG/speclens) contains the inspection desk, Hindsight adapter, durable correction store, synthetic inputs, and verification commands. The central record is small: what the model said, what the engineer corrected, and which later inspection recalled that standard.

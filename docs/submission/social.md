@@ -10,6 +10,8 @@ Each factory, part family, and specification revision has separate memory. A pai
 
 Code: https://github.com/PDGamerSG/speclens
 
+Try it: https://chief-skill.13-236-192-155.sslip.io
+
 #Hindsight #AgentMemory #AIAgents
 
 ---

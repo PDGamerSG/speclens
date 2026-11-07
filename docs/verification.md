@@ -2,11 +2,33 @@
 
 ## Automated application checks
 
-The final local `./scripts/check.sh` run passed **53 Python tests**, **seven browser scenarios**, the production build, and clean lint. The same command runs in CI.
+The local `./scripts/check.sh` run for the public release passed **63 Python tests**, **15 browser scenarios**, the production build, and clean lint. The same command runs in CI.
 
-The [GitHub run for deddb6a](https://github.com/PDGamerSG/speclens/actions/runs/42373503827) passed 46 Python tests, five browser scenarios, the production build, and lint. These tests simulate external vision and Hindsight calls.
+The [GitHub run for 4bd3a5e](https://github.com/PDGamerSG/speclens/actions/runs/42385604175) passed 63 Python tests and 14 browser scenarios before the final mobile-history regression was added. [Current main checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml) run the full suite. These tests simulate external vision and Hindsight calls.
+
+The browser suite covers valid uploads, correction and history exports, image zoom and defect outlines, keyboard-accessible persistent settings, saved labeled and unlabeled comparisons, mobile navigation, startup recovery, and interrupted memory sync. Public boundary tests also cover visitor isolation, HTTPS cookies, export impersonation, and stopping oversized streamed uploads before full multipart parsing.
 
 The macOS setup script completed successfully. The Docker image built on Linux ARM64 and served its UI, status, and sample images. Direct requests for the SQLite database and ledger returned 404. A missing model key produced the expected 503 setup response.
+
+## Public deployment
+
+[Chief Skill is online](https://chief-skill.13-236-192-155.sslip.io) over HTTPS on a dedicated Lightsail server. The [sanitized public-release record](evidence/public-release.json) separates simulated application checks from real deployed service checks.
+
+Five real vision calls verified the sample baseline, a human correction retained by Hindsight, cited recall on a different sample, an uploaded-photo inspection, and a paired comparison. Hindsight also returned a standards summary. Both comparison arms rejected the marked part; this check establishes integration, not an accuracy gain.
+
+The deployed browser check verified history search and complete exports, reopening saved records, an unlabeled comparison export, zoom, defect outlines, settings focus and Escape, and mobile navigation. Its first run found document overflow in populated mobile history. A focused regression reproduced it; the fix keeps the screen-reader column label within the table's scroll container. Resumed live checks passed at a 390-pixel viewport without making another vision call.
+
+A second browser with identical factory settings could not read the first browser's records, five private images, corrections, or standards. HTTPS cookies are Secure and HttpOnly. Foreign-origin writes, private files, unused legacy APIs, invalid images, and oversized streamed uploads were checked on the actual public endpoint.
+
+After an explicit application-container restart, all five inspections, one correction, one comparison, and five private photos remained available. Hindsight still recalled the retained correction. SQLite, media, and the usage ledger use a persistent Docker volume.
+
+Reproduce the billable public browser check with:
+
+```bash
+node frontend/scripts/live-smoke.mjs
+```
+
+It makes five vision calls and writes reports under gitignored `var/checks/`. Its storage-state file is a session credential, saved with mode `0600`; keep it private. The script supports resuming browser checks from that state without another vision call. See [deployment and recovery](deployment.md) for server operations.
 
 ## Live external services
 

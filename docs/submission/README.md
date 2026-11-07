@@ -2,6 +2,8 @@
 
 Repository: https://github.com/PDGamerSG/speclens
 
+Public demo: https://chief-skill.13-236-192-155.sslip.io
+
 **Project name:** Chief Skill
 
 **One-line description:** Visual quality inspection that learns a factory’s standards from cited human corrections using Hindsight.
@@ -15,7 +17,8 @@ Repository: https://github.com/PDGamerSG/speclens
 - [Article draft](article.md)
 - [LinkedIn draft and comments](social.md)
 - [Video script](../demo.md)
-- [Application screenshot](../screenshots/inspection-desktop.png)
+- [Application screenshot](../screenshots/public-inspection.png)
+- [Verified public deployment](../verification.md#public-deployment)
 - [Setup and deployment](../setup.md)
 
 ## Finish before November 7, 11:59 PM IST

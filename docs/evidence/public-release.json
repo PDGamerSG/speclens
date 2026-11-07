@@ -1,0 +1,209 @@
+{
+  "format_version": 1,
+  "project": "Chief Skill",
+  "base_url": "https://chief-skill.13-236-192-155.sslip.io",
+  "verified_at": "2026-11-07T15:30:44.100450+00:00",
+  "passed": true,
+  "automated": {
+    "command": "./scripts/check.sh",
+    "python_tests": 63,
+    "browser_scenarios": 15,
+    "build": "passed",
+    "lint": "passed",
+    "external_services_simulated": true
+  },
+  "live": {
+    "real_external_services": true,
+    "vision_calls": 5,
+    "checks": [
+      {
+        "name": "public workspace and real provider configuration",
+        "status": "passed",
+        "duration_ms": 3631,
+        "details": {
+          "model": "muse-spark-1.3",
+          "public_cookie_http_only": true,
+          "public_cookie_secure": true
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "sample inspection with memory off",
+        "status": "passed",
+        "duration_ms": 10041,
+        "details": {
+          "inspection_id": "insp-30b648ee2adc47b9",
+          "observed_verdict": "defect",
+          "memory_status": "disabled"
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "human white-print correction retained in Hindsight",
+        "status": "passed",
+        "duration_ms": 4862,
+        "details": {
+          "correction_id": "correction-e986cb780fbb48abbaeabfe4f49c952a",
+          "sync_status": "synced",
+          "original_model_verdict": "defect",
+          "human_verdict": "defect"
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "different sample recalls and cites the saved correction",
+        "status": "passed",
+        "duration_ms": 6078,
+        "details": {
+          "inspection_id": "insp-f02839904ebc481b",
+          "observed_verdict": "defect",
+          "cited_correction_id": "correction-e986cb780fbb48abbaeabfe4f49c952a"
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "Hindsight standards summary",
+        "status": "passed",
+        "duration_ms": 5189,
+        "details": {
+          "summary_present": true,
+          "synced_corrections": 1
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "valid uploaded photo inspection",
+        "status": "passed",
+        "duration_ms": 5075,
+        "details": {
+          "inspection_id": "insp-2d7b02a38d614da6",
+          "source_kind": "upload",
+          "observed_verdict": "good"
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "unlabeled comparison and JSON export",
+        "status": "passed",
+        "duration_ms": 12990,
+        "details": {
+          "comparison_id": "compare-af620ba38c9b4684",
+          "expected_verdict": null,
+          "baseline_verdict": "defect",
+          "with_memory_verdict": "defect",
+          "observed_decisions_differ": false,
+          "held_out_from_correction": true,
+          "export_verified": true
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "history search, complete export, and reopening after reload",
+        "status": "passed",
+        "duration_ms": 1533,
+        "details": {
+          "inspections": 5,
+          "corrections": 1,
+          "comparisons": 1,
+          "filtered_export_keeps_all_records": true,
+          "saved_records_reopened": true
+        },
+        "carried_from_prior_run": true
+      },
+      {
+        "name": "restore saved public session without another vision call",
+        "status": "passed",
+        "duration_ms": 3556,
+        "details": {
+          "restored_inspections": 5,
+          "new_vision_calls": 0
+        }
+      },
+      {
+        "name": "zoom, model outline, and settings focus and Escape",
+        "status": "passed",
+        "duration_ms": 1829,
+        "details": {
+          "zoom_bounds_verified": true,
+          "outline_toggle_verified": true,
+          "outline_disabled_without_model_box": false,
+          "settings_focus_and_escape_verified": true
+        }
+      },
+      {
+        "name": "mobile navigation, settings, and horizontal overflow",
+        "status": "passed",
+        "duration_ms": 397,
+        "details": {
+          "viewport": "390x844",
+          "navigation_verified": true,
+          "settings_verified": true,
+          "horizontal_overflow": false,
+          "widths": [
+            {
+              "view": "Inspection desk",
+              "viewport_px": 390,
+              "document_px": 390
+            },
+            {
+              "view": "Quality memory",
+              "viewport_px": 390,
+              "document_px": 390
+            },
+            {
+              "view": "Inspection history",
+              "viewport_px": 390,
+              "document_px": 390
+            }
+          ]
+        }
+      },
+      {
+        "name": "second browser cannot read records, images, or corrections",
+        "status": "passed",
+        "duration_ms": 9180,
+        "details": {
+          "identical_scope_settings": true,
+          "records_visible": 0,
+          "private_images_denied": 5,
+          "correction_write_status": 404,
+          "correction_sync_status": 404,
+          "recalled_standards": 0
+        }
+      }
+    ],
+    "regression_recheck": "The initial live run found mobile history overflow. After the CSS fix, browser checks resumed against the same saved real records with zero further vision calls. The original private failure report is preserved.",
+    "deployed_images_decoded": true
+  },
+  "http_boundaries": {
+    "checked_at": "2026-11-07T15:19:07.683733+00:00",
+    "base": "https://chief-skill.13-236-192-155.sslip.io",
+    "checks": {
+      "https_ui": true,
+      "secure_http_only_cookie": true,
+      "frame_and_content_guards": true,
+      "csp_present": true,
+      "http_redirect": true,
+      "model_and_memory_configured": true,
+      "private_data_blocked": true,
+      "foreign_write_blocked": true,
+      "unknown_sample_error": true,
+      "corrupt_upload_error": true,
+      "chunked_upload_limited": true,
+      "all_sample_images_work": true
+    },
+    "passed": true
+  },
+  "restart_persistence": {
+    "checked_at": "2026-11-07T15:26:59.411306+00:00",
+    "base": "https://chief-skill.13-236-192-155.sslip.io",
+    "passed": true,
+    "container_restarted": true,
+    "inspections_preserved": 5,
+    "corrections_preserved": 1,
+    "comparisons_preserved": 1,
+    "private_images_preserved": 5,
+    "remote_correction_recalled": true
+  },
+  "limitations": "Integration verification only. Both comparison arms rejected the marked part. This release check makes no claim of measured accuracy improvement. Session cookies, owner identifiers, private storage state and API credentials are omitted."
+}

@@ -1,6 +1,6 @@
 # Chief Skill demo walkthrough
 
-Use the normal app at http://localhost:8770 with real Meta and Hindsight credentials. Do not record the simulated browser-test server as live model evidence.
+Use the [public Chief Skill app](https://chief-skill.13-236-192-155.sslip.io), or run http://localhost:8770 with real Meta and Hindsight credentials. Do not record the simulated browser-test server as live model evidence. Keep the same browser and cookies when returning to your public recording workspace.
 
 ## Prepare
 

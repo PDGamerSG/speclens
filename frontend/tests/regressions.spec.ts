@@ -31,3 +31,34 @@ test('retrying a failed startup request restores samples and permits an inspecti
   await page.getByRole('button', { name: 'Inspect part', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Accept part', exact: true })).toBeVisible()
 })
+
+test('populated history scrolls inside its table on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: 'Inspect part', exact: true })).toBeEnabled()
+  const scope = await page.evaluate(() => JSON.parse(localStorage.getItem('speclens-scope')!))
+  const response = await page.request.post('/api/workspace/inspect', {
+    multipart: { ...scope, sample_id: 'white-print', memory_enabled: 'false' },
+  })
+  expect(response.ok()).toBe(true)
+  const item = await response.json()
+  const correction = await page.request.post('/api/workspace/corrections', {
+    data: { inspection_id: item.id, verdict: 'defect', defect_type: 'print',
+      rule_text: 'Reject sharp printed characters while accepting natural shell highlights.',
+      reviewer: 'Chief Skill mobile history reviewer' },
+  })
+  expect(correction.status()).toBe(201)
+  await page.reload()
+  await page.getByRole('button', { name: 'Inspection history', exact: true }).click()
+  await expect(page.locator('tbody tr')).toHaveCount(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  const table = page.locator('.table-scroll')
+  expect(await table.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
+  await table.evaluate(element => { element.scrollLeft = element.scrollWidth })
+  expect(await table.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  await expect(page.getByRole('button', { name: /^Open inspection / })).toBeInViewport()
+})

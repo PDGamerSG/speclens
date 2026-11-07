@@ -2,13 +2,17 @@
 
 [![Chief Skill checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml/badge.svg)](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml)
 
+**[Open the public demo](https://chief-skill.13-236-192-155.sslip.io)** · [Deployment guide](docs/deployment.md)
+
 **Visual quality inspection that learns your factory’s standards.**
 
 A quality engineer should not have to explain the same inspection mistake twice. Chief Skill pairs vision with [Hindsight memory](https://hindsight.vectorize.io/): inspect a part, correct the decision, and recall that standard when checking the next part.
 
-![Chief Skill inspection desk](docs/screenshots/inspection-live.png)
+The public demo uses an HttpOnly cookie to keep each browser’s records and memory separate. Use the same browser and keep its cookies to revisit your history. It allows 30 POST requests per browser per hour and 120 per IP per hour.
 
-*Actual saved Meta/Hindsight inspection with its cited correction. The pictured part is a controlled synthetic example.*
+![Chief Skill inspection desk](docs/screenshots/public-inspection.png)
+
+*Actual public Meta/Hindsight inspection with its cited correction. The pictured part is a controlled synthetic example.*
 
 ## The workflow
 
@@ -61,13 +65,15 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Open http://localhost:8770. The `speclens-data` volume holds SQLite, images, and the API spend ledger across restarts. See [deployment and backup instructions](docs/setup.md). This is a single-team workspace: use a private network or an authenticated reverse proxy for remote access.
+Open http://localhost:8770. The `speclens-data` volume holds SQLite, images, and the API spend ledger across restarts. The default local mode is a single-team workspace; use a private network or an authenticated reverse proxy for remote team access. The [public deployment](docs/deployment.md) uses the additional `compose.public.yaml` file to enable visitor isolation. See [setup and backup instructions](docs/setup.md).
 
 ## How memory is isolated
 
 ![How a correction reaches the next inspection](docs/screenshots/architecture.png)
 
 A Hindsight bank belongs to a normalized factory name, part family, and exact specification revision. A change to any of these starts a separate scope. Changing the base specification is explicit; saving a correction never rewrites it.
+
+Public mode also includes the browser’s visitor identity in each memory and data scope. Clearing cookies or using a different browser profile starts a new visitor workspace.
 
 SQLite holds the audit trail, pending writes, and the authoritative human correction. It does not replace Hindsight retrieval. When memory is enabled, a failed recall stops the inspection with a visible error. Recalled facts without a known, synced source correction are excluded from the prompt.
 
@@ -101,7 +107,7 @@ A paired comparison is one observation from a stochastic model. An identical dec
 
 Reproduce the small live probe with `.venv/bin/python scripts/evaluate_memory.py` while the configured app is running. It makes nine vision calls, creates its own workspace, excludes the teaching source photo, and records every paired response.
 
-The current scope is one part family, human review, and one team. Corrections are immutable; use another inspection to add a further clarification. People remain responsible for disposition. See [the demo walkthrough](docs/demo.md), [submission materials](docs/submission/README.md), and [dependency and data notices](THIRD_PARTY.md).
+The current workflow covers one part family with human review. Local mode serves one team; public demo visitors have separate workspaces. Corrections are immutable; use another inspection to add a further clarification. People remain responsible for disposition. See [the demo walkthrough](docs/demo.md), [submission materials](docs/submission/README.md), and [dependency and data notices](THIRD_PARTY.md).
 
 ## Repository map
 
