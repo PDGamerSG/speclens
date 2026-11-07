@@ -5,7 +5,7 @@
     "productType": "Visual quality inspection workspace",
     "stack": [
       "react",
-      "tailwind-v4",
+      "webgl",
       "vite"
     ]
   },
@@ -20,60 +20,40 @@
   "design": {
     "colorMode": "light",
     "colors": {
-      "--color-page": {
-        "value": "#f5f7fa",
+      "--frost": {
+        "value": "#dee3e8",
         "source": "src/index.css"
       },
-      "--color-panel": {
-        "value": "#fff",
+      "--tag": {
+        "value": "#f8fafb",
         "source": "src/index.css"
       },
-      "--color-raised": {
-        "value": "#eef3f6",
+      "--ink": {
+        "value": "#17202b",
         "source": "src/index.css"
       },
-      "--color-well": {
-        "value": "#142d42",
+      "--stage": {
+        "value": "#0c0c0d",
         "source": "src/index.css"
       },
-      "--color-rule": {
-        "value": "#e2e8ed",
+      "--marker": {
+        "value": "#ffcf1a",
         "source": "src/index.css"
       },
-      "--color-rule-2": {
-        "value": "#c6d1da",
+      "--accept": {
+        "value": "#0b7f56",
         "source": "src/index.css"
       },
-      "--color-fg": {
-        "value": "#1a2b3c",
+      "--reject": {
+        "value": "#cf2a1e",
         "source": "src/index.css"
       },
-      "--color-fg-2": {
-        "value": "#526678",
+      "--review": {
+        "value": "#1d5fd1",
         "source": "src/index.css"
       },
-      "--color-fg-3": {
-        "value": "#6a7c8c",
-        "source": "src/index.css"
-      },
-      "--color-signal": {
-        "value": "#087f76",
-        "source": "src/index.css"
-      },
-      "--color-signal-ink": {
-        "value": "#fff",
-        "source": "src/index.css"
-      },
-      "--color-pass": {
-        "value": "#087f76",
-        "source": "src/index.css"
-      },
-      "--color-miss": {
-        "value": "#bf4548",
-        "source": "src/index.css"
-      },
-      "--color-part": {
-        "value": "#315c83",
+      "--pencil": {
+        "value": "#ff5a47",
         "source": "src/index.css"
       }
     },

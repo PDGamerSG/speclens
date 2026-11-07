@@ -67,6 +67,12 @@ docker compose up --build -d
 
 Open http://localhost:8770. The `speclens-data` volume holds SQLite, images, and the API spend ledger across restarts. The default local mode is a single-team workspace; use a private network or an authenticated reverse proxy for remote team access. The [public deployment](docs/deployment.md) uses the additional `compose.public.yaml` file to enable visitor isolation. See [setup and backup instructions](docs/setup.md).
 
+## Prompt caching
+
+The Model API caches prompt prefixes, so the inspector sends stable content first: the instructions and specification, then the photo, then recalled memory. Recalled standards are sorted and deduplicated, so the same standards always produce the same bytes. One `prompt_cache_key` per specification keeps those requests together, and it is shared across visitors because a cache hit needs an identical prefix.
+
+A paired comparison gains the most, because both arms share everything up to the memory block. In a live run, the two arms read 1,393 of 1,435 and 1,649 of 1,693 input tokens from cache. Moving memory out of the system message raised reuse on a repeated photo from 369 to 1,265 of 1,325 tokens. Each inspection shows its cache share, and **Workspace settings** shows the running total.
+
 ## How memory is isolated
 
 ![How a correction reaches the next inspection](docs/screenshots/architecture.png)
@@ -117,6 +123,6 @@ The current workflow covers one part family with human review. Local mode serves
 | `backend/app/inspect/` | Vision prompt, output validation, defect localization |
 | `backend/app/forge/` | Image compositing, labels, and severity utilities |
 | `backend/app/meta/` | Server-side model client, retries, cost ledger |
-| `frontend/src/workspace/` | Inspection desk, corrections, memory library, history, comparison |
+| `frontend/src/workspace/` | One-page workspace: stage and point-cloud scan, inspection ticket, quality memory, comparison, history |
 | `fixtures/speclens/` | Synthetic white-print examples and exact masks |
 | `tests/`, `frontend/tests/` | Backend regression and browser acceptance checks |

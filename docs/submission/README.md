@@ -10,7 +10,7 @@ Public demo: https://speclens.13-236-192-155.sslip.io
 
 **Project summary:** SpecLens gives quality engineers an inspection desk for part photos. A vision model checks the base specification, explains its decision, and identifies a defect region. When an engineer corrects that decision, SpecLens preserves the original reasoning and retains the human standard in Hindsight. The next matching inspection recalls relevant corrections with their source IDs. Memory is separated by factory, part family, and specification revision. A paired comparison fixes the image, model, and specification while showing the observed memory-off and memory-on decisions.
 
-**Stack:** React, TypeScript, Vite, Tailwind CSS, FastAPI, SQLite, Meta vision, Hindsight HTTP retain/recall/reflect.
+**Stack:** React, TypeScript, Vite, WebGL, FastAPI, SQLite, Meta vision, Hindsight HTTP retain/recall/reflect.
 
 **Materials ready to review:**
 
