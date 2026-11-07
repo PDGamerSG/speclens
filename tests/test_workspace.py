@@ -261,6 +261,12 @@ def test_a_missing_hindsight_route_is_not_treated_as_empty_memory():
         memory.recall(scope())
 
 
+def test_hindsight_cloud_is_not_configured_without_its_api_key():
+    _, mm, _ = modules()
+    memory = mm.HindsightMemory('https://api.hindsight.vectorize.io')
+    assert memory.configured is False
+
+
 def test_a_recognized_missing_hindsight_bank_has_no_corrections():
     _, mm, _ = modules()
     memory = mm.HindsightMemory('https://memory.example', transport=httpx.MockTransport(

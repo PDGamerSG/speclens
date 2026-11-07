@@ -20,70 +20,70 @@
   "design": {
     "colorMode": "light",
     "colors": {
-      "--color-well": {
-        "value": "#121418",
-        "source": "src/index.css"
-      },
       "--color-page": {
-        "value": "#1b1e23",
+        "value": "#f5f7fa",
         "source": "src/index.css"
       },
       "--color-panel": {
-        "value": "#21252b",
+        "value": "#fff",
         "source": "src/index.css"
       },
       "--color-raised": {
-        "value": "#2a2f36",
+        "value": "#eef3f6",
+        "source": "src/index.css"
+      },
+      "--color-well": {
+        "value": "#142d42",
         "source": "src/index.css"
       },
       "--color-rule": {
-        "value": "#343a43",
+        "value": "#e2e8ed",
         "source": "src/index.css"
       },
       "--color-rule-2": {
-        "value": "#4b535e",
+        "value": "#c6d1da",
         "source": "src/index.css"
       },
       "--color-fg": {
-        "value": "#e8ebee",
+        "value": "#1a2b3c",
         "source": "src/index.css"
       },
       "--color-fg-2": {
-        "value": "#aeb6bf",
+        "value": "#526678",
         "source": "src/index.css"
       },
       "--color-fg-3": {
-        "value": "#808a95",
+        "value": "#6a7c8c",
         "source": "src/index.css"
       },
       "--color-signal": {
-        "value": "#ffa51f",
+        "value": "#087f76",
         "source": "src/index.css"
       },
       "--color-signal-ink": {
-        "value": "#1d1405",
+        "value": "#fff",
         "source": "src/index.css"
       },
       "--color-pass": {
-        "value": "#3ccf7a",
+        "value": "#087f76",
         "source": "src/index.css"
       },
       "--color-miss": {
-        "value": "#ff5a4e",
+        "value": "#bf4548",
         "source": "src/index.css"
       },
       "--color-part": {
-        "value": "#67c3ff",
+        "value": "#315c83",
         "source": "src/index.css"
       }
     },
     "typography": {
       "--font-sans": {
-        "value": "'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
+        "value": "'Public Sans',ui-sans-serif,system-ui,sans-serif",
         "source": "src/index.css"
       },
       "--font-mono": {
-        "value": "'Martian Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        "value": "ui-monospace,monospace",
         "source": "src/index.css"
       }
     },
@@ -91,16 +91,28 @@
     "radius": {},
     "shadows": {},
     "motion": {},
-    "density": "unknown"
+    "density": "compact operator workspace"
   },
   "components": {
     "installed": [],
     "preferredPrimitives": [],
-    "patterns": []
+    "patterns": [
+      "Inspection desk",
+      "Human correction form",
+      "Cited quality standards",
+      "Paired memory comparison"
+    ]
   },
   "constraints": {
-    "must": [],
-    "avoid": []
+    "must": [
+      "Keep synthetic sample provenance visible",
+      "Show empty and connection-error states",
+      "Keep credentials on the server"
+    ],
+    "avoid": [
+      "Fabricated counters or results",
+      "Decorative charts without observations"
+    ]
   },
   "decisions": [
     {

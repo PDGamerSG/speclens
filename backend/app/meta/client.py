@@ -1,6 +1,6 @@
 """Meta Model API calls used by SpecLens: Muse Spark (strict JSON), Muse Image (edits, generations), SAM 3.1.
 
-Patterns follow Meta's cookbook and the gate tests in docs/gate-results.md. Every call goes through the ledger.
+Requests follow Meta's documented compatible API shapes. Every call goes through the ledger.
 """
 from __future__ import annotations
 

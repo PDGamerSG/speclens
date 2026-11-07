@@ -18,7 +18,7 @@ class HindsightMemory:
 
     @property
     def configured(self) -> bool:
-        return bool(self.base_url)
+        return bool(self.base_url) and (self.base_url != 'https://api.hindsight.vectorize.io' or bool(self.api_key))
 
     def _post(self, scope: Scope, path: str, payload: dict, *, empty_if_missing=False) -> dict:
         if not self.configured:

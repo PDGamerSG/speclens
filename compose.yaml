@@ -1,0 +1,13 @@
+services:
+  speclens:
+    build: .
+    ports:
+      - "127.0.0.1:8770:8770"
+    env_file: .env
+    environment:
+      SPECLENS_VAR: /app/var
+    volumes:
+      - speclens-data:/app/var
+    restart: unless-stopped
+volumes:
+  speclens-data:

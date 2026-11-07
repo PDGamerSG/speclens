@@ -1,5 +1,5 @@
-# Serve the API and the built frontend on http://localhost:8765 (pass -Dev for Vite hot reload on :5173).
-param([switch]$Dev)
+# Serve the API and built interface on http://localhost:8770.
+$ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
-if ($Dev) { Start-Process -NoNewWindow -WorkingDirectory frontend npm -ArgumentList "run", "dev" }
-& .venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8765
+$specLensPort = if ($env:SPECLENS_PORT) { $env:SPECLENS_PORT } else { "8770" }
+& .venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port $specLensPort
