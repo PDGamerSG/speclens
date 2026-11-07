@@ -10,3 +10,5 @@ Spec: docs/design.md. Execute inline, commit roughly every ten minutes while mak
 4. Build the operator workspace, memory library and comparison results. Keep loading, offline, empty and error states explicit. Run TypeScript build and lint.
 5. Exercise the UI in a headless browser, run live Hindsight/Meta checks when credentials are available, record actual results, and produce setup and demo documentation.
 6. Push the tested application and report any remaining credential or publishing requirement.
+
+Completed: durable scoped memory, operator workspace, seven browser scenarios, 53 Python checks, live Meta/Hindsight integration, a held-aside synthetic ablation, Docker packaging, CI, and reviewable submission drafts.

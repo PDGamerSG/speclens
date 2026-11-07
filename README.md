@@ -6,9 +6,9 @@
 
 A quality engineer should not have to explain the same inspection mistake twice. SpecLens pairs vision with [Hindsight memory](https://hindsight.vectorize.io/): inspect a part, correct the decision, and recall that standard when checking the next part.
 
-![SpecLens inspection desk](docs/screenshots/inspection-desktop.png)
+![SpecLens inspection desk](docs/screenshots/inspection-live.png)
 
-*Actual application screenshot in its unconfigured setup state. The bundled part photos are synthetic examples.*
+*Actual saved Meta/Hindsight inspection with its cited correction. The pictured part is a controlled synthetic example.*
 
 ## The workflow
 
@@ -95,7 +95,11 @@ This makes billable vision calls, creates an isolated connection-check workspace
 
 The included white-print images have deterministic overlays and exact changed-pixel masks. Their [manifest](fixtures/speclens/manifest.json) records provenance; `scripts/make_samples.py` regenerates them. They are synthetic test inputs, not production validation data.
 
-A paired comparison is one observation from a stochastic model. An identical decoded image is marked as a reused correction image even if its metadata or filename changes. Bundled variants sharing a known source photo are also marked as reused. Unknown near-duplicate uploads and correlated variants still need manual exclusion from an independent evaluation. The [live integration check](docs/verification.md) confirms real Meta and Hindsight calls. Both comparison arms rejected its marked part; no production accuracy or learning improvement is claimed.
+A paired comparison is one observation from a stochastic model. An identical decoded image is marked as a reused correction image even if its metadata or filename changes. Bundled variants sharing a known source photo are also marked as reused. Unknown near-duplicate uploads and correlated variants still need manual exclusion from an independent evaluation. The [live integration check](docs/verification.md) confirms real Meta and Hindsight calls. Its first comparison rejected the marked part in both arms. A separate [four-case live ablation](docs/evidence/memory-ablation.json) scored 3/4 decisions correctly without memory and 4/4 with memory, with no false alarms on its two untouched controls. This exploratory result uses only two held-aside source photos and does not establish production accuracy.
+
+![One live memory ablation on synthetic cases](docs/screenshots/memory-ablation.png)
+
+Reproduce the small live probe with `.venv/bin/python scripts/evaluate_memory.py` while the configured app is running. It makes nine vision calls, creates its own workspace, excludes the teaching source photo, and records every paired response.
 
 The current scope is one part family, human review, and one team. Corrections are immutable; use another inspection to add a further clarification. People remain responsible for disposition. See [the demo walkthrough](docs/demo.md), [submission materials](docs/submission/README.md), and [dependency and data notices](THIRD_PARTY.md).
 

@@ -103,7 +103,13 @@ Three decisions shaped the implementation. Preserve the model’s mistake instea
 
 I ran the complete flow against Meta vision and Hindsight Cloud on November 7. The baseline already rejected the white A7 marking. After retaining the standard, the next inspection rejected the C4 marking and explicitly cited the source correction. Reflection returned that standard as well.
 
-The paired comparison rejected the second marking with memory both off and on. That is a useful limit on the claim: live retention, retrieval, and cited application worked, but this check did not demonstrate an accuracy gain. The next empirical task is evaluating corrections against independent parts and false-positive controls.
+The first paired comparison rejected the second marking with memory both off and on. That verified the integration without showing an accuracy gain.
+
+I then ran a separate probe: one teaching photo, two held-aside source photos, a weaker print edit and an untouched control from each. The baseline got three of four verdicts right; the memory-enabled arm got four of four. It detected the faint B2 characters the baseline had called natural texture. Both untouched controls were accepted in both arms.
+
+![Observed counts from the live four-case probe](../screenshots/memory-ablation.png)
+
+These are four synthetic cases from two source photos in one pass. They are correlated, hand-selected inputs, and stochastic outputs can change. The raw responses are committed with the evaluation script; they do not establish production accuracy or a stable general improvement.
 
 [Agent memory](https://vectorize.io/what-is-agent-memory) is useful here because the quality judgment belongs to a continuing workflow. A reviewer’s explanation should be available when the next relevant part arrives, with enough context to inspect why it was used.
 

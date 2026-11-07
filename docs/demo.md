@@ -35,3 +35,9 @@ Inspect without memory → enter a clear correction → wait for Hindsight sync 
 - From Quality Review to Cited Agent Memory
 - Why Inspection Corrections Need Their Own Memory
 - One Part, Two Inspections: Testing Quality Memory
+
+## Recorded live example
+
+A completed live evaluation is available locally under workspace **SpecLens memory evaluation 10c9bf70a6**, part family **Whole hazelnut**, with the default specification. Open Memory comparison and select **source-03-defect.png** from its history. These are saved real results: the baseline accepted the faint B2 marking; the memory-enabled arm rejected it and cited the correction. The history also includes two untouched controls accepted in both arms.
+
+For a fresh run, use `.venv/bin/python scripts/evaluate_memory.py`. It writes a new isolated workspace and report. Do not promise the same outcome on a rerun. The raw published record and screenshots document one pass, not a production benchmark.
