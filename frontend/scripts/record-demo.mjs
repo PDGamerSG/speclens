@@ -28,7 +28,7 @@ if (directoryIndex !== -1 && !args[directoryIndex + 1]) throw new Error('--dir n
 const runId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 6)}`
 const output = directoryIndex === -1 ? join(projectRoot, 'var', 'submission', `speclens-demo-${runId}`) : resolve(args[directoryIndex + 1])
 const voice = process.env.SPECLENS_DEMO_VOICE || 'Karen'
-const target = new URL(process.env.SPECLENS_BASE_URL || 'https://speclens.13-236-192-155.sslip.io')
+const target = new URL(process.env.SPECLENS_BASE_URL || 'https://speclens.pallabdas.me')
 if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password) throw new Error('Use an HTTP(S) product URL without embedded credentials.')
 const baseURL = target.origin
 const check = expect.configure({ timeout: 30_000 })
@@ -70,7 +70,7 @@ const chapters = [
     text: 'History keeps all four inspection records, including the two comparison arms. I can search by reviewer and export the complete workspace as JSON. After a reload, the original decision, human correction, and saved comparison are still here.' },
   { id: '11-scope', title: 'Keep each standard in its context', caption: 'Factory + part family + specification revision define the memory scope', seconds: 13,
     text: 'Workspace settings make the context explicit. The factory, part family, and exact specification revision define a separate memory bank. Changing the specification starts a new scope. Credentials stay on the server; people remain responsible for disposition.' },
-  { id: '12-close', title: 'From human review to cited memory', caption: 'Try speclens.13-236-192-155.sslip.io · source: github.com/PDGamerSG/speclens', seconds: 13,
+  { id: '12-close', title: 'From human review to cited memory', caption: 'Try speclens.pallabdas.me · source: github.com/PDGamerSG/speclens', seconds: 13,
     text: 'The useful part is the traceable correction: what the model said, what the engineer recorded, and which later inspection used that standard. Explore SpecLens at the public app, or review the source and verification material on GitHub.' },
 ]
 

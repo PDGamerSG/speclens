@@ -1,0 +1,90 @@
+{
+  "verified_at": "2026-11-07T16:45:27.456754+00:00",
+  "url": "https://speclens.pallabdas.me",
+  "application_revision": "aca87ac5f93a5eb3026ddc8cf62d5a824b5159ba",
+  "release_directory": "/opt/chief-skill/releases/20261107T163221Z-20114",
+  "image": "sha256:770a12166ebca530facda1f838cbc3054119127f8cf7527f6ef046b35568ca62",
+  "source_hashes": {
+    "backend/app/inspect/inspector.py": "b71383a082a6026ea3eeba8ab0a5e49e3148ef4d4cf3eea33b107133d142ad28",
+    "frontend/src/workspace/Workspace.tsx": "c568175a433513324ce4e6f30c9dcf1106eee3d92aa20eaf821c2133c575a42b"
+  },
+  "dns": {
+    "provider": "Namecheap",
+    "type": "A",
+    "host": "speclens",
+    "value": "13.236.192.155",
+    "ttl": "Automatic",
+    "persisted_after_reload": true,
+    "authoritative_server": "dns1.registrar-servers.com",
+    "authoritative_tcp_answer": "13.236.192.155",
+    "public_resolver": "1.1.1.1",
+    "public_tcp_answer": "13.236.192.155",
+    "existing_records_preserved": 26
+  },
+  "https": {
+    "normal_certificate_validation": true,
+    "tls": "TLSv1.3",
+    "issuer": "Let's Encrypt YE2",
+    "subject_alt_name": "speclens.pallabdas.me",
+    "expires": "2027-02-05T15:40:26Z"
+  },
+  "production_release_comparison": {
+    "custom": {
+      "assets": [
+        "/assets/index-D988E-Ym.js",
+        "/assets/index-DBqLpJy0.css"
+      ],
+      "title": "SpecLens \u00b7 Quality inspection workspace",
+      "sha256": "b01ee35b89d1adc31ea6434dce8b3dd8629a7ee9c4d6a0bcea462f8de826c9a0"
+    },
+    "alias": {
+      "assets": [
+        "/assets/index-D988E-Ym.js",
+        "/assets/index-DBqLpJy0.css"
+      ],
+      "title": "SpecLens \u00b7 Quality inspection workspace",
+      "sha256": "b01ee35b89d1adc31ea6434dce8b3dd8629a7ee9c4d6a0bcea462f8de826c9a0"
+    }
+  },
+  "normal_dns_http_probe": {
+    "runner": "production server, public HTTPS hostname with normal DNS and certificate verification",
+    "resolved_ip": "13.236.192.155",
+    "routes": [
+      "/",
+      "/api/workspace/status",
+      "/api/workspace/samples",
+      "/api/workspace/overview",
+      "sample image",
+      "/assets/index-D988E-Ym.js",
+      "/assets/index-DBqLpJy0.css"
+    ],
+    "model_configured": true,
+    "memory_configured": true,
+    "sample_count": 6,
+    "media_bytes": 188662,
+    "workspace_cookie": {
+      "name": "speclens_workspace",
+      "secure": true,
+      "httponly": true,
+      "domain": "speclens.pallabdas.me"
+    },
+    "all_passed": true
+  },
+  "browser_check": {
+    "status": "pending_local_dns_cache",
+    "runner": "local Playwright Chromium",
+    "error": "net::ERR_NAME_NOT_RESOLVED",
+    "note": "Authoritative/public TCP DNS and HTTPS checks pass. Local UDP DNS and Chromium retained the earlier NXDOMAIN. Browser reloads stopped; no system DNS/hosts or certificate validation was changed. Earlier application browser evidence remains in speclens-release.json."
+  },
+  "deployment_script_checks": {
+    "bash_3_2_syntax": true,
+    "default_aliases": true,
+    "repeated_aliases": true,
+    "disabled_aliases": true,
+    "invalid_alias_rejected": true
+  },
+  "preserved_aliases": [
+    "https://speclens.13-236-192-155.sslip.io",
+    "https://chief-skill.13-236-192-155.sslip.io"
+  ]
+}

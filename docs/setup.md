@@ -46,7 +46,7 @@ A health endpoint is available at `/api/workspace/status`; it reports configurat
 
 ## Public demo
 
-[Open the public demo](https://speclens.13-236-192-155.sslip.io). Public mode gives each browser an HttpOnly cookie and separates its inspection data and Hindsight banks from other visitors, including when factory names match. Use the same browser with its cookies intact to revisit history. Clearing cookies or switching browser profiles starts a new visitor workspace.
+[Open the public demo](https://speclens.pallabdas.me). Public mode gives each browser an HttpOnly cookie and separates its inspection data and Hindsight banks from other visitors, including when factory names match. Use the same browser with its cookies intact to revisit history. Clearing cookies or switching browser profiles starts a new visitor workspace.
 
 Public mode allows 30 POST requests per browser per hour and 120 per IP per hour. These limits apply to requests, including corrections and comparisons; they are separate from the server’s vision budget and Hindsight billing.
 

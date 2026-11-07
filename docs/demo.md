@@ -1,6 +1,6 @@
 # SpecLens demo walkthrough
 
-Use the [public SpecLens app](https://speclens.13-236-192-155.sslip.io), or run http://localhost:8770 with real Meta and Hindsight credentials. Do not record the simulated browser-test server as live model evidence. Keep the same browser and cookies when returning to your public recording workspace.
+Use the [public SpecLens app](https://speclens.pallabdas.me), or run http://localhost:8770 with real Meta and Hindsight credentials. Do not record the simulated browser-test server as live model evidence. Keep the same browser and cookies when returning to your public recording workspace.
 
 A [recorded 1080p demo](submission/SpecLens-demo-1080p.mp4), [English transcript](submission/SpecLens-demo-transcript.md), and [subtitles](submission/SpecLens-demo-English.srt) are ready. The 3-minute-28-second recording shows actual public Meta and Hindsight calls, with English system narration. Both comparison arms rejected the marked part in this recording; it demonstrates the integration without claiming an accuracy gain. Upload this file to the team's public YouTube account for the submission video URL.
 

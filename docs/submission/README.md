@@ -2,7 +2,7 @@
 
 Repository: https://github.com/PDGamerSG/speclens
 
-Public demo: https://speclens.13-236-192-155.sslip.io
+Public demo: https://speclens.pallabdas.me
 
 **Project name:** SpecLens
 

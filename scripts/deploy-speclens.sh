@@ -10,8 +10,8 @@ Usage: scripts/deploy-speclens.sh [options]
   --user USER          SSH user (default: ubuntu)
   --key PATH           SSH identity (default: ~/.ssh/chief-skill/chief-skill.pem)
   --env-file PATH      Copy a runtime environment file privately; required initially
-  --hostname HOST      HTTPS name (default: speclens.13-236-192-155.sslip.io)
-  --alias HOST         Preserve the existing hostname for saved browser sessions
+  --hostname HOST      HTTPS name (default: speclens.pallabdas.me)
+  --alias HOST         Override aliases; repeat for each (empty disables aliases)
   --publish            Start Caddy and open this Lightsail instance's ports 80/443
   --instance NAME      Lightsail instance (default: chief-skill)
   --region REGION      AWS region (default: ap-southeast-2)
@@ -27,8 +27,9 @@ ssh_host=13.236.192.155
 ssh_user=ubuntu
 ssh_key="$HOME/.ssh/chief-skill/chief-skill.pem"
 env_file=
-hostname=speclens.13-236-192-155.sslip.io
-alias_hostname=chief-skill.13-236-192-155.sslip.io
+hostname=speclens.pallabdas.me
+alias_hostnames=(speclens.13-236-192-155.sslip.io chief-skill.13-236-192-155.sslip.io)
+aliases_overridden=0
 publish=0
 instance_name=chief-skill
 aws_region=ap-southeast-2
@@ -43,7 +44,9 @@ while (($#)); do
         --key) ssh_key=$2 ;;
         --env-file) env_file=$2 ;;
         --hostname) hostname=$2 ;;
-        --alias) alias_hostname=$2 ;;
+        --alias)
+          if ((!aliases_overridden)); then alias_hostnames=(); aliases_overridden=1; fi
+          if [[ -n $2 ]]; then alias_hostnames+=("$2"); fi ;;
         --instance) instance_name=$2 ;;
         --region) aws_region=$2 ;;
       esac
@@ -57,7 +60,9 @@ done
 [[ $ssh_host =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { printf 'Invalid SSH host.\n' >&2; exit 2; }
 [[ $ssh_user =~ ^[a-z_][a-z0-9_-]*$ ]] || { printf 'Invalid SSH user.\n' >&2; exit 2; }
 [[ $hostname =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { printf 'Invalid HTTPS hostname.\n' >&2; exit 2; }
-[[ -z $alias_hostname || $alias_hostname =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { printf 'Invalid alias hostname.\n' >&2; exit 2; }
+for alias_hostname in "${alias_hostnames[@]-}"; do
+  [[ -z $alias_hostname || $alias_hostname =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { printf 'Invalid alias hostname.\n' >&2; exit 2; }
+done
 [[ -r $ssh_key ]] || { printf 'SSH identity is not readable: %s\n' "$ssh_key" >&2; exit 2; }
 if [[ -n $env_file && ! -r $env_file ]]; then
   printf 'Runtime environment file is not readable: %s\n' "$env_file" >&2
@@ -93,13 +98,14 @@ if [[ -n $env_file ]]; then
   env_uploaded=1
 fi
 
-ssh "${ssh_options[@]}" "$ssh_target" bash -s -- "$release_id" "$hostname" "$publish" "$env_uploaded" "$alias_hostname" <<'REMOTE'
+ssh "${ssh_options[@]}" "$ssh_target" bash -s -- "$release_id" "$hostname" "$publish" "$env_uploaded" "${alias_hostnames[@]-}" <<'REMOTE'
 set -euo pipefail
 release_id=$1
 hostname=$2
 publish=$3
 env_uploaded=$4
-alias_hostname=$5
+shift 4
+alias_hostnames=("$@")
 release_dir="/opt/chief-skill/releases/$release_id"
 shared_dir=/opt/chief-skill/shared
 source_archive="$HOME/chief-skill-source-$release_id.tgz"
@@ -134,9 +140,11 @@ fi
 sudo ln -sfn "$release_dir" /opt/chief-skill/current
 if ((publish)); then
   proxy_hosts="$hostname"
-  if [[ -n $alias_hostname && $alias_hostname != "$hostname" ]]; then
-    proxy_hosts="$hostname, $alias_hostname"
-  fi
+  for alias_hostname in "${alias_hostnames[@]-}"; do
+    if [[ -n $alias_hostname && ", $proxy_hosts, " != *", $alias_hostname, "* ]]; then
+      proxy_hosts="$proxy_hosts, $alias_hostname"
+    fi
+  done
   sudo tee "$shared_dir/Caddyfile" >/dev/null <<CADDY
 $proxy_hosts {
     reverse_proxy 127.0.0.1:8770

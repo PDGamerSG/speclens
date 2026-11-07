@@ -27,7 +27,7 @@ const priorPersistence = resumedFrom ? JSON.parse(await readFile(join(resumedFro
 const priorSummary = resumedFrom ? JSON.parse(await readFile(join(resumedFrom, 'summary.json'), 'utf8')) : null
 const resumePhase = process.env.SPECLENS_RESUME_PHASE || process.env.CHIEF_SKILL_RESUME_PHASE || 'all'
 if (!['all', 'isolation', 'mobile'].includes(resumePhase)) throw new Error('SPECLENS_RESUME_PHASE must be all, isolation, or mobile.')
-const target = new URL(process.env.SPECLENS_BASE_URL || process.env.CHIEF_SKILL_BASE_URL || priorPersistence?.base_url || 'https://speclens.13-236-192-155.sslip.io')
+const target = new URL(process.env.SPECLENS_BASE_URL || process.env.CHIEF_SKILL_BASE_URL || priorPersistence?.base_url || 'https://speclens.pallabdas.me')
 if (!['https:', 'http:'].includes(target.protocol) || target.username || target.password) {
   throw new Error('SPECLENS_BASE_URL must be an HTTP(S) URL without embedded credentials.')
 }

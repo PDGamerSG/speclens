@@ -2,7 +2,7 @@
 
 [![SpecLens checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml/badge.svg)](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml)
 
-**[Open the public demo](https://speclens.13-236-192-155.sslip.io)** · [Deployment guide](docs/deployment.md)
+**[Open the public demo](https://speclens.pallabdas.me)** · [Deployment guide](docs/deployment.md)
 
 **Visual quality inspection that learns your factory’s standards.**
 
