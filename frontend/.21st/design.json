@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "project": {
+    "name": "speclens",
+    "productType": "Visual quality inspection workspace",
+    "stack": [
+      "react",
+      "tailwind-v4",
+      "vite"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "src/index.css"
+    ],
+    "components": [],
+    "assets": [],
+    "instructions": []
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "--color-well": {
+        "value": "#121418",
+        "source": "src/index.css"
+      },
+      "--color-page": {
+        "value": "#1b1e23",
+        "source": "src/index.css"
+      },
+      "--color-panel": {
+        "value": "#21252b",
+        "source": "src/index.css"
+      },
+      "--color-raised": {
+        "value": "#2a2f36",
+        "source": "src/index.css"
+      },
+      "--color-rule": {
+        "value": "#343a43",
+        "source": "src/index.css"
+      },
+      "--color-rule-2": {
+        "value": "#4b535e",
+        "source": "src/index.css"
+      },
+      "--color-fg": {
+        "value": "#e8ebee",
+        "source": "src/index.css"
+      },
+      "--color-fg-2": {
+        "value": "#aeb6bf",
+        "source": "src/index.css"
+      },
+      "--color-fg-3": {
+        "value": "#808a95",
+        "source": "src/index.css"
+      },
+      "--color-signal": {
+        "value": "#ffa51f",
+        "source": "src/index.css"
+      },
+      "--color-signal-ink": {
+        "value": "#1d1405",
+        "source": "src/index.css"
+      },
+      "--color-pass": {
+        "value": "#3ccf7a",
+        "source": "src/index.css"
+      },
+      "--color-miss": {
+        "value": "#ff5a4e",
+        "source": "src/index.css"
+      },
+      "--color-part": {
+        "value": "#67c3ff",
+        "source": "src/index.css"
+      }
+    },
+    "typography": {
+      "--font-sans": {
+        "value": "'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-mono": {
+        "value": "'Martian Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        "source": "src/index.css"
+      }
+    },
+    "spacing": {},
+    "radius": {},
+    "shadows": {},
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [
+    {
+      "decision": "Light operator workspace with navy navigation, teal actions and the part image as the largest surface.",
+      "source": "User approved SpecLens build; docs/design.md"
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "design.colorMode:light",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:vite",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-11-07T11:47:28.679Z"
+}
