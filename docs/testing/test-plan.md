@@ -8,7 +8,7 @@ Automated tests make no live provider calls. The live checks in the last part of
 
 | Level | Tool | Location | What it covers |
 | --- | --- | --- | --- |
-| Backend | pytest | `tests/` | 74 test cases in 8 files: records, memory, prompts, HTTP validation, public boundaries, the earlier pipeline |
+| Backend | pytest | `tests/` | 88 test cases in 8 files: records, memory, prompts, HTTP validation, public boundaries, the earlier pipeline |
 | Browser | Playwright, Chromium | `frontend/tests/` | 24 tests in 4 files, driving the real page, routes and SQLite |
 | Types and build | TypeScript, Vite | `frontend/` | `tsc -b && vite build` (`frontend/package.json:8`) |
 | Lint | oxlint | `frontend/` | `oxlint` (`frontend/package.json:9`) |
@@ -132,7 +132,7 @@ It targets the public site unless you set `SPECLENS_BASE_URL`. Set `SPECLENS_RES
 - **Security header values:** the tests assert `X-Content-Type-Options` only (`tests/test_public_workspace.py:104`). The CSP, `X-Frame-Options`, `Referrer-Policy` and `Cache-Control` values have no assertion.
 - **Rate limit expiry:** tests check that limits block requests, but not that the window clears after an hour.
 - **Cookie lifetime:** no test checks the 30-day age or the fact that return visits do not renew it.
-- **Routes left open in public mode:** `/api/health` is tested only in local mode (`tests/test_pipeline.py:103`). `/docs`, `/redoc` and `/openapi.json` have no test.
+- **Routes left open in public mode:** `/api/health` is tested only in local mode (`tests/test_pipeline.py:103`).
 - **Docker and deployment:** CI does not build the image, and nothing tests `compose.yaml`, `compose.public.yaml` or `scripts/deploy-speclens.sh`. `docs/verification.md` records manual runs.
 - **Windows:** CI runs on Ubuntu only, so `scripts/setup.ps1` and `scripts/dev.ps1` are not exercised.
 - **Other browsers:** the Playwright config sets no `projects`, so only Chromium runs, and CI installs only Chromium (`frontend/playwright.config.ts:4-8`, `.github/workflows/ci.yml:28`).

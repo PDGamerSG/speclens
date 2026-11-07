@@ -5,9 +5,9 @@ Every route the SpecLens server answers, with its input and output. The page use
 ## Basics
 
 - **Base URL:** the same origin as the page. Locally that is `http://localhost:8770`. The live site is `https://speclens.pallabdas.me`.
-- **Authentication:** there are no accounts. In local mode every route is open to anyone who can reach the server. In public mode the server sets a `speclens_workspace` cookie on the first response, and that cookie selects your records (`backend/app/public.py:87-91`, `backend/app/public.py:112-114`).
+- **Authentication:** there are no accounts. In local mode every route is open to anyone who can reach the server. In public mode the server sets a `speclens_workspace` cookie on the first response, and that cookie selects your records (`backend/app/public.py:89-93`, `backend/app/public.py:115-118`).
 - **Scope:** most routes take `factory`, `part_family` and `spec_text`. Together they select one workspace. Leave them out to use `Bangalore Foods`, `Whole hazelnut` and the default specification (`backend/app/workspace/routes.py:25-26`, `backend/app/workspace/routes.py:50-56`).
-- **Limits in public mode:** every POST counts toward 30 per browser and 120 per IP address per hour, and a write from an origin outside `SPECLENS_ALLOWED_ORIGINS` gets 403 (`backend/app/public.py:96-105`).
+- **Limits in public mode:** every POST counts toward 30 per browser and 120 per IP address per hour, a comparison counts as two, and a write from an origin outside `SPECLENS_ALLOWED_ORIGINS` gets 403 (`backend/app/public.py:99-108`).
 
 ## Workspace routes
 
@@ -134,33 +134,33 @@ Each arm saves its own inspection. If the second arm fails, the first stays save
 
 | Method | Path | What it does | Public mode | Defined in |
 | --- | --- | --- | --- | --- |
-| `GET` | `/` | Serves the page, if `frontend/dist` exists | Available | `backend/app/main.py:237-248` |
-| `GET` | `/assets/*`, `/favicon.svg` | Serves built files | Available | `backend/app/main.py:239-243` |
-| `GET` | `/files/fixtures/*` | Serves sample images | Available | `backend/app/main.py:216` |
-| `GET` | `/files/workspace/{id}.jpg` | Serves an inspection photo to its owner, with `Cache-Control: no-store` | Available | `backend/app/main.py:225-235` |
-| `GET` | `/files/parts/*`, `/files/runs/*`, `/files/inspections/*`, `/files/mvtec/*` | Serves media for the earlier run routes. The `mvtec` mount exists only if `data/mvtec` does | 404 | `backend/app/main.py:217-222` |
-| `GET` | `/docs`, `/redoc`, `/openapi.json` | FastAPI's generated API pages and schema | Available. The security policy blocks the outside scripts `/docs` and `/redoc` load, so use `/openapi.json` there | `backend/app/main.py:32`, `backend/app/public.py:120-123` |
+| `GET` | `/` | Serves the page, if `frontend/dist` exists | Available | `backend/app/main.py:235-246` |
+| `GET` | `/assets/*`, `/favicon.svg` | Serves built files | Available | `backend/app/main.py:237-241` |
+| `GET` | `/files/fixtures/*` | Serves sample images | Available | `backend/app/main.py:214` |
+| `GET` | `/files/workspace/{id}.jpg` | Serves an inspection photo to its owner, with `Cache-Control: no-store` | Available | `backend/app/main.py:223-233` |
+| `GET` | `/files/parts/*`, `/files/runs/*`, `/files/inspections/*`, `/files/mvtec/*` | Serves media for the earlier run routes. The `mvtec` mount exists only if `data/mvtec` does | 404 | `backend/app/main.py:215-220` |
+| `GET` | `/docs`, `/redoc`, `/openapi.json` | FastAPI's generated API pages and schema | Local mode only. Public mode returns 404 | `backend/app/main.py:31`, `backend/app/public.py:126-129` |
 
 ## Other `/api` routes
 
-`backend/app/main.py` also defines an earlier set of routes for a synthetic defect pipeline. The page does not use them. In public mode the middleware answers all of them with 404, except `/api/health` (`backend/app/public.py:93-95`).
+`backend/app/main.py` also defines an earlier set of routes for a synthetic defect pipeline. The page does not use them. In public mode the middleware answers all of them with 404, except `/api/health` (`backend/app/public.py:95-98`).
 
 | Method | Path | What it does | Public mode | Defined in |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/health` | Reports `ok`, `demo_mode`, `models`, `spent_usd`, `budget_usd` | Available | `backend/app/main.py:50-52` |
-| `GET` | `/api/ledger` | Returns recent model calls and spend | 404 | `backend/app/main.py:55-57` |
-| `GET` | `/api/default-spec` | Returns the default specification | 404 | `backend/app/main.py:60-62` |
-| `POST` | `/api/taxonomy` | Turns a specification into defect classes | 404 | `backend/app/main.py:65-72` |
-| `GET` | `/api/parts` | Lists good-part photos | 404 | `backend/app/main.py:75-77` |
-| `POST` | `/api/parts` | Uploads good-part photos | 404 | `backend/app/main.py:80-88` |
-| `POST` | `/api/runs` | Starts a synthetic defect run | 404 | `backend/app/main.py:91-102` |
-| `GET` | `/api/runs` | Lists runs | 404 | `backend/app/main.py:105-107` |
-| `GET` | `/api/runs/{rid}` | Returns one run | 404 | `backend/app/main.py:110-115` |
-| `POST` | `/api/runs/{rid}/stress` | Reruns the stress test | 404 | `backend/app/main.py:118-128` |
-| `GET` | `/api/runs/{rid}/events` | Streams run events with Server-Sent Events | 404 | `backend/app/main.py:131-154` |
-| `GET` | `/api/runs/{rid}/export` | Downloads a COCO-format zip | 404 | `backend/app/main.py:157-164` |
-| `POST` | `/api/inspect` | Earlier single inspection, with a mask when a box exists | 404 | `backend/app/main.py:167-204` |
-| `GET` | `/api/eval` | Returns `docs/results/eval.json`, or an empty report if that file is missing | 404 | `backend/app/main.py:207-213` |
+| `GET` | `/api/health` | Reports `ok`, `demo_mode`, `models`, `spent_usd`, `budget_usd` | Available | `backend/app/main.py:48-50` |
+| `GET` | `/api/ledger` | Returns recent model calls and spend | 404 | `backend/app/main.py:53-55` |
+| `GET` | `/api/default-spec` | Returns the default specification | 404 | `backend/app/main.py:58-60` |
+| `POST` | `/api/taxonomy` | Turns a specification into defect classes | 404 | `backend/app/main.py:63-70` |
+| `GET` | `/api/parts` | Lists good-part photos | 404 | `backend/app/main.py:73-75` |
+| `POST` | `/api/parts` | Uploads good-part photos | 404 | `backend/app/main.py:78-86` |
+| `POST` | `/api/runs` | Starts a synthetic defect run | 404 | `backend/app/main.py:89-100` |
+| `GET` | `/api/runs` | Lists runs | 404 | `backend/app/main.py:103-105` |
+| `GET` | `/api/runs/{rid}` | Returns one run | 404 | `backend/app/main.py:108-113` |
+| `POST` | `/api/runs/{rid}/stress` | Reruns the stress test | 404 | `backend/app/main.py:116-126` |
+| `GET` | `/api/runs/{rid}/events` | Streams run events with Server-Sent Events | 404 | `backend/app/main.py:129-152` |
+| `GET` | `/api/runs/{rid}/export` | Downloads a COCO-format zip | 404 | `backend/app/main.py:155-162` |
+| `POST` | `/api/inspect` | Earlier single inspection, with a mask when a box exists | 404 | `backend/app/main.py:165-202` |
+| `GET` | `/api/eval` | Returns `docs/results/eval.json`, or an empty report if that file is missing | 404 | `backend/app/main.py:205-211` |
 
 ## Try it
 
@@ -186,13 +186,13 @@ Errors return JSON with a `detail` field. It is usually a string. Pydantic valid
 | --- | --- | --- |
 | 400 | The file is not a readable JPG, PNG or WebP still photo, or it is over 25 megapixels | `backend/app/workspace/routes.py:75-83` |
 | 402 | Recorded vision spend passed `BUDGET_USD` | `backend/app/workspace/routes.py:97-98`, `backend/app/meta/ledger.py:54-56` |
-| 403 | Public mode: a write came from another origin | `backend/app/public.py:96-102` |
-| 404 | The sample, inspection, correction or photo does not exist, or belongs to another visitor. Public mode also uses it for blocked routes | `backend/app/workspace/routes.py:63`, `backend/app/workspace/routes.py:168-169`, `backend/app/workspace/routes.py:181-182`, `backend/app/main.py:228-234`, `backend/app/public.py:93-95` |
+| 403 | Public mode: a write came from another origin | `backend/app/public.py:99-105` |
+| 404 | The sample, inspection, correction or photo does not exist, or belongs to another visitor. Public mode also uses it for blocked routes | `backend/app/workspace/routes.py:63`, `backend/app/workspace/routes.py:168-169`, `backend/app/workspace/routes.py:181-182`, `backend/app/main.py:226-232`, `backend/app/public.py:95-98` |
 | 409 | The inspection already has a correction | `backend/app/workspace/routes.py:174-175`, `backend/app/workspace/store.py:115-116` |
-| 413 | The photo is over 8 MiB, or in public mode the request body is over 9 MiB | `backend/app/workspace/routes.py:71-72`, `backend/app/public.py:106-111` |
+| 413 | The photo is over 8 MiB, or in public mode the request body is over 9 MiB | `backend/app/workspace/routes.py:71-72`, `backend/app/public.py:109-114` |
 | 422 | A field failed validation, or neither a file nor a sample was sent | `backend/app/workspace/routes.py:51-56`, `backend/app/workspace/routes.py:70`, `backend/app/workspace/routes.py:142-162` |
-| 429 | Public mode: the hourly limit is reached. `Retry-After` is 3600 | `backend/app/public.py:103-105` |
+| 429 | Public mode: the hourly limit is reached. `Retry-After` is 3600 | `backend/app/public.py:106-108` |
 | 502 | The vision model call failed | `backend/app/workspace/routes.py:99-100` |
 | 503 | `MODEL_API_KEY` is missing, or a required Hindsight call failed | `backend/app/workspace/routes.py:87-89`, `backend/app/workspace/routes.py:95-96` |
 
-In a public request, the middleware checks run in this order: blocked route, other origin, hourly limit, declared body size (`backend/app/public.py:93-111`). A blocked route does not use up your limit, and any other POST does, even if it then fails validation.
+In a public request, the middleware checks run in this order: blocked route, other origin, hourly limit, declared body size (`backend/app/public.py:95-114`). A blocked route does not use up your limit, and any other POST does, even if it then fails validation.

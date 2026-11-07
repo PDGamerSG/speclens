@@ -1,7 +1,7 @@
 # SpecLens implementation plan
 
 Goal: ship and verify the correction → retain → recall → new inspection workflow today.
-Stack: FastAPI, SQLite, Hindsight HTTP API, Meta vision, React, Vite, Tailwind.
+Stack: FastAPI, SQLite, Hindsight HTTP API, Meta vision, React, Vite.
 Spec: docs/design.md. Execute inline, commit roughly every ten minutes while making progress.
 
 1. Establish the repository, dependency environments, design context, and baseline checks.

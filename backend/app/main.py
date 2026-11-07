@@ -9,7 +9,6 @@ import time
 
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
@@ -25,12 +24,11 @@ from .forge.spec import DEFAULT_SPEC, taxonomy
 from .inspect.inspector import inspect
 from .meta import ledger
 from .runs import manager
-from .public import PUBLIC_MODE, PublicWorkspaceMiddleware, owner
+from .public import PublicWorkspaceMiddleware, owner
 from .workspace import routes as workspace_routes
 from .workspace.routes import router as workspace_router
 
 app = FastAPI(title="SpecLens", version="1.0")
-app.add_middleware(CORSMiddleware, allow_origins=[] if PUBLIC_MODE else ["*"], allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(PublicWorkspaceMiddleware)
 app.include_router(workspace_router)
 

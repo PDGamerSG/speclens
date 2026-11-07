@@ -37,7 +37,7 @@ The lockfile pins Vite 8, which needs Node.js 20.19 or later on the 20 line, or 
 
 ### `http://localhost:8770/` returns `{"detail":"Not Found"}`
 
-The server adds the `/` route only when `frontend/dist` exists at startup (`backend/app/main.py:237-248`). This happens when you start Uvicorn by hand before building. Build the page, then restart the server.
+The server adds the `/` route only when `frontend/dist` exists at startup (`backend/app/main.py:235-246`). This happens when you start Uvicorn by hand before building. Build the page, then restart the server.
 
 ### Port 8770 is already in use
 
@@ -133,7 +133,7 @@ The button stays off until at least one correction is in memory (`frontend/src/w
 
 ### `This public workspace has reached its hourly request limit.`
 
-Public mode allows 30 POST requests per browser per hour and 120 per IP address (`backend/app/public.py:20-21`, `backend/app/public.py:57`). The window slides, so requests free up one at a time as they turn an hour old. A shared office network shares the IP limit.
+Public mode allows 30 POST requests per browser per hour and 120 per IP address, and a comparison counts as two (`backend/app/public.py:20-21`, `backend/app/public.py:59`). The window slides, so requests free up one at a time as they turn an hour old. A shared office network shares the IP limit.
 
 ### My history is gone
 
@@ -141,13 +141,13 @@ History belongs to the browser cookie and to the workspace fields. Check these:
 
 - **Same workspace?** The page shows only records for the current factory, part family and specification (`backend/app/workspace/routes.py:117-122`). Open **Workspace settings** and restore them.
 - **Same browser and hostname?** Another browser, or another hostname, has its own cookie.
-- **Cookie still there?** Clearing cookies starts a new workspace. The cookie lasts 30 days from when it was set, and return visits do not renew it (`backend/app/public.py:112-114`).
+- **Cookie still there?** Clearing cookies starts a new workspace. The cookie lasts 30 days from your last API visit (`backend/app/public.py:115-118`).
 
 Records from a lost cookie stay in the database, but no route can reach them. There is no recovery link.
 
 ### `Open this workspace directly to make changes.`
 
-The request's `Origin` does not match the host the server sees, so public mode returned 403 (`backend/app/public.py:96-102`). Two setups cause this:
+The request's `Origin` does not match the host the server sees, so public mode returned 403 (`backend/app/public.py:99-105`). Two setups cause this:
 
 - A page on another site posting to the API.
 - Running `./scripts/dev.sh --dev` with `SPECLENS_PUBLIC=1`. The Vite proxy rewrites the host to the backend (`frontend/vite.config.ts:9`), so it no longer matches the browser's `Origin`.
@@ -156,7 +156,7 @@ To test public mode locally, build the page and open the server's own port.
 
 ### Public mode runs, but every visitor shares one IP limit, or the cookie is not `Secure`
 
-Uvicorn is not trusting the proxy's forwarded headers, so it sees the proxy as the client and `http` as the scheme (`backend/app/public.py:103`, `backend/app/public.py:114`). Start the app with both Compose files, because `compose.public.yaml` sets `FORWARDED_ALLOW_IPS` (`compose.public.yaml:7`).
+Uvicorn is not trusting the proxy's forwarded headers, so it sees the proxy as the client and `http` as the scheme (`backend/app/public.py:106`, `backend/app/public.py:118`). Start the app with both Compose files, because `compose.public.yaml` sets `FORWARDED_ALLOW_IPS` (`compose.public.yaml:7`).
 
 ## Checks
 
