@@ -126,3 +126,17 @@ test('invalid uploads show a useful error without replacing the selected part', 
   await page.getByLabel('Upload part photo').setInputFiles({ name: 'huge.png', mimeType: 'image/png', buffer: Buffer.alloc(8 * 1024 * 1024 + 1) })
   await expect(page.getByRole('alert')).toContainText('smaller than 8 MB')
 })
+
+test('a failed part photo can be retried without losing the selected part', async ({ page }) => {
+  let unavailable = true
+  await page.route('**/files/fixtures/speclens/white-print-01.png', route => {
+    if (unavailable) return route.abort()
+    return route.continue()
+  })
+  await page.goto('/')
+  await expect(page.getByText('This part photo could not load', { exact: true })).toBeVisible()
+  unavailable = false
+  await page.getByRole('button', { name: 'Retry photo', exact: true }).click()
+  await expect(page.locator('.part-image')).toBeVisible()
+  await expect(page.locator('.viewer-label')).toContainText('White marking')
+})

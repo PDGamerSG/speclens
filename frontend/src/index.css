@@ -23,3 +23,5 @@
 .comparison-outcome{display:flex;align-items:center;gap:7px;padding:10px 23px 0;font-size:10px;color:#90601d}.comparison-outcome.aligned{color:#087f76}
 
 .vision-budget{width:100%;height:5px;accent-color:#087f76;display:block;margin:10px 0}.connection-details strong{font-size:11px;font-weight:600;color:#1a2b3c}
+.viewer-empty>.button{margin-top:16px}.viewer-empty>span{display:block}@media(pointer:coarse){.icon-button{min-width:36px;min-height:36px}.sample-button{min-height:44px}.toggle{min-width:38px;min-height:24px}.toggle>span{width:20px;height:20px}.toggle.on>span{transform:translateX(14px)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
