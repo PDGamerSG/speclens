@@ -1,0 +1,207 @@
+{
+  "format_version": 1,
+  "project": "SpecLens",
+  "base_url": "https://speclens.13-236-192-155.sslip.io",
+  "checked_at": "2026-11-07T16:01:07.448Z",
+  "passed": true,
+  "automated": {
+    "python_tests": 65,
+    "browser_tests": 15,
+    "build": "passed",
+    "lint": "passed",
+    "external_services_simulated": true
+  },
+  "live": {
+    "real_external_services": true,
+    "vision_calls": 5,
+    "checks": [
+      {
+        "name": "public workspace and real provider configuration",
+        "status": "passed",
+        "duration_ms": 7564,
+        "details": {
+          "model": "muse-spark-1.3",
+          "public_cookie_http_only": true,
+          "public_cookie_secure": true
+        }
+      },
+      {
+        "name": "sample inspection with memory off",
+        "status": "passed",
+        "duration_ms": 8416,
+        "details": {
+          "inspection_id": "insp-b527904e505b4785",
+          "observed_verdict": "defect",
+          "memory_status": "disabled"
+        }
+      },
+      {
+        "name": "human white-print correction retained in Hindsight",
+        "status": "passed",
+        "duration_ms": 5152,
+        "details": {
+          "correction_id": "correction-2da2357fd7c943cdac9560015db8c8b9",
+          "sync_status": "synced",
+          "original_model_verdict": "defect",
+          "human_verdict": "defect"
+        }
+      },
+      {
+        "name": "different sample recalls and cites the saved correction",
+        "status": "passed",
+        "duration_ms": 6898,
+        "details": {
+          "inspection_id": "insp-5f654eabd2244b65",
+          "observed_verdict": "defect",
+          "cited_correction_id": "correction-2da2357fd7c943cdac9560015db8c8b9"
+        }
+      },
+      {
+        "name": "Hindsight standards summary",
+        "status": "passed",
+        "duration_ms": 6065,
+        "details": {
+          "summary_present": true,
+          "synced_corrections": 1
+        }
+      },
+      {
+        "name": "valid uploaded photo inspection",
+        "status": "passed",
+        "duration_ms": 6213,
+        "details": {
+          "inspection_id": "insp-0721d467c3464f06",
+          "source_kind": "upload",
+          "observed_verdict": "good"
+        }
+      },
+      {
+        "name": "unlabeled comparison and JSON export",
+        "status": "passed",
+        "duration_ms": 12651,
+        "details": {
+          "comparison_id": "compare-8d65e6eb38d140b4",
+          "expected_verdict": null,
+          "baseline_verdict": "defect",
+          "with_memory_verdict": "defect",
+          "observed_decisions_differ": false,
+          "held_out_from_correction": true,
+          "export_verified": true
+        }
+      },
+      {
+        "name": "history search, complete export, and reopening after reload",
+        "status": "passed",
+        "duration_ms": 1537,
+        "details": {
+          "inspections": 5,
+          "corrections": 1,
+          "comparisons": 1,
+          "filtered_export_keeps_all_records": true,
+          "saved_records_reopened": true
+        }
+      },
+      {
+        "name": "zoom, model outline, and settings focus and Escape",
+        "status": "passed",
+        "duration_ms": 719,
+        "details": {
+          "zoom_bounds_verified": true,
+          "outline_toggle_verified": true,
+          "outline_disabled_without_model_box": false,
+          "settings_focus_and_escape_verified": true
+        }
+      },
+      {
+        "name": "mobile navigation, settings, and horizontal overflow",
+        "status": "passed",
+        "duration_ms": 1252,
+        "details": {
+          "viewport": "390x844",
+          "navigation_verified": true,
+          "settings_verified": true,
+          "horizontal_overflow": false,
+          "widths": [
+            {
+              "view": "Inspection desk",
+              "viewport_px": 390,
+              "document_px": 390
+            },
+            {
+              "view": "Quality memory",
+              "viewport_px": 390,
+              "document_px": 390
+            },
+            {
+              "view": "Inspection history",
+              "viewport_px": 390,
+              "document_px": 390
+            }
+          ]
+        }
+      },
+      {
+        "name": "second browser cannot read records, images, or corrections",
+        "status": "passed",
+        "duration_ms": 18102,
+        "details": {
+          "identical_scope_settings": true,
+          "records_visible": 0,
+          "private_images_denied": 5,
+          "correction_write_status": 404,
+          "correction_sync_status": 404,
+          "recalled_standards": 0
+        }
+      }
+    ]
+  },
+  "note": "Current SpecLens branding and canonical hostname. Real integration checks do not establish general accuracy. No session credentials, owner identifiers or API keys are included.",
+  "public_boundaries": {
+    "base_url": "https://speclens.13-236-192-155.sslip.io",
+    "checked_at": "2026-11-07T16:02:07.696857+00:00",
+    "passed": true,
+    "checks": {
+      "https_brand": true,
+      "secure_http_only_cookie": true,
+      "http_redirect": true,
+      "private_files_and_legacy_apis": true,
+      "cross_origin_rejected": true,
+      "corrupt_image_rejected": true,
+      "streamed_size_limit": true
+    }
+  },
+  "visitor_cookie_migration": {
+    "verified_at": "2026-11-07T16:01:55.738259+00:00",
+    "passed": true,
+    "legacy_cookie_migrated": true,
+    "old_inspections": 5,
+    "corrections": 1,
+    "comparisons": 1,
+    "private_photos": 5,
+    "legacy_host_keeps_browser_history": true,
+    "canonical_url": "https://speclens.13-236-192-155.sslip.io"
+  },
+  "restart_persistence": {
+    "verified_at": "2026-11-07T16:05:21.348317+00:00",
+    "base_url": "https://speclens.13-236-192-155.sslip.io",
+    "passed": true,
+    "container_restarted": true,
+    "inspections": 5,
+    "corrections": 1,
+    "comparisons": 1,
+    "private_photos": 5,
+    "remote_recall": true
+  },
+  "demo_video": {
+    "file": "docs/submission/SpecLens-demo-1080p.mp4",
+    "duration_seconds": 207.774667,
+    "width": 1920,
+    "height": 1080,
+    "audio": "English system narration",
+    "subtitles": "English",
+    "vision_calls": 4,
+    "chapters": 12,
+    "real_services": true,
+    "published_to_youtube": false
+  }
+}

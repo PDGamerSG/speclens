@@ -4,13 +4,14 @@ set -euo pipefail
 
 usage() {
   cat <<'HELP'
-Usage: scripts/deploy-chief-skill.sh [options]
+Usage: scripts/deploy-speclens.sh [options]
 
   --host HOST          SSH host (default: 13.236.192.155)
   --user USER          SSH user (default: ubuntu)
   --key PATH           SSH identity (default: ~/.ssh/chief-skill/chief-skill.pem)
   --env-file PATH      Copy a runtime environment file privately; required initially
-  --hostname HOST      HTTPS name (default: chief-skill.13-236-192-155.sslip.io)
+  --hostname HOST      HTTPS name (default: speclens.13-236-192-155.sslip.io)
+  --alias HOST         Preserve the existing hostname for saved browser sessions
   --publish            Start Caddy and open this Lightsail instance's ports 80/443
   --instance NAME      Lightsail instance (default: chief-skill)
   --region REGION      AWS region (default: ap-southeast-2)
@@ -26,14 +27,15 @@ ssh_host=13.236.192.155
 ssh_user=ubuntu
 ssh_key="$HOME/.ssh/chief-skill/chief-skill.pem"
 env_file=
-hostname=chief-skill.13-236-192-155.sslip.io
+hostname=speclens.13-236-192-155.sslip.io
+alias_hostname=chief-skill.13-236-192-155.sslip.io
 publish=0
 instance_name=chief-skill
 aws_region=ap-southeast-2
 
 while (($#)); do
   case "$1" in
-    --host|--user|--key|--env-file|--hostname|--instance|--region)
+    --host|--user|--key|--env-file|--hostname|--alias|--instance|--region)
       if (($# < 2)); then printf 'Missing value for %s\n' "$1" >&2; exit 2; fi
       case "$1" in
         --host) ssh_host=$2 ;;
@@ -41,6 +43,7 @@ while (($#)); do
         --key) ssh_key=$2 ;;
         --env-file) env_file=$2 ;;
         --hostname) hostname=$2 ;;
+        --alias) alias_hostname=$2 ;;
         --instance) instance_name=$2 ;;
         --region) aws_region=$2 ;;
       esac
@@ -54,6 +57,7 @@ done
 [[ $ssh_host =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { printf 'Invalid SSH host.\n' >&2; exit 2; }
 [[ $ssh_user =~ ^[a-z_][a-z0-9_-]*$ ]] || { printf 'Invalid SSH user.\n' >&2; exit 2; }
 [[ $hostname =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { printf 'Invalid HTTPS hostname.\n' >&2; exit 2; }
+[[ -z $alias_hostname || $alias_hostname =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { printf 'Invalid alias hostname.\n' >&2; exit 2; }
 [[ -r $ssh_key ]] || { printf 'SSH identity is not readable: %s\n' "$ssh_key" >&2; exit 2; }
 if [[ -n $env_file && ! -r $env_file ]]; then
   printf 'Runtime environment file is not readable: %s\n' "$env_file" >&2
@@ -89,12 +93,13 @@ if [[ -n $env_file ]]; then
   env_uploaded=1
 fi
 
-ssh "${ssh_options[@]}" "$ssh_target" bash -s -- "$release_id" "$hostname" "$publish" "$env_uploaded" <<'REMOTE'
+ssh "${ssh_options[@]}" "$ssh_target" bash -s -- "$release_id" "$hostname" "$publish" "$env_uploaded" "$alias_hostname" <<'REMOTE'
 set -euo pipefail
 release_id=$1
 hostname=$2
 publish=$3
 env_uploaded=$4
+alias_hostname=$5
 release_dir="/opt/chief-skill/releases/$release_id"
 shared_dir=/opt/chief-skill/shared
 source_archive="$HOME/chief-skill-source-$release_id.tgz"
@@ -128,12 +133,24 @@ if ((!ready)); then
 fi
 sudo ln -sfn "$release_dir" /opt/chief-skill/current
 if ((publish)); then
+  proxy_hosts="$hostname"
+  if [[ -n $alias_hostname && $alias_hostname != "$hostname" ]]; then
+    proxy_hosts="$hostname, $alias_hostname"
+  fi
+  sudo tee "$shared_dir/Caddyfile" >/dev/null <<CADDY
+$proxy_hosts {
+    reverse_proxy 127.0.0.1:8770
+}
+CADDY
+  sudo docker run --rm --volume "$shared_dir/Caddyfile:/etc/caddy/Caddyfile:ro" \
+    caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
   if sudo docker container inspect chief-skill-https >/dev/null 2>&1; then
     sudo docker rm --force chief-skill-https >/dev/null
   fi
   sudo docker run --detach --name chief-skill-https --restart unless-stopped \
     --network host --volume chief-skill-caddy-data:/data --volume chief-skill-caddy-config:/config \
-    caddy:2-alpine caddy reverse-proxy --from "$hostname" --to 127.0.0.1:8770 >/dev/null
+    --volume "$shared_dir/Caddyfile:/etc/caddy/Caddyfile:ro" \
+    caddy:2-alpine caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 fi
 printf 'Release %s is healthy on server localhost:8770.\n' "$release_id"
 REMOTE

@@ -2,7 +2,7 @@
 
 An inspection correction should survive the next image.
 
-I built Chief Skill for the gap between a written specification and a quality engineer’s judgment.
+I built SpecLens for the gap between a written specification and a quality engineer’s judgment.
 
 A reviewer saves the original decision, its reasoning, and a clear visual standard. Hindsight retains that correction and recalls relevant standards for later parts, with source IDs attached.
 
@@ -10,7 +10,7 @@ Each factory, part family, and specification revision has separate memory. A pai
 
 Code: https://github.com/PDGamerSG/speclens
 
-Try it: https://chief-skill.13-236-192-155.sslip.io
+Try it: https://speclens.13-236-192-155.sslip.io
 
 #Hindsight #AgentMemory #AIAgents
 

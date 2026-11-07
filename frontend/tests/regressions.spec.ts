@@ -45,7 +45,7 @@ test('populated history scrolls inside its table on a narrow screen', async ({ p
   const correction = await page.request.post('/api/workspace/corrections', {
     data: { inspection_id: item.id, verdict: 'defect', defect_type: 'print',
       rule_text: 'Reject sharp printed characters while accepting natural shell highlights.',
-      reviewer: 'Chief Skill mobile history reviewer' },
+      reviewer: 'SpecLens mobile history reviewer' },
   })
   expect(correction.status()).toBe(201)
   await page.reload()

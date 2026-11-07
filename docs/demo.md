@@ -1,6 +1,10 @@
-# Chief Skill demo walkthrough
+# SpecLens demo walkthrough
 
-Use the [public Chief Skill app](https://chief-skill.13-236-192-155.sslip.io), or run http://localhost:8770 with real Meta and Hindsight credentials. Do not record the simulated browser-test server as live model evidence. Keep the same browser and cookies when returning to your public recording workspace.
+Use the [public SpecLens app](https://speclens.13-236-192-155.sslip.io), or run http://localhost:8770 with real Meta and Hindsight credentials. Do not record the simulated browser-test server as live model evidence. Keep the same browser and cookies when returning to your public recording workspace.
+
+A [recorded 1080p demo](submission/SpecLens-demo-1080p.mp4), [English transcript](submission/SpecLens-demo-transcript.md), and [subtitles](submission/SpecLens-demo-English.srt) are ready. The 3-minute-28-second recording shows actual public Meta and Hindsight calls, with English system narration. Both comparison arms rejected the marked part in this recording; it demonstrates the integration without claiming an accuracy gain. Upload this file to the team's public YouTube account for the submission video URL.
+
+To record another live version on macOS, with Playwright, `ffmpeg`, `ffprobe`, and `say` installed, run `SPECLENS_DEMO_READY=1 node frontend/scripts/record-demo.mjs`. It makes four vision calls and stores its source footage and private session state under gitignored `var/submission/`. The script's render-only mode can rebuild the final video without another provider request.
 
 ## Prepare
 
@@ -10,7 +14,7 @@ The samples are generated images. The white markings are controlled ink overlays
 
 ## Three-minute recording
 
-**0:00–0:20 — The problem.** Show the inspection desk. Explain: “A visual inspector can read a specification and still misinterpret a faint mark. Chief Skill lets a quality engineer turn a correction into a standard the next inspection can recall.”
+**0:00–0:20 — The problem.** Show the inspection desk. Explain: “A visual inspector can read a specification and still misinterpret a faint mark. SpecLens lets a quality engineer turn a correction into a standard the next inspection can recall.”
 
 **0:20–0:50 — Establish a decision.** Select White marking, turn quality memory off, and inspect. Read the actual verdict and rationale. If the model catches the ink correctly, say so. A demonstration must not force or invent a miss.
 
@@ -31,7 +35,7 @@ Inspect without memory → enter a clear correction → wait for Hindsight sync 
 ## Video titles
 
 - Teaching a Visual Inspector Your Standards with Hindsight
-- Chief Skill: A Correction the Next Inspection Can Recall
+- SpecLens: A Correction the Next Inspection Can Recall
 - From Quality Review to Cited Agent Memory
 - Why Inspection Corrections Need Their Own Memory
 - One Part, Two Inspections: Testing Quality Memory

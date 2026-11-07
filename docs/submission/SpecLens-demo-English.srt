@@ -1,0 +1,175 @@
+1
+00:00:00,000 --> 00:00:04,600
+A visual inspector can read a specification and still need a quality
+
+2
+00:00:04,600 --> 00:00:09,201
+engineer’s judgment. SpecLens turns that review into a standard the next inspection
+
+3
+00:00:09,201 --> 00:00:13,802
+can recall. This is the live application, using real Meta vision and
+
+4
+00:00:13,802 --> 00:00:18,020
+Hindsight memory. The sample photos are generated, with controlled ink overlays.
+
+5
+00:00:18,922 --> 00:00:23,314
+First, I choose the white marking sample and turn quality memory off.
+
+6
+00:00:23,314 --> 00:00:27,706
+The vision model sees the photo and the base specification, without a
+
+7
+00:00:27,706 --> 00:00:32,099
+learned correction. We keep its actual verdict and explanation rather than forcing
+
+8
+00:00:32,099 --> 00:00:33,197
+a particular answer.
+
+9
+00:00:34,923 --> 00:00:39,159
+The live model rejected the part. It already identified a defect, so
+
+10
+00:00:39,159 --> 00:00:43,396
+this is not a manufactured failure. Its original explanation remains on this
+
+11
+00:00:43,396 --> 00:00:45,515
+ticket and in the audit record.
+
+12
+00:00:46,924 --> 00:00:51,620
+The quality engineer records the human standard: sharp white printed characters are
+
+13
+00:00:51,620 --> 00:00:56,315
+ink, while broad natural highlights alone remain acceptable. I explicitly choose reject
+
+14
+00:00:56,315 --> 00:01:01,010
+and the print class, then save the correction. SpecLens keeps the original
+
+15
+00:01:01,010 --> 00:01:05,705
+model reasoning beside this human decision and sends the correction to Hindsight.
+
+16
+00:01:11,926 --> 00:01:16,866
+Now I select another marking, from a different source photo, and enable
+
+17
+00:01:16,866 --> 00:01:21,806
+quality memory. The base specification stays the same. Hindsight retrieves relevant standards
+
+18
+00:01:21,806 --> 00:01:24,688
+before the model inspects this new part.
+
+19
+00:01:27,928 --> 00:01:32,320
+On the second photo, the live model rejected the part. This inspection
+
+20
+00:01:32,320 --> 00:01:36,711
+cites the exact human correction saved a moment ago. Hindsight supplied the
+
+21
+00:01:36,711 --> 00:01:41,102
+standard, and the base specification stayed fixed. A cited memory is an
+
+22
+00:01:41,102 --> 00:01:45,128
+observed retrieval step even when the model reaches the same verdict.
+
+23
+00:01:46,041 --> 00:01:50,444
+The comparison runs this second part twice, once without memory and once
+
+24
+00:01:50,444 --> 00:01:54,846
+with it. Both arms use the same image, model, and base specification.
+
+25
+00:01:54,846 --> 00:01:59,248
+I leave the expected decision unlabeled so the screen does not imply
+
+26
+00:01:59,248 --> 00:02:00,349
+a measured score.
+
+27
+00:02:02,049 --> 00:02:06,541
+Without memory, the model rejected the part. With memory, it rejected the
+
+28
+00:02:06,541 --> 00:02:11,033
+part. Both arms reached the same verdict in this run. This is
+
+29
+00:02:11,033 --> 00:02:15,525
+one paired observation, not a general accuracy claim. The memory-enabled arm records
+
+30
+00:02:15,525 --> 00:02:17,022
+the correction it used.
+
+31
+00:02:18,050 --> 00:02:23,647
+Quality memory shows the saved rule, reviewer, original inspection reasoning, and confirmed
+
+32
+00:02:23,647 --> 00:02:29,243
+sync state. Summarize standards asks Hindsight to reflect over this workspace’s corrections.
+
+33
+00:02:29,243 --> 00:02:34,373
+The summary supports review; the source correction remains the traceable record.
+
+34
+00:02:36,050 --> 00:02:41,067
+History keeps all four inspection records, including the two comparison arms. I
+
+35
+00:02:41,067 --> 00:02:46,084
+can search by reviewer and export the complete workspace as JSON. After
+
+36
+00:02:46,084 --> 00:02:51,101
+a reload, the original decision, human correction, and saved comparison are still
+
+37
+00:02:51,101 --> 00:02:51,519
+here.
+
+38
+00:02:55,054 --> 00:03:00,760
+Workspace settings make the context explicit. The factory, part family, and exact
+
+39
+00:03:00,760 --> 00:03:06,466
+specification revision define a separate memory bank. Changing the specification starts a
+
+40
+00:03:06,466 --> 00:03:12,172
+new scope. Credentials stay on the server; people remain responsible for disposition.
+
+41
+00:03:13,074 --> 00:03:17,458
+The useful part is the traceable correction: what the model said, what
+
+42
+00:03:17,458 --> 00:03:21,842
+the engineer recorded, and which later inspection used that standard. Explore SpecLens
+
+43
+00:03:21,842 --> 00:03:26,226
+at the public app, or review the source and verification material on
+
+44
+00:03:26,226 --> 00:03:26,592
+GitHub.

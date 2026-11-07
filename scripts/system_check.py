@@ -1,4 +1,4 @@
-"""Check the live Chief Skill workflow; records observations, never assumes model improvement.
+"""Check the live SpecLens workflow; records observations, never assumes model improvement.
 
 Run with the configured backend running. Makes four billable vision calls and
 Hindsight retain/recall/reflect calls in a separate, uniquely named workspace.
@@ -23,7 +23,7 @@ def main() -> int:
     parser.add_argument('--out', type=Path, default=ROOT / 'var' / 'checks')
     args = parser.parse_args()
     identity = uuid.uuid4().hex[:10]
-    scope = {'factory': f'Chief Skill connection check {identity}', 'part_family': 'Whole hazelnut', 'spec_text': ''}
+    scope = {'factory': f'SpecLens connection check {identity}', 'part_family': 'Whole hazelnut', 'spec_text': ''}
     report = {'started_at': datetime.now(timezone.utc).isoformat(), 'base': args.base,
               'scope': scope, 'requested_check': 'live service integration', 'steps': {},
               'note': 'Integration observations only. No accuracy or learning improvement is assumed.'}

@@ -1,6 +1,6 @@
-# Chief Skill design
+# SpecLens design
 
-Chief Skill is a visual quality inspection workspace for manufacturing teams. A quality engineer inspects a part, corrects an incorrect decision, and sees that correction recalled during inspection of a different part.
+SpecLens is a visual quality inspection workspace for manufacturing teams. A quality engineer inspects a part, corrects an incorrect decision, and sees that correction recalled during inspection of a different part.
 
 ## Acceptance
 - Real Meta vision inspection with visible reasoning and a defect box.

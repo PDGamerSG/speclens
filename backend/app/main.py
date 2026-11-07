@@ -1,4 +1,4 @@
-"""Chief Skill API. Run: python -m uvicorn app.main:app --app-dir backend --port 8000"""
+"""SpecLens API. Run: python -m uvicorn app.main:app --app-dir backend --port 8000"""
 from __future__ import annotations
 
 import asyncio
@@ -29,7 +29,7 @@ from .public import PUBLIC_MODE, PublicWorkspaceMiddleware, owner
 from .workspace import routes as workspace_routes
 from .workspace.routes import router as workspace_router
 
-app = FastAPI(title="Chief Skill", version="1.0")
+app = FastAPI(title="SpecLens", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=[] if PUBLIC_MODE else ["*"], allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(PublicWorkspaceMiddleware)
 app.include_router(workspace_router)
@@ -161,7 +161,7 @@ def export(rid: str):
         raise HTTPException(404, "run not found")
     extra = [FIXTURES / "demo_run" / "samples"] if r.data.get("demo") else None
     return Response(export_run(r.dir, r.data, extra), media_type="application/zip",
-                    headers={"Content-Disposition": f'attachment; filename="chief-skill-{rid}.zip"'})
+                    headers={"Content-Disposition": f'attachment; filename="speclens-{rid}.zip"'})
 
 
 @app.post("/api/inspect")

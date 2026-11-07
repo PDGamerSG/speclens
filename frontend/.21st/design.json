@@ -1,7 +1,7 @@
 {
   "version": 1,
   "project": {
-    "name": "Chief Skill",
+    "name": "SpecLens",
     "productType": "Visual quality inspection workspace",
     "stack": [
       "react",
@@ -117,7 +117,7 @@
   "decisions": [
     {
       "decision": "Light operator workspace with navy navigation, teal actions and the part image as the largest surface.",
-      "source": "User approved Chief Skill build; docs/design.md"
+      "source": "User approved SpecLens build; docs/design.md"
     }
   ],
   "evidence": [

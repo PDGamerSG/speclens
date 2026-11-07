@@ -2,13 +2,13 @@
 
 A quality engineer can reject a part for a reason that a vision model has just explained away. The useful question is what happens when the next part arrives.
 
-I built Chief Skill around that moment. It is a visual inspection workspace where a human correction becomes a quality standard the next inspection can retrieve. The standard carries its source: the part, the model’s original decision, its reasoning, and the engineer who corrected it.
+I built SpecLens around that moment. It is a visual inspection workspace where a human correction becomes a quality standard the next inspection can retrieve. The standard carries its source: the part, the model’s original decision, its reasoning, and the engineer who corrected it.
 
 The implementation uses a vision model for inspection and [Hindsight agent memory](https://github.com/vectorize-io/hindsight) for retain, recall, and reflection. SQLite keeps the application’s audit trail. A React interface puts the image, decision, correction form, and recalled standards next to each other.
 
 The difficult part was deciding what a remembered correction should mean.
 
-![The Chief Skill correction and recall architecture](../screenshots/architecture.png)
+![The SpecLens correction and recall architecture](../screenshots/architecture.png)
 
 ## A specification leaves room for interpretation
 
@@ -49,7 +49,7 @@ The saved content includes the original reasoning and the human rule. It also st
 
 A remembered rule needs context. Two factories can have different acceptance criteria. The same factory can inspect several part families. A revised specification can invalidate a rule that used to be appropriate.
 
-Chief Skill derives its memory scope from the factory, part family, and exact specification text:
+SpecLens derives its memory scope from the factory, part family, and exact specification text:
 
 ```python
 data = json.dumps(
@@ -79,7 +79,7 @@ sources = {
 
 The prompt receives the human standard, recalled evidence, and source correction ID. Keeping those fields distinct matters. Hindsight can extract a fact about the original mistake: “The inspector called the white letters gloss.” That sentence describes an error; it is not the rule the engineer wanted to teach.
 
-For every accepted recalled fact, Chief Skill attaches the authoritative human rule from the matching audit record. SQLite supplies provenance after Hindsight retrieval. It does not supply a replacement list of corrections when retrieval fails.
+For every accepted recalled fact, SpecLens attaches the authoritative human rule from the matching audit record. SQLite supplies provenance after Hindsight retrieval. It does not supply a replacement list of corrections when retrieval fails.
 
 A failed required recall stops the inspection with a visible error. Otherwise, a memory outage could look like a successful inspection with nothing useful remembered. Generic HTTP 404 errors are also treated as failures; only a recognized missing-bank response can represent an empty bank.
 
@@ -113,4 +113,4 @@ These are four synthetic cases from two source photos in one pass. They are corr
 
 [Agent memory](https://vectorize.io/what-is-agent-memory) is useful here because the quality judgment belongs to a continuing workflow. A reviewer’s explanation should be available when the next relevant part arrives, with enough context to inspect why it was used.
 
-Try the [public Chief Skill app](https://chief-skill.13-236-192-155.sslip.io). The [repository](https://github.com/PDGamerSG/speclens) contains the inspection desk, Hindsight adapter, durable correction store, synthetic inputs, and verification commands. The central record is small: what the model said, what the engineer corrected, and which later inspection recalled that standard.
+Try the [public SpecLens app](https://speclens.13-236-192-155.sslip.io). The [repository](https://github.com/PDGamerSG/speclens) contains the inspection desk, Hindsight adapter, durable correction store, synthetic inputs, and verification commands. The central record is small: what the model said, what the engineer corrected, and which later inspection recalled that standard.

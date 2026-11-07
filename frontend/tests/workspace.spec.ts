@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises'
 test('a correction is retained, recalled on a new part, and compared against the baseline', async ({ page }) => {
   await page.addInitScript((factory) => localStorage.setItem('speclens-scope', JSON.stringify({ factory, part_family: 'Whole hazelnut', spec_text: '' })), 'UI acceptance ' + Date.now())
   await page.goto('/')
+  await expect(page).toHaveTitle('SpecLens · Quality inspection workspace')
+  await expect(page.getByRole('button', { name: 'SpecLens inspection desk', exact: true })).toHaveText('SpecLens.')
   await expect(page.getByRole('heading', { name: 'Inspection desk', exact: true })).toBeVisible()
   await page.getByRole('switch', { name: 'Use quality memory' }).click()
   await page.getByRole('button', { name: 'Inspect part', exact: true }).click()

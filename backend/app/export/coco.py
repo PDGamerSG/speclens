@@ -60,7 +60,7 @@ def export_run(run_dir: Path, run: dict, extra_dirs: list[Path] | None = None) -
             z.write(mask_p, f"masks/{s['id']}.png")
             if prov_p is not None:
                 z.write(prov_p, f"provenance/{s['id']}.json")
-        coco = {"info": {"description": "Chief Skill synthetic defect test suite", "run_id": run["id"],
+        coco = {"info": {"description": "SpecLens synthetic defect test suite", "run_id": run["id"],
                          "intended_use": "evaluation, benchmarking and quality assessment of inspection systems; not for training models that compete with Meta's"},
                 "images": images, "annotations": anns, "categories": cats}
         z.writestr("annotations.json", json.dumps(coco))

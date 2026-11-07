@@ -1,4 +1,4 @@
-# Running and deploying Chief Skill
+# Running and deploying SpecLens
 
 ## Local installation
 
@@ -8,7 +8,9 @@ The browser does not accept API keys. Set `MODEL_API_KEY`, `HINDSIGHT_BASE_URL`,
 
 For a self-hosted Hindsight server, point `HINDSIGHT_BASE_URL` at that server and use its authentication configuration. The Hindsight process has its own model configuration and costs.
 
-Local mode defaults to `CHIEF_SKILL_PUBLIC=0`. Browsers share a single team’s workspace; factory and specification scopes organize its records and memory.
+Local mode defaults to `SPECLENS_PUBLIC=0`. Browsers share a single team’s workspace; factory and specification scopes organize its records and memory.
+
+`SPECLENS_PUBLIC` is the current setting; the legacy `CHIEF_SKILL_PUBLIC` setting is accepted only when `SPECLENS_PUBLIC` is absent.
 
 `BUDGET_USD` limits the vision client using the persisted spend ledger; it does not cap Hindsight billing. The default example is $5. It is a local guard, not a reservation system for simultaneous calls.
 
@@ -44,7 +46,7 @@ A health endpoint is available at `/api/workspace/status`; it reports configurat
 
 ## Public demo
 
-[Open the public demo](https://chief-skill.13-236-192-155.sslip.io). Public mode gives each browser an HttpOnly cookie and separates its inspection data and Hindsight banks from other visitors, including when factory names match. Use the same browser with its cookies intact to revisit history. Clearing cookies or switching browser profiles starts a new visitor workspace.
+[Open the public demo](https://speclens.13-236-192-155.sslip.io). Public mode gives each browser an HttpOnly cookie and separates its inspection data and Hindsight banks from other visitors, including when factory names match. Use the same browser with its cookies intact to revisit history. Clearing cookies or switching browser profiles starts a new visitor workspace.
 
 Public mode allows 30 POST requests per browser per hour and 120 per IP per hour. These limits apply to requests, including corrections and comparisons; they are separate from the server’s vision budget and Hindsight billing.
 
@@ -54,7 +56,7 @@ The [deployment script and server guide](deployment.md) use both Compose files:
 docker compose --project-name chief-skill -f compose.yaml -f compose.public.yaml up --build -d
 ```
 
-`compose.public.yaml` sets `CHIEF_SKILL_PUBLIC=1` and `FORWARDED_ALLOW_IPS=*`. The app’s host port remains bound to localhost; Caddy supplies the HTTPS proxy metadata. Keep that loopback binding when trusting forwarded headers.
+`compose.public.yaml` sets `SPECLENS_PUBLIC=1` and `FORWARDED_ALLOW_IPS=*`. The app’s host port remains bound to localhost; Caddy supplies the HTTPS proxy metadata. Keep that loopback binding when trusting forwarded headers.
 
 ## Backup and restore
 

@@ -2,7 +2,7 @@
 
 ## Automated application checks
 
-The local `./scripts/check.sh` run for the public release passed **63 Python tests**, **15 browser scenarios**, the production build, and clean lint. The same command runs in CI.
+The current SpecLens release passed **65 Python tests**, **15 browser scenarios**, the production build, and clean lint. The same checks run in CI. The two new backend regressions verify that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
 
 The [GitHub run for 4bd3a5e](https://github.com/PDGamerSG/speclens/actions/runs/42385604175) passed 63 Python tests and 14 browser scenarios before the final mobile-history regression was added. [Current main checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml) run the full suite. These tests simulate external vision and Hindsight calls.
 
@@ -12,7 +12,11 @@ The macOS setup script completed successfully. The Docker image built on Linux A
 
 ## Public deployment
 
-[Chief Skill is online](https://chief-skill.13-236-192-155.sslip.io) over HTTPS on a dedicated Lightsail server. The [sanitized public-release record](evidence/public-release.json) separates simulated application checks from real deployed service checks.
+The canonical public app is [SpecLens](https://speclens.13-236-192-155.sslip.io). A fresh [SpecLens release record](evidence/speclens-release.json) verifies the current name and hostname with real Meta and Hindsight calls: sample and uploaded-photo inspections, retain, cited recall, reflection, unlabeled comparison export, history, viewer controls, settings, mobile behavior, and isolation from a second browser. All eleven live scenarios passed. Existing visitor history also remained readable after the cookie-name migration on the earlier hostname. A further container restart preserved the current five inspections, correction, comparison, and private photos; Hindsight still recalled the correction.
+
+The [recorded demo](submission/SpecLens-demo-1080p.mp4) uses four additional real vision calls. `ffprobe` verifies H.264 video at 1920×1080, AAC audio, an English subtitle track, and a duration of 207.775 seconds. Its generated narration reports the actual model verdicts; it makes no general accuracy claim.
+
+The [initial public-release record](evidence/public-release.json) documents the earlier HTTPS deployment on the same persistent server. Its raw hostnames and historical facts are preserved. The observations below describe that recorded run.
 
 Five real vision calls verified the sample baseline, a human correction retained by Hindsight, cited recall on a different sample, an uploaded-photo inspection, and a paired comparison. Hindsight also returned a standards summary. Both comparison arms rejected the marked part; this check establishes integration, not an accuracy gain.
 

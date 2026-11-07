@@ -2,6 +2,6 @@
 services:
   speclens:
     environment:
-      CHIEF_SKILL_PUBLIC: "1"
+      SPECLENS_PUBLIC: "1"
       # Caddy connects through Docker's host gateway and supplies HTTPS metadata.
       FORWARDED_ALLOW_IPS: "*"

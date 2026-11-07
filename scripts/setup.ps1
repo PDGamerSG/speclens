@@ -1,4 +1,4 @@
-# Install Chief Skill on Windows with Python 3.13+ and Node.js 22.12+.
+# Install SpecLens on Windows with Python 3.13+ and Node.js 22.12+.
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 if (-not (Test-Path .venv\Scripts\python.exe)) {

@@ -1,4 +1,4 @@
-# Chief Skill implementation plan
+# SpecLens implementation plan
 
 Goal: ship and verify the correction → retain → recall → new inspection workflow today.
 Stack: FastAPI, SQLite, Hindsight HTTP API, Meta vision, React, Vite, Tailwind.

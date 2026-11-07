@@ -8,8 +8,8 @@
  * subsequent server-restart persistence check and never printed.
  *
  * Resume browser checks with zero new vision calls after an interrupted run:
- *   CHIEF_SKILL_RESUME_DIR=/absolute/path/to/the/prior/run node frontend/scripts/live-smoke.mjs
- * Set CHIEF_SKILL_RESUME_PHASE=isolation to check isolation while a UI fix is
+ *   SPECLENS_RESUME_DIR=/absolute/path/to/the/prior/run node frontend/scripts/live-smoke.mjs
+ * Set SPECLENS_RESUME_PHASE=isolation to check isolation while a UI fix is
  * pending, or mobile to rerun only the viewer/mobile checks after that fix.
  */
 import { chromium, expect } from '@playwright/test'
@@ -21,14 +21,15 @@ import { fileURLToPath } from 'node:url'
 const LIVE_TIMEOUT = 240_000
 const UI_TIMEOUT = 30_000
 const MAX_VISION_CALLS = 5
-const resumedFrom = process.env.CHIEF_SKILL_RESUME_DIR ? resolve(process.env.CHIEF_SKILL_RESUME_DIR) : null
+const resumeDirectory = process.env.SPECLENS_RESUME_DIR || process.env.CHIEF_SKILL_RESUME_DIR
+const resumedFrom = resumeDirectory ? resolve(resumeDirectory) : null
 const priorPersistence = resumedFrom ? JSON.parse(await readFile(join(resumedFrom, 'persistence.json'), 'utf8')) : null
 const priorSummary = resumedFrom ? JSON.parse(await readFile(join(resumedFrom, 'summary.json'), 'utf8')) : null
-const resumePhase = process.env.CHIEF_SKILL_RESUME_PHASE || 'all'
-if (!['all', 'isolation', 'mobile'].includes(resumePhase)) throw new Error('CHIEF_SKILL_RESUME_PHASE must be all, isolation, or mobile.')
-const target = new URL(process.env.CHIEF_SKILL_BASE_URL || priorPersistence?.base_url || 'https://chief-skill.13-236-192-155.sslip.io')
+const resumePhase = process.env.SPECLENS_RESUME_PHASE || process.env.CHIEF_SKILL_RESUME_PHASE || 'all'
+if (!['all', 'isolation', 'mobile'].includes(resumePhase)) throw new Error('SPECLENS_RESUME_PHASE must be all, isolation, or mobile.')
+const target = new URL(process.env.SPECLENS_BASE_URL || process.env.CHIEF_SKILL_BASE_URL || priorPersistence?.base_url || 'https://speclens.13-236-192-155.sslip.io')
 if (!['https:', 'http:'].includes(target.protocol) || target.username || target.password) {
-  throw new Error('CHIEF_SKILL_BASE_URL must be an HTTP(S) URL without embedded credentials.')
+  throw new Error('SPECLENS_BASE_URL must be an HTTP(S) URL without embedded credentials.')
 }
 const baseURL = target.origin
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -38,12 +39,12 @@ const summaryPath = join(artifactDir, 'summary.json')
 const storageStatePath = join(artifactDir, 'storage-state.private.json')
 const persistencePath = join(artifactDir, 'persistence.json')
 const scope = priorPersistence?.scope || {
-  factory: `Chief Skill live smoke ${runId}`,
+  factory: `SpecLens live smoke ${runId}`,
   part_family: 'Whole hazelnut',
   spec_text: '',
 }
 const rule = 'Reject any white printed ink or sharp pale lettering on the hazelnut shell, including faint marks. Natural shell highlights and texture alone are acceptable.'
-const reviewer = 'Chief Skill live smoke'
+const reviewer = 'SpecLens live smoke'
 const check = expect.configure({ timeout: UI_TIMEOUT })
 const sensitiveValues = new Set()
 const summary = {
@@ -270,7 +271,7 @@ try {
     check(status.ok).toBe(true)
     check(status.model_configured).toBe(true)
     check(status.memory_configured).toBe(true)
-    const cookie = (await context.cookies()).find(item => item.name === 'chief_skill_workspace')
+    const cookie = (await context.cookies()).find(item => item.name === 'speclens_workspace')
     check(Boolean(cookie)).toBe(true)
     sensitiveValues.add(cookie.value)
     check(cookie.httpOnly).toBe(true)
@@ -346,7 +347,7 @@ try {
 
   await step('valid uploaded photo inspection', async () => {
     await navigate('Inspection desk')
-    const filename = 'chief-skill-live-upload.jpg'
+    const filename = 'speclens-live-upload.jpg'
     await page.getByLabel('Upload part photo').setInputFiles({
       name: filename,
       mimeType: 'image/jpeg',
@@ -383,7 +384,7 @@ try {
     await check(page.locator('.comparison-outcome')).toHaveCount(0)
     await check(page.locator('.comparison-history-row')).toHaveCount(1)
     const exported = await readDownload('Export comparison')
-    check(exported.filename).toBe(`chief-skill-${comparison.id}.json`)
+    check(exported.filename).toBe(`speclens-${comparison.id}.json`)
     check(exported.record.format_version).toBe(1)
     check(exported.record.id).toBe(comparison.id)
     check(exported.record.expected_verdict).toBeNull()
@@ -410,10 +411,10 @@ try {
     await search.fill(reviewer)
     await check(page.locator('tbody tr')).toHaveCount(1)
     await check(page.locator('tbody tr')).toContainText('Reject')
-    await search.fill('chief-skill-no-matching-record')
+    await search.fill('speclens-no-matching-record')
     await check(page.locator('tbody')).toContainText('No matching inspections')
     const exported = await readDownload('Export records')
-    check(exported.filename).toBe('chief-skill-inspection-records.json')
+    check(exported.filename).toBe('speclens-inspection-records.json')
     check(exported.record.format_version).toBe(1)
     check(exported.record.scope.factory).toBe(scope.factory)
     check(exported.record.inspections.length).toBe(5)
@@ -514,8 +515,8 @@ try {
     secondContext = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 } })
     await secondContext.addInitScript(value => localStorage.setItem('speclens-scope', JSON.stringify(value)), scope)
     await requestJson(secondContext.request, '/api/workspace/status')
-    const firstCookie = (await context.cookies()).find(item => item.name === 'chief_skill_workspace')
-    const secondCookie = (await secondContext.cookies()).find(item => item.name === 'chief_skill_workspace')
+    const firstCookie = (await context.cookies()).find(item => item.name === 'speclens_workspace')
+    const secondCookie = (await secondContext.cookies()).find(item => item.name === 'speclens_workspace')
     check(Boolean(secondCookie)).toBe(true)
     sensitiveValues.add(secondCookie.value)
     check(firstCookie.value === secondCookie.value).toBe(false)

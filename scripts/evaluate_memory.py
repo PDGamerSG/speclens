@@ -57,7 +57,7 @@ def main():
     ap.add_argument('--out', type=Path, default=ROOT / 'var/evaluations')
     args = ap.parse_args()
     id = uuid.uuid4().hex[:10]
-    scope = {'factory': f'Chief Skill memory evaluation {id}', 'part_family': 'Whole hazelnut', 'spec_text': ''}
+    scope = {'factory': f'SpecLens memory evaluation {id}', 'part_family': 'Whole hazelnut', 'spec_text': ''}
     report = {'id': id, 'created_at': datetime.now(timezone.utc).isoformat(), 'scope': scope, 'rows': [],
               'training_source_group': 'generated-hazelnut-01', 'test_source_groups': ['generated-hazelnut-02', 'generated-hazelnut-03'],
               'limits': 'Four synthetic cases from two source photos, one pass, one part family. Paired calls are stochastic. This is a regression probe, not a production accuracy benchmark.'}

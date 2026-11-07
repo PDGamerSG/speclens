@@ -83,11 +83,11 @@ def test_public_cookie_is_http_only_and_private_files_stay_blocked(tmp_path, mon
 def test_public_https_cookies_are_secure_and_survive_new_client_sessions(tmp_path, monkeypatch):
     public_clients(tmp_path, monkeypatch)
     from app.main import app
-    with TestClient(app, base_url='https://chief-skill.example') as first:
+    with TestClient(app, base_url='https://speclens.example') as first:
         response = first.get('/api/workspace/status')
         assert 'Secure' in response.headers['set-cookie']
         item = first.post('/api/workspace/inspect', data={'sample_id': 'white-print', 'memory_enabled': 'false'}).json()
-        with TestClient(app, base_url='https://chief-skill.example', cookies=first.cookies) as reopened:
+        with TestClient(app, base_url='https://speclens.example', cookies=first.cookies) as reopened:
             assert reopened.get(item['image_url']).status_code == 200
             assert reopened.get('/api/workspace/overview').json()['stats']['inspections'] == 1
 
@@ -127,10 +127,34 @@ def test_chunked_upload_stops_at_the_public_body_limit(tmp_path, monkeypatch):
         yield b'\r\n--photo--\r\n'
 
     async def upload():
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='https://chief-skill.example') as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='https://speclens.example') as client:
             return await client.post('/api/workspace/inspect', content=body(),
                 headers={'Content-Type': 'multipart/form-data; boundary=photo'})
 
     response = asyncio.run(upload())
     assert response.status_code == 413
     assert received <= 10 * 1024 * 1024
+
+
+def test_renamed_cookie_keeps_existing_visitor_records(tmp_path, monkeypatch):
+    import hashlib
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    legacy = 'a' * 64
+    first.cookies.set('chief_skill_workspace', legacy, domain='testserver.local', path='/')
+    response = first.post('/api/workspace/inspect', data={'sample_id': 'white-print', 'memory_enabled': 'false'})
+    assert response.status_code == 200
+    assert first.cookies.get('speclens_workspace') == legacy
+    assert first.cookies.get('chief_skill_workspace') is None
+    item = response.json()
+    assert item['owner_id'] == hashlib.sha256(legacy.encode()).hexdigest()
+    assert first.get(item['image_url']).status_code == 200
+    assert first.get('/api/workspace/overview').json()['stats']['inspections'] == 1
+
+
+def test_invalid_new_cookie_falls_back_to_valid_legacy_session(tmp_path, monkeypatch):
+    first, _, _ = public_clients(tmp_path, monkeypatch)
+    legacy = 'b' * 64
+    first.cookies.set('chief_skill_workspace', legacy, domain='testserver.local', path='/')
+    first.cookies.set('speclens_workspace', 'invalid', domain='testserver.local', path='/')
+    first.get('/api/workspace/status')
+    assert first.cookies.get('speclens_workspace') == legacy

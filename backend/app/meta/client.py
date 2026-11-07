@@ -1,4 +1,4 @@
-"""Meta Model API calls used by Chief Skill: Muse Spark (strict JSON), Muse Image (edits, generations), SAM 3.1.
+"""Meta Model API calls used by SpecLens: Muse Spark (strict JSON), Muse Image (edits, generations), SAM 3.1.
 
 Requests follow Meta's documented compatible API shapes. Every call goes through the ledger.
 """

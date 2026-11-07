@@ -1,16 +1,16 @@
-# Chief Skill
+# SpecLens
 
-[![Chief Skill checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml/badge.svg)](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml)
+[![SpecLens checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml/badge.svg)](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml)
 
-**[Open the public demo](https://chief-skill.13-236-192-155.sslip.io)** · [Deployment guide](docs/deployment.md)
+**[Open the public demo](https://speclens.13-236-192-155.sslip.io)** · [Deployment guide](docs/deployment.md)
 
 **Visual quality inspection that learns your factory’s standards.**
 
-A quality engineer should not have to explain the same inspection mistake twice. Chief Skill pairs vision with [Hindsight memory](https://hindsight.vectorize.io/): inspect a part, correct the decision, and recall that standard when checking the next part.
+A quality engineer should not have to explain the same inspection mistake twice. SpecLens pairs vision with [Hindsight memory](https://hindsight.vectorize.io/): inspect a part, correct the decision, and recall that standard when checking the next part.
 
 The public demo uses an HttpOnly cookie to keep each browser’s records and memory separate. Use the same browser and keep its cookies to revisit your history. It allows 30 POST requests per browser per hour and 120 per IP per hour.
 
-![Chief Skill inspection desk](docs/screenshots/public-inspection.png)
+![SpecLens inspection desk](docs/screenshots/public-inspection.png)
 
 *Actual public Meta/Hindsight inspection with its cited correction. The pictured part is a controlled synthetic example.*
 
@@ -18,7 +18,7 @@ The public demo uses an HttpOnly cookie to keep each browser’s records and mem
 
 1. Choose a sample or upload a part photo. Inspect with memory off to establish the model’s decision against the base specification.
 2. Review the verdict, explanation, confidence, and defect box. Correct the decision and write the visual rule the inspector should apply.
-3. Chief Skill saves the original reasoning and your correction in SQLite, then calls Hindsight `retain`. Interrupted or failed writes remain visibly pending and can be retried.
+3. SpecLens saves the original reasoning and your correction in SQLite, then calls Hindsight `retain`. Interrupted or failed writes remain visibly pending and can be retried.
 4. Inspect a different part with memory on. Hindsight `recall` supplies relevant facts; the inspector receives only facts tied to a synced correction in this workspace, alongside its source rule and correction ID.
 5. Open **Memory comparison** to inspect the same image twice, with and without recalled standards. Both arms use the same model and base specification. The interface records the observed decisions without assuming an improvement.
 

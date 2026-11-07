@@ -1,4 +1,4 @@
-# Chief Skill design context
+# SpecLens design context
 
 Light operator workspace with navy navigation, teal actions, and Public Sans.
 

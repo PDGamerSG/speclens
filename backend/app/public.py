@@ -15,10 +15,11 @@ from fastapi.responses import JSONResponse
 from starlette.formparsers import MultiPartException
 from starlette.middleware.base import BaseHTTPMiddleware
 
-PUBLIC_MODE = os.environ.get('CHIEF_SKILL_PUBLIC', '0') == '1'
+PUBLIC_MODE = os.environ.get('SPECLENS_PUBLIC', os.environ.get('CHIEF_SKILL_PUBLIC', '0')) == '1'
 CALL_LIMIT = 30
 WINDOW = 3600
-COOKIE = 'chief_skill_workspace'
+COOKIE = 'speclens_workspace'
+LEGACY_COOKIE = 'chief_skill_workspace'
 MAX_BODY = 9 * 1024 * 1024
 limiter: dict[str, deque] = defaultdict(deque)
 _lock = threading.Lock()
@@ -68,7 +69,8 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
         if not PUBLIC_MODE:
             return await call_next(request)
         cookie = request.cookies.get(COOKIE, '')
-        visitor = cookie if _tokens.fullmatch(cookie) else secrets.token_hex(32)
+        legacy = request.cookies.get(LEGACY_COOKIE, '')
+        visitor = cookie if _tokens.fullmatch(cookie) else legacy if _tokens.fullmatch(legacy) else secrets.token_hex(32)
         # Records and JSON exports contain an identifier, never the bearer cookie.
         request.state.workspace_owner = hashlib.sha256(visitor.encode()).hexdigest()
         path = request.url.path
@@ -90,6 +92,8 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
         if cookie != visitor:
             response.set_cookie(COOKIE, visitor, max_age=30 * 86400, httponly=True,
                                 secure=request.url.scheme == 'https', samesite='lax')
+        if LEGACY_COOKIE in request.cookies:
+            response.delete_cookie(LEGACY_COOKIE, secure=request.url.scheme == 'https', httponly=True, samesite='lax')
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'same-origin'
         response.headers['X-Frame-Options'] = 'DENY'
