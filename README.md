@@ -1,32 +1,118 @@
 # SpecLens
 
+**Team Vulcan**
+
+- Aditya Arnav
+- Pallab Das
+
+Live link: [speclens.pallabdas.me](https://speclens.pallabdas.me/)
+
 [![SpecLens checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml/badge.svg)](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml)
 
-**[Open the public demo](https://speclens.pallabdas.me)** · [Deployment guide](docs/deployment.md)
+<p align="center">
+  <img src="docs/images/hero.png" width="760"
+       alt="The SpecLens page with the headline Correct it once. It remembers the next part. A hazelnut photo carries a red pencil ring around a printed marking and a REJECT stamp. The inspection ticket beside it shows Reject part, the reason, and the recalled standard written by a quality engineer.">
+</p>
 
-**Visual quality inspection that learns your factory’s standards.**
+A quality engineer should not have to explain the same inspection mistake twice. SpecLens checks a part photo against your specification, explains its decision, and marks any defect. When the decision is wrong, you correct it once. SpecLens remembers that standard and cites it when it checks the next part. It is for quality teams who inspect parts by eye and want each correction to count.
 
-A quality engineer should not have to explain the same inspection mistake twice. SpecLens pairs vision with [Hindsight memory](https://hindsight.vectorize.io/): inspect a part, correct the decision, and recall that standard when checking the next part.
+This repository holds the whole app: a one-page React interface, a FastAPI server that keeps the model and memory keys off the browser, SQLite records, synthetic sample parts with exact masks, automated tests, and the deployment script for the public server.
 
-The public demo uses an HttpOnly cookie to keep each browser’s records and memory separate. Use the same browser and keep its cookies to revisit your history. It allows 30 POST requests per browser per hour and 120 per IP per hour.
+## Features
 
-![SpecLens inspection desk](docs/screenshots/public-inspection.png)
+| Feature | What it does |
+| --- | --- |
+| Inspect a part | Choose a sample or upload a photo. You get Accept, Reject, or Review, with the reason, the model's confidence, and a ring around any defect. |
+| Correct a decision | Record the right decision and the visual rule to apply next time. The original model decision stays on record beside yours. |
+| Quality memory | Saved corrections go to Hindsight. A later inspection recalls them and cites the correction it used. A failed save stays visibly pending and can be retried. |
+| Memory comparison | Run the same photo with memory off and on, with the same model and specification, and compare the two decisions. |
+| Photo checks | A photo that does not show the part gets Review, with what the photo shows and what a usable photo needs. |
+| Inspection history | Search every inspection, reopen one, and export the full record as JSON. |
+| Private workspaces | On the public site, a browser cookie keeps each visitor's records, photos, and memory apart. |
 
-*Actual public Meta/Hindsight inspection with its cited correction. The pictured part is a controlled synthetic example.*
+## How it works
 
-## The workflow
+A visitor picks a part photo, and the server sends it to the vision model with the specification and any standards recalled from memory.
 
-1. Choose a sample or upload a part photo. Inspect with memory off to establish the model’s decision against the base specification.
-2. Review the verdict, explanation, confidence, and defect box. Correct the decision and write the visual rule the inspector should apply.
-3. SpecLens saves the original reasoning and your correction in SQLite, then calls Hindsight `retain`. Interrupted or failed writes remain visibly pending and can be retried.
-4. Inspect a different part with memory on. Hindsight `recall` supplies relevant facts; the inspector receives only facts tied to a synced correction in this workspace, alongside its source rule and correction ID.
-5. Open **Memory comparison** to inspect the same image twice, with and without recalled standards. Both arms use the same model and base specification. The interface records the observed decisions without assuming an improvement.
+```mermaid
+flowchart TB
+  visitor["Visitor<br/>browser"]
+  proxy["HTTPS proxy<br/>Caddy"]
+  subgraph server["Server · FastAPI"]
+    direction LR
+    routes["Workspace routes<br/>backend/app/workspace/routes.py"] --> service["Inspection service<br/>backend/app/workspace/service.py"]
+    service --> inspector["Inspector and prompt<br/>backend/app/inspect/inspector.py"]
+  end
+  db[("SQLite and photos<br/>records and audit trail")]
+  ledger[("Spend ledger<br/>var/ledger.jsonl")]
+  vision["Meta Model API<br/>muse-spark-1.3"]
+  memory["Hindsight<br/>retain, recall, reflect"]
 
-**Quality memory** also uses Hindsight `reflect` to summarize the team’s standards. History survives restarts, preserves the original model decision, and exports the complete workspace record as JSON.
+  visitor --> proxy
+  proxy --> routes
+  service --> db
+  inspector --> vision
+  inspector --> ledger
+  service --> memory
+```
 
-## Run locally
+The browser only talks to the server, through the proxy, on relative `/api/workspace` routes. The service recalls standards from Hindsight when memory is on, keeps only facts tied to a synced correction in that workspace, and passes them to the inspector. The inspector calls the vision model and records the cost in the ledger. The service saves the result in SQLite. A correction saves in SQLite first, then goes to Hindsight, so a failed memory write loses nothing. [The architecture notes](docs/ARCHITECTURE.md) have the component diagram, the request flow, and the data model.
 
-Prerequisites: **Python 3.13+** or [uv](https://docs.astral.sh/uv/), and **Node.js 22.12+**. Tested on Python 3.13.
+### How memory is isolated
+
+A Hindsight bank belongs to a normalized factory name, part family, and exact specification revision. A change to any of these starts a separate scope. Changing the base specification is explicit; saving a correction never rewrites it. Public mode also adds the browser's visitor identity to each scope.
+
+When memory is on, a failed recall stops the inspection with a visible error. The app never substitutes a simulated result for a failed live request.
+
+### Prompt caching
+
+The Model API caches prompt prefixes, so the inspector sends stable content first: the instructions and specification, then the photo, then recalled memory. Recalled standards are sorted and deduplicated, so the same standards always produce the same bytes. One `prompt_cache_key` per specification keeps those requests together.
+
+A paired comparison gains the most, because both arms share everything up to the memory block. In a live run, the two arms read 1,393 of 1,435 and 1,649 of 1,693 input tokens from cache. Moving memory out of the system message raised reuse on a repeated photo from 369 to 1,265 of 1,325 tokens. Each inspection shows its cache share, and **Workspace settings** shows the running total.
+
+## Screenshots
+
+Taken from the live site with real model and memory calls in headless Chromium, at 1440 × 900 with the light theme. The phone shot is 390 × 844. The pictured parts are synthetic examples.
+
+<p align="center">
+  <img src="docs/images/comparison.png" width="860"
+       alt="The Memory comparison section. The same hazelnut photo is inspected without memory and with quality memory, each with its decision, reason, confidence, and share of the prompt read from cache.">
+  <br><em>One part, two inspections. Only recalled memory changes.</em>
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/quality-memory.png"
+         alt="The Quality memory section with a hanging tag that holds a handwritten standard, its reviewer, and an In memory label."></td>
+    <td width="50%"><img src="docs/images/phone.png"
+         alt="The phone layout with the hazelnut photo, the part choices, and the Inspect part button on the first screen."></td>
+  </tr>
+  <tr>
+    <td><em>A saved correction, shown in the reviewer's handwriting style.</em></td>
+    <td><em>On a phone, the first screen reaches the inspect button.</em></td>
+  </tr>
+</table>
+
+## Tech stack
+
+| Component | Purpose | License |
+| --- | --- | --- |
+| React 19 and Vite | One-page interface and build | MIT |
+| TypeScript | Frontend types | Apache-2.0 |
+| WebGL | Point cloud scan of the real photo, written without a library | Browser API |
+| Lucide | Interface icons | ISC |
+| Archivo and Kalam | Self-hosted fonts through Fontsource | OFL-1.1 |
+| FastAPI | Server and validated routes | MIT |
+| Uvicorn | Application server | BSD-3-Clause |
+| SQLite | Inspection, correction, and comparison records | Public domain |
+| Meta Model API, `muse-spark-1.3` | Vision decisions | Hosted service |
+| Hindsight | Retain, recall, and reflect for quality memory | Hosted service |
+| Caddy | HTTPS proxy on the public server | Apache-2.0 |
+| Playwright | Browser acceptance tests | Apache-2.0 |
+
+## Quick start
+
+You need Python 3.13 or [uv](https://docs.astral.sh/uv/), and Node.js 22.12 or later. If a step fails, see [the troubleshooting guide](docs/TROUBLESHOOTING.md).
 
 ```bash
 git clone https://github.com/PDGamerSG/speclens.git
@@ -34,7 +120,7 @@ cd speclens
 ./scripts/setup.sh
 ```
 
-The setup script builds the interface and creates a private, gitignored `.env`. Set:
+The setup script builds the interface and creates a private, gitignored `.env`. Fill in the values listed in [the configuration guide](docs/CONFIGURATION.md):
 
 ```dotenv
 MODEL_API_KEY=your-meta-model-api-key
@@ -45,84 +131,91 @@ BUDGET_USD=5
 DEMO_MODE=0
 ```
 
-Use the Hindsight API endpoint for your account. A self-hosted Hindsight server can use its own URL and omit the key if authentication is disabled there. The vision model is `muse-spark-1.3`.
+Use the Hindsight API endpoint for your account. A self-hosted Hindsight server can use its own URL and omit the key if authentication is disabled there.
 
 ```bash
 ./scripts/dev.sh
 ```
 
-Open **http://localhost:8770**. For hot reload, run `./scripts/dev.sh --dev` and open http://localhost:5173. Override the API port with `SPECLENS_PORT` when needed. Restart the backend after changing credentials.
-
-Without credentials, you can explore the real workspace and samples; live operations show a setup error. The app never substitutes a simulated result for a failed live request.
+Open http://localhost:8770. For hot reload, run `./scripts/dev.sh --dev` and open http://localhost:5173. Override the API port with `SPECLENS_PORT` when needed, and restart the backend after changing credentials. Without credentials you can explore the workspace and samples, and live operations show a setup error.
 
 Windows instructions are in [the setup guide](docs/setup.md).
 
-## Run with Docker
+To run with Docker instead:
 
 ```bash
 cp .env.example .env
-# Add the server credentials to .env.
 docker compose up --build -d
 ```
 
-Open http://localhost:8770. The `speclens-data` volume holds SQLite, images, and the API spend ledger across restarts. The default local mode is a single-team workspace; use a private network or an authenticated reverse proxy for remote team access. The [public deployment](docs/deployment.md) uses the additional `compose.public.yaml` file to enable visitor isolation. See [setup and backup instructions](docs/setup.md).
+Add the server credentials to `.env` first, then open http://localhost:8770. The `speclens-data` volume holds SQLite, images, and the API spend ledger across restarts. The default local mode is a single-team workspace, so use a private network or an authenticated reverse proxy for remote team access.
 
-## Prompt caching
-
-The Model API caches prompt prefixes, so the inspector sends stable content first: the instructions and specification, then the photo, then recalled memory. Recalled standards are sorted and deduplicated, so the same standards always produce the same bytes. One `prompt_cache_key` per specification keeps those requests together, and it is shared across visitors because a cache hit needs an identical prefix.
-
-A paired comparison gains the most, because both arms share everything up to the memory block. In a live run, the two arms read 1,393 of 1,435 and 1,649 of 1,693 input tokens from cache. Moving memory out of the system message raised reuse on a repeated photo from 369 to 1,265 of 1,325 tokens. Each inspection shows its cache share, and **Workspace settings** shows the running total.
-
-## How memory is isolated
-
-![How a correction reaches the next inspection](docs/screenshots/architecture.png)
-
-A Hindsight bank belongs to a normalized factory name, part family, and exact specification revision. A change to any of these starts a separate scope. Changing the base specification is explicit; saving a correction never rewrites it.
-
-Public mode also includes the browser’s visitor identity in each memory and data scope. Clearing cookies or using a different browser profile starts a new visitor workspace.
-
-SQLite holds the audit trail, pending writes, and the authoritative human correction. It does not replace Hindsight retrieval. When memory is enabled, a failed recall stops the inspection with a visible error. Recalled facts without a known, synced source correction are excluded from the prompt.
-
-Server credentials stay on the backend. The browser uses relative `/api/workspace` routes. Runtime databases and ledgers are outside the public media mounts.
-
-## Verification
+### Checks
 
 ```bash
-# First time only, install the browser used by acceptance checks:
 (cd frontend && npx playwright install chromium)
 ./scripts/check.sh
 ```
 
-The single check command runs the same build, lint, Python, and browser checks as CI with live credentials disabled. The Python suite covers persistence, scope separation, HTTP validation, retry behavior, prompt construction, image reuse, and image-label integrity. Browser scenarios cover the full correction loop, mobile layout, interrupted sync, workspace isolation during requests, and historical comparisons. External vision and Hindsight calls are simulated in these automated tests.
+`scripts/check.sh` runs the build, lint, the Python tests, and the browser tests with live credentials disabled. CI runs the same steps from `.github/workflows/ci.yml` on pull requests and on pushes to `main`.
 
-With both services configured and the app running, verify the actual integration:
+With both services configured and the app running, check the real integration. This makes billable vision calls and records the observed responses in a gitignored report:
 
 ```bash
 .venv/bin/python scripts/system_check.py --base http://localhost:8770
 ```
 
-This makes billable vision calls, creates an isolated connection-check workspace, and records the observed responses in a gitignored report. It does not require the model to change its decision to pass the connection check.
+To repeat the public browser check, which makes five vision calls:
 
-## Evidence and limits
+```bash
+node frontend/scripts/live-smoke.mjs
+```
 
-The included white-print images have deterministic overlays and exact changed-pixel masks. Their [manifest](fixtures/speclens/manifest.json) records provenance; `scripts/make_samples.py` regenerates them. They are synthetic test inputs, not production validation data.
+### Deploy
 
-A paired comparison is one observation from a stochastic model. An identical decoded image is marked as a reused correction image even if its metadata or filename changes. Bundled variants sharing a known source photo are also marked as reused. Unknown near-duplicate uploads and correlated variants still need manual exclusion from an independent evaluation. The [live integration check](docs/verification.md) confirms real Meta and Hindsight calls. Its first comparison rejected the marked part in both arms. A separate [four-case live ablation](docs/evidence/memory-ablation.json) scored 3/4 decisions correctly without memory and 4/4 with memory, with no false alarms on its two untouched controls. This exploratory result uses only two held-aside source photos and does not establish production accuracy.
+The live site runs on one AWS Lightsail server, with Docker Compose and Caddy. `./scripts/deploy-speclens.sh` archives the current source, builds it on the server, and checks its health. Runtime credentials stay in a private server file. [The deployment guide](docs/deployment.md) covers access, publishing, backups, and recovery.
 
-![One live memory ablation on synthetic cases](docs/screenshots/memory-ablation.png)
-
-Reproduce the small live probe with `.venv/bin/python scripts/evaluate_memory.py` while the configured app is running. It makes nine vision calls, creates its own workspace, excludes the teaching source photo, and records every paired response.
-
-The current workflow covers one part family with human review. Local mode serves one team; public demo visitors have separate workspaces. Corrections are immutable; use another inspection to add a further clarification. People remain responsible for disposition. See [the demo walkthrough](docs/demo.md), [submission materials](docs/submission/README.md), and [dependency and data notices](THIRD_PARTY.md).
+The public site allows 30 POST requests per browser per hour and 120 per IP per hour. Keep the same browser and cookies to revisit your history.
 
 ## Repository map
 
-| Path | Responsibility |
-|---|---|
+| Path | What it holds |
+| --- | --- |
 | `backend/app/workspace/` | SQLite records, Hindsight adapter, inspection service, validated routes |
 | `backend/app/inspect/` | Vision prompt, output validation, defect localization |
-| `backend/app/forge/` | Image compositing, labels, and severity utilities |
 | `backend/app/meta/` | Server-side model client, retries, cost ledger |
-| `frontend/src/workspace/` | One-page workspace: stage and point-cloud scan, inspection ticket, quality memory, comparison, history |
+| `backend/app/forge/` | Image compositing, labels, and severity utilities |
+| `backend/app/public.py` | Visitor cookie, request limits, and security headers |
+| `frontend/src/workspace/` | One-page workspace: stage and point cloud scan, inspection ticket, quality memory, comparison, history |
 | `fixtures/speclens/` | Synthetic white-print examples and exact masks |
-| `tests/`, `frontend/tests/` | Backend regression and browser acceptance checks |
+| `tests/`, `frontend/tests/` | Backend regression tests and browser acceptance tests |
+| `scripts/` | Setup, local run, checks, live checks, and deployment |
+| `docs/` | Architecture, guides, evidence, and submission materials |
+
+## Documentation
+
+- [Documentation index](docs/README.md): every guide in one list.
+- [Architecture](docs/ARCHITECTURE.md): how the parts fit together, the request flow, and the data model.
+- [Configuration](docs/CONFIGURATION.md): every environment variable, its default, and what reads it.
+- [User guide](docs/user-guide.md): each part of the page and what it does.
+- [API](docs/api/README.md): the workspace routes.
+- [Troubleshooting](docs/TROUBLESHOOTING.md): setup and deploy problems and their fixes.
+- [Threat model](docs/security/threat-model.md): what the public site protects and how.
+- [Test plan](docs/testing/test-plan.md): what each check covers.
+- [Setup](docs/setup.md) and [deployment](docs/deployment.md): running it locally and on the server.
+- [Verification record](docs/verification.md): observed results from live runs.
+- [Demo walkthrough](docs/demo.md) and [submission materials](docs/submission/README.md).
+
+## Known limits
+
+- The included white-print images are synthetic test inputs with deterministic overlays. Their [manifest](fixtures/speclens/manifest.json) records provenance. They are not production validation data.
+- A paired comparison is one observation from a stochastic model. It is not an accuracy benchmark. A [four-case live ablation](docs/evidence/memory-ablation.json) scored 3/4 decisions correctly without memory and 4/4 with memory, using only two held-aside source photos.
+- An identical decoded image is marked as a reused correction image, but unknown near-duplicates still need manual exclusion from an independent evaluation.
+- The current workflow covers one part family, with four fixed defect classes: hole, crack, cut, and print.
+- Corrections are immutable. Use another inspection to add a further clarification.
+- Local mode serves one team without sign-in. Public visitors are separated only by a browser cookie, so clearing cookies starts a new workspace.
+- People remain responsible for disposition.
+
+## License
+
+No license file is recorded in this repository. See the [third-party notices](THIRD_PARTY.md) for dependency and data licenses.

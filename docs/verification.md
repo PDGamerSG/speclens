@@ -2,7 +2,7 @@
 
 ## Automated application checks
 
-The current SpecLens release passed **73 Python tests**, **24 browser scenarios**, the production build, and clean lint. The same checks run in CI. The two new backend regressions verify that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
+The current SpecLens release passed **74 Python tests**, **24 browser scenarios**, the production build, and clean lint. The same checks run in CI. The two new backend regressions verify that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
 
 The [GitHub run for 4bd3a5e](https://github.com/PDGamerSG/speclens/actions/runs/42385604175) passed 63 Python tests and 14 browser scenarios before the final mobile-history regression was added. [Current main checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml) run the full suite. These tests simulate external vision and Hindsight calls.
 
