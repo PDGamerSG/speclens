@@ -26,6 +26,8 @@ test('a correction is retained, recalled on a new part, and compared against the
   await page.getByRole('button', { name: 'Run comparison', exact: true }).click()
   await expect(page.locator('.comparison-arm').first()).toContainText('Accept part')
   await expect(page.locator('.comparison-arm').last()).toContainText('Reject part')
+  await expect(page.locator('.comparison-arm').first()).toContainText('Differs from the selected label: reject')
+  await expect(page.locator('.comparison-arm').last()).toContainText('Matches the selected label: reject')
   await expect(page.locator('.comparison-disclosure')).toContainText('decisions differ')
   await page.getByRole('button', { name: 'Inspection history', exact: true }).click()
   await expect(page.locator('tbody tr')).toHaveCount(4)
