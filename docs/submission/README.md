@@ -31,8 +31,8 @@ The [final submission form](https://forms.gle/7eSw5Dz2oT2MhymX7) was read withou
 |---|---|
 | Email ID | Team’s submission contact email |
 | Phone Number | Submission contact phone number |
-| Team Name (as used during registration) | Exact registered team name; this can differ from the project name SpecLens |
-| Team Members (full names of all members) | Complete roster with each person’s full name |
+| Team Name (as used during registration) | Ready: Vulcan |
+| Team Members (full names of all members) | Ready: Aditya Arnav, Pallab Das |
 | GitHub Repository/Google Drive Link (containing required files for verification) | Ready: `https://github.com/PDGamerSG/speclens` |
 | Social Media Post on LinkedIn | Public LinkedIn post URL for each member, as required by the content guide |
 | Article link | Public article URL for each member |
