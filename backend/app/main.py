@@ -25,9 +25,11 @@ from .forge.spec import DEFAULT_SPEC, taxonomy
 from .inspect.inspector import inspect
 from .meta import ledger
 from .runs import manager
+from .workspace.routes import router as workspace_router
 
 app = FastAPI(title="SpecLens", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(workspace_router)
 
 
 class TaxonomyIn(BaseModel):

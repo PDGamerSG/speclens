@@ -1,0 +1,93 @@
+"""Small HTTP adapter for the documented Hindsight retain / recall / reflect API."""
+from __future__ import annotations
+
+import httpx
+
+from .store import Scope
+
+
+class MemoryUnavailable(RuntimeError):
+    pass
+
+
+class HindsightMemory:
+    def __init__(self, base_url: str, api_key: str = '', *, transport=None):
+        self.base_url = base_url.rstrip('/')
+        self.api_key = api_key
+        self.transport = transport
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.base_url)
+
+    def _post(self, scope: Scope, path: str, payload: dict, *, empty_if_missing=False) -> dict:
+        if not self.configured:
+            raise MemoryUnavailable('Connect Hindsight in the server settings to use memory, or switch memory off for a baseline inspection.')
+        headers = {'Authorization': f'Bearer {self.api_key}'} if self.api_key else {}
+        try:
+            with httpx.Client(timeout=httpx.Timeout(120, connect=8), headers=headers, transport=self.transport) as client:
+                response = client.post(f'{self.base_url}/v1/default/banks/{scope.bank_id}/{path}', json=payload)
+            if empty_if_missing and response.status_code == 404:
+                return {'results': []}
+            response.raise_for_status()
+            data = response.json()
+            if not isinstance(data, dict):
+                raise ValueError('Invalid Hindsight response.')
+            return data
+        except (httpx.HTTPError, ValueError) as e:
+            code = getattr(getattr(e, 'response', None), 'status_code', None)
+            if code in (401, 403):
+                message = 'Hindsight rejected the server credentials. Update HINDSIGHT_API_KEY and restart the server.'
+            elif code == 429:
+                message = 'Hindsight is busy. Your correction is safe; retry memory sync shortly.'
+            else:
+                message = 'Hindsight could not complete this request. Check the memory connection and retry.'
+            raise MemoryUnavailable(message) from None
+
+    def retain(self, scope: Scope, correction: dict) -> dict:
+        text = (f'Quality engineer correction for {scope.part_family} at {scope.factory}.\n'
+                f'Correction ID: {correction["id"]}. Source inspection: {correction["inspection_id"]}.\n'
+                f'The inspector originally decided {correction.get("original_verdict", "unknown")} and reasoned: '
+                f'{correction["original_rationale"]}\n'
+                f'The quality engineer {correction["reviewer"]} corrected the decision to '
+                f'{correction["verdict"]}, defect class {correction["defect_type"]}.\n'
+                f'Apply this visual quality standard to future matching parts: {correction["rule_text"]}\n'
+                'This is a clarification of the part specification, not permission to bypass other reject clauses.')
+        data = self._post(scope, 'memories', {'async': False, 'items': [{
+            'content': text, 'context': f'Visual quality standards for {scope.part_family} at {scope.factory}',
+            'document_id': correction['id'], 'update_mode': 'replace',
+            'metadata': {'correction_id': correction['id'], 'inspection_id': correction['inspection_id'],
+                         'scope_id': scope.id, 'reviewer': correction['reviewer']},
+            'tags': ['quality-standard', f'scope:{scope.id}'],
+        }]})
+        if data.get('success') is not True:
+            raise MemoryUnavailable('Hindsight did not confirm the correction. It remains pending and can be retried.')
+        return data
+
+    def recall(self, scope: Scope) -> list[dict]:
+        data = self._post(scope, 'memories/recall', {
+            'query': f'Which visual quality standards and human corrections must be applied when inspecting {scope.part_family}? Include ink markings, white print versus gloss, holes, cracks, cuts, and acceptable natural texture.',
+            'types': ['world', 'experience'], 'budget': 'mid', 'max_tokens': 1800,
+        }, empty_if_missing=True)
+        rows = data.get('results')
+        if not isinstance(rows, list):
+            raise MemoryUnavailable('Hindsight returned an unreadable recall result. Retry before inspecting with memory.')
+        result = []
+        for fact in rows:
+            if not isinstance(fact, dict) or not isinstance(fact.get('text'), str):
+                continue
+            metadata = fact.get('metadata') or {}
+            source = fact.get('document_id') or metadata.get('correction_id')
+            if source:
+                result.append({'id': str(fact.get('id', source)), 'text': fact['text'][:4000],
+                               'source_id': str(source), 'type': fact.get('type', 'world')})
+        return result[:12]
+
+    def reflect(self, scope: Scope) -> dict:
+        data = self._post(scope, 'reflect', {
+            'query': f'Summarize the specific visual quality standards learned from quality engineer corrections for {scope.part_family} at {scope.factory}. State only standards supported by these corrections. Cite the source correction IDs. If none exist, say no corrections have been learned yet. Never claim a measured accuracy improvement.',
+            'budget': 'low', 'max_tokens': 1000, 'include': {'facts': {}},
+        })
+        if not isinstance(data.get('text'), str):
+            raise MemoryUnavailable('Hindsight did not return a standards summary. Retry shortly.')
+        return {'summary': data['text'], 'facts': data.get('facts', []), 'bank_id': scope.bank_id}
