@@ -104,6 +104,7 @@ def run_operation(function, *args, **kwargs):
 def status():
     return {'ok': True, 'model_configured': bool(API_KEY), 'memory_configured': service.memory.configured,
             'model': 'muse-spark-1.3', 'spent_usd': ledger.spent(), 'budget_usd': BUDGET_USD,
+            'cache': ledger.cache_stats(),
             'default_factory': DEFAULT_FACTORY, 'default_part': DEFAULT_PART, 'default_spec': DEFAULT_SPEC}
 
 
