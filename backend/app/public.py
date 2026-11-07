@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import os
 import re
 import secrets
@@ -28,6 +29,21 @@ _tokens = re.compile(r'^[a-f0-9]{64}$')
 
 def owner(request: Request) -> str:
     return getattr(request.state, 'workspace_owner', '')
+
+
+def client_address(request: Request) -> str:
+    """The address the hourly limit counts. Anyone can send x-real-ip, so only the trusted proxy may name a visitor."""
+    peer = request.client.host if request.client else 'unknown'
+    expected = os.environ.get('SPECLENS_PROXY_SECRET', '')
+    supplied = request.headers.get('x-speclens-proxy-secret', '')
+    if not expected or not secrets.compare_digest(supplied.encode(), expected.encode()):
+        return peer
+    try:
+        address = ipaddress.ip_address(request.headers.get('x-real-ip', '').strip())
+    except ValueError:
+        return peer
+    # One IPv6 customer usually holds a whole /64, so a single address would be trivial to rotate.
+    return str(ipaddress.ip_network(f'{address}/64', strict=False)) if address.version == 6 else str(address)
 
 
 def allow_call(visitor: str, address: str) -> bool:
@@ -84,7 +100,7 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
                     if value.strip()
                 }):
             response = JSONResponse({'detail': 'Open this workspace directly to make changes.'}, status_code=403)
-        elif request.method == 'POST' and not allow_call(visitor, request.client.host if request.client else 'unknown'):
+        elif request.method == 'POST' and not allow_call(visitor, client_address(request)):
             response = JSONResponse({'detail': 'This public workspace has reached its hourly request limit. Please try again later.'},
                                     status_code=429, headers={'Retry-After': str(WINDOW)})
         elif request.headers.get('content-length', '').isdigit() and int(request.headers['content-length']) > MAX_BODY:

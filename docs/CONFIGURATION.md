@@ -5,11 +5,11 @@ Every setting SpecLens reads, its default, and the file that reads it. Copy `.en
 ## How settings are loaded
 
 - **Server:** `backend/app/config.py:10` calls `load_dotenv` on the `.env` file at the repository root. Values already in the environment win over `.env`, so a shell export or a Compose `environment:` entry takes priority (python-dotenv's default is `override=False`).
-- **When values apply:** the server reads them once at startup, into module-level names (`backend/app/config.py:12-18`, `backend/app/public.py:18`, `backend/app/workspace/routes.py:28-32`). Restart the server after any change.
+- **When values apply:** the server reads them once at startup, into module-level names (`backend/app/config.py:12-18`, `backend/app/public.py:19`, `backend/app/workspace/routes.py:28-32`). Restart the server after any change.
 - **Load order:** `backend/app/public.py` and `backend/app/workspace/routes.py` call `os.environ` directly. They see `.env` values because `backend/app/main.py:19` loads `config.py` first.
 - **Docker:** Compose passes `.env` to the container with `env_file` (`compose.yaml:6`). The file is not copied into the image (`.dockerignore:2`).
 - **Browser:** no setting reaches the browser. No file in `frontend/src` reads `import.meta.env`, and `VITE_API_TARGET` is used only by the Vite dev proxy on your machine (`frontend/vite.config.ts:7`).
-- **Flags:** `SPECLENS_PUBLIC` and `DEMO_MODE` turn on only when the value is exactly `1`. `true` or `yes` leave them off (`backend/app/public.py:18`, `backend/app/config.py:14`).
+- **Flags:** `SPECLENS_PUBLIC` and `DEMO_MODE` turn on only when the value is exactly `1`. `true` or `yes` leave them off (`backend/app/public.py:19`, `backend/app/config.py:14`).
 
 Sources: `backend/app/config.py`, `backend/app/public.py`, `backend/app/workspace/routes.py`, `compose.yaml`, `frontend/vite.config.ts`.
 
@@ -23,9 +23,10 @@ These are the settings the running app reads. "Code default" applies when the va
 | `MODEL_API_BASE_URL` | `https://api.meta.ai/v1` | Same | `backend/app/config.py:12` | Base URL for the Model API clients (`backend/app/meta/client.py:24-25`, `backend/app/meta/client.py:114`) |
 | `BUDGET_USD` | `100` | `5` | `backend/app/config.py:16` | Stops new Meta calls once the ledger total passes this amount, in US dollars. It does not limit Hindsight costs. Must parse as a number, or the server fails at startup |
 | `DEMO_MODE` | `0` | `0` | `backend/app/config.py:14` | Replays recorded data on the earlier `/api/*` routes (`backend/app/main.py:67-68`, `backend/app/main.py:170-174`, `backend/app/runs.py:132-133`). It is also on whenever `MODEL_API_KEY` is empty. The workspace routes ignore it: they never replay a result |
-| `SPECLENS_PUBLIC` | Falls back to `CHIEF_SKILL_PUBLIC`, then `0` | `0` | `backend/app/public.py:18` | `1` turns on public mode: visitor cookies, request limits, security headers, and 404 for the earlier routes. Also clears the CORS allow list (`backend/app/main.py:33`) |
-| `CHIEF_SKILL_PUBLIC` | `0` | Not listed | `backend/app/public.py:18` | Legacy name. Read only when `SPECLENS_PUBLIC` is not set at all, so the `0` in `.env.example` overrides it |
-| `SPECLENS_ALLOWED_ORIGINS` | Empty | Empty | `backend/app/public.py:83` | Comma-separated frontend origins that may send writes in public mode. Each must match exactly, including `https://`. The live server lists the custom domain and the Vercel alias. |
+| `SPECLENS_PUBLIC` | Falls back to `CHIEF_SKILL_PUBLIC`, then `0` | `0` | `backend/app/public.py:19` | `1` turns on public mode: visitor cookies, request limits, security headers, and 404 for the earlier routes. Also clears the CORS allow list (`backend/app/main.py:33`) |
+| `CHIEF_SKILL_PUBLIC` | `0` | Not listed | `backend/app/public.py:19` | Legacy name. Read only when `SPECLENS_PUBLIC` is not set at all, so the `0` in `.env.example` overrides it |
+| `SPECLENS_ALLOWED_ORIGINS` | Empty | Empty | `backend/app/public.py:99` | Comma-separated frontend origins that may send writes in public mode. Each must match exactly, including `https://`. The live server lists the custom domain and the Vercel alias. |
+| `SPECLENS_PROXY_SECRET` | Empty | Empty | `backend/app/public.py:34-46` | Secret shared with Vercel, set with `scripts/set-proxy-secret.sh`. When it matches, the hourly limit counts the visitor address in `x-real-ip`. When it is empty, that header is ignored. |
 | `HINDSIGHT_BASE_URL` | Empty | `https://api.hindsight.vectorize.io` | `backend/app/workspace/routes.py:28` | Hindsight endpoint. If it is empty and `HINDSIGHT_API_KEY` is set, the server uses `https://api.hindsight.vectorize.io` (`backend/app/workspace/routes.py:29-30`) |
 | `HINDSIGHT_API_KEY` | Empty | Empty | `backend/app/workspace/routes.py:29`, `backend/app/workspace/routes.py:32` | Sent as a bearer token when set (`backend/app/workspace/memory.py:26`). Hindsight Cloud counts as configured only with a key. A self-hosted URL counts as configured without one (`backend/app/workspace/memory.py:19-21`) |
 | `SPECLENS_VAR` | `var` at the repository root | Not listed | `backend/app/config.py:18` | Directory for all runtime data. The Docker image and `compose.yaml` set it to `/app/var` (`Dockerfile:9`, `compose.yaml:8`) |
@@ -50,7 +51,7 @@ The live check scripts write under `var/` at the repository root, whatever `SPEC
 
 | Variable | Default | Set in | Read by | What it does |
 | --- | --- | --- | --- | --- |
-| `FORWARDED_ALLOW_IPS` | `127.0.0.1,::1` (Uvicorn's own default) | `compose.public.yaml:7`, as `*` | Uvicorn, not the app code | Lets Uvicorn trust forwarded headers from Caddy. The app needs them for the real client address, which sets the IP limit, and for the `https` scheme, which sets the `Secure` cookie flag (`backend/app/public.py:87`, `backend/app/public.py:98`). Keep the host port on loopback when this is `*` |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1,::1` (Uvicorn's own default) | `compose.public.yaml:7`, as `*` | Uvicorn, not the app code | Lets Uvicorn trust forwarded headers from Caddy. The app needs them for the real client address, which sets the IP limit, and for the `https` scheme, which sets the `Secure` cookie flag (`backend/app/public.py:103`, `backend/app/public.py:114`). Keep the host port on loopback when this is `*` |
 | `PYTHONDONTWRITEBYTECODE`, `PYTHONUNBUFFERED` | Not set outside the image | `Dockerfile:9`, as `1` | Python | Standard Python options: no `.pyc` files, and logs appear at once |
 
 The container port is fixed. Compose publishes `127.0.0.1:8770:8770` and the image starts Uvicorn on port 8770 (`compose.yaml:5`, `Dockerfile:22`), so `SPECLENS_PORT` has no effect there.
@@ -101,10 +102,10 @@ These are constants in the code. Change the file to change them.
 
 | Value | Setting | Defined in |
 | --- | --- | --- |
-| Requests per browser | 30 POST requests per hour | `backend/app/public.py:19-20` |
-| Requests per IP address | 120 POST requests per hour, four times the browser limit | `backend/app/public.py:41` |
-| Visitor cookie | `speclens_workspace`, 30 days | `backend/app/public.py:21`, `backend/app/public.py:97` |
-| Public request body | 9 MiB | `backend/app/public.py:23` |
+| Requests per browser | 30 POST requests per hour | `backend/app/public.py:20-21` |
+| Requests per IP address | 120 POST requests per hour, four times the browser limit | `backend/app/public.py:57` |
+| Visitor cookie | `speclens_workspace`, 30 days | `backend/app/public.py:22`, `backend/app/public.py:113` |
+| Public request body | 9 MiB | `backend/app/public.py:24` |
 | Photo upload | 8 MiB, 25 megapixels, JPG, PNG or WebP | `backend/app/workspace/routes.py:27`, `backend/app/workspace/routes.py:75-80` |
 | Text limits | Factory and part family 100 characters, specification 12,000 | `backend/app/workspace/routes.py:51` |
 | Correction limits | Rule 10 to 2,000 characters, reviewer 1 to 80 | `backend/app/workspace/routes.py:146-147` |
