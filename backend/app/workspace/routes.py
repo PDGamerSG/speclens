@@ -138,9 +138,11 @@ class CorrectionIn(BaseModel):
     rule_text: str = Field(min_length=10, max_length=2000)
     reviewer: str = Field(default='Quality engineer', min_length=1, max_length=80)
 
-    @field_validator('rule_text', 'reviewer')
+    @field_validator('rule_text', 'reviewer', mode='before')
     @classmethod
     def strip_text(cls, value):
+        if not isinstance(value, str):
+            return value
         if not value.strip():
             raise ValueError('Enter a quality standard and reviewer name.')
         return value.strip()

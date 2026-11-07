@@ -62,6 +62,13 @@ def test_unknown_sample_and_blank_rule_are_rejected(tmp_path, monkeypatch):
     assert r.status_code == 422
 
 
+def test_padded_short_corrections_are_rejected_before_lookup(tmp_path, monkeypatch):
+    client, _ = setup_client(tmp_path, monkeypatch)
+    r = client.post('/api/workspace/corrections', json={'inspection_id': 'x', 'verdict': 'good',
+        'defect_type': 'good', 'rule_text': '          x          ', 'reviewer': 'QA'})
+    assert r.status_code == 422
+
+
 def test_api_does_not_label_an_inspection_live_without_a_model_key(tmp_path, monkeypatch):
     client, routes = setup_client(tmp_path, monkeypatch)
     monkeypatch.setattr(routes, 'API_KEY', '')
