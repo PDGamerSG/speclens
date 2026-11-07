@@ -1,0 +1,38 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Datasets and generated data (MVTec AD is CC BY-NC-SA: never commit it)
+data/
+eval/data/
+mvtec*/
+*.tar.xz
+cache/
+runs/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime data (runs, uploads, ledger) and frontend build output
+var/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-static/
+
+# Vercel local link
+.vercel/

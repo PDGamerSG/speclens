@@ -1,0 +1,18 @@
+{
+ "verdict": "defect",
+ "defect": true,
+ "type": "crack",
+ "confidence": 0.96,
+ "rationale": "vertical shell fracture with split open exposing kernel, matches crack reject class",
+ "box_px": [
+  384,
+  460,
+  445,
+  688
+ ],
+ "ms": 5249,
+ "cost_usd": 0.0057547499999999994,
+ "image_url": "/files/fixtures/demo_inspect/image.jpg",
+ "overlay_url": "/files/fixtures/demo_inspect/overlay.jpg",
+ "mask_url": null
+}

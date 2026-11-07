@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* graphite instrument housing */
+  --color-well: #121418; /* image wells, darker than panels so photos sit "in" the housing */
+  --color-page: #1b1e23;
+  --color-panel: #21252b;
+  --color-raised: #2a2f36;
+  --color-rule: #343a43;
+  --color-rule-2: #4b535e;
+  --color-fg: #e8ebee;
+  --color-fg-2: #aeb6bf;
+  --color-fg-3: #808a95;
+
+  /* signals */
+  --color-signal: #ffa51f; /* defects */
+  --color-signal-ink: #1d1405;
+  --color-pass: #3ccf7a;
+  --color-miss: #ff5a4e;
+  --color-part: #67c3ff;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-page);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-page);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    font-stretch: 100%;
+    overflow-x: clip;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-signal) 40%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  img {
+    image-rendering: auto;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule-2) transparent;
+  }
+}
+
+@layer components {
+  /* numbers are read like instrument readouts */
+  .num {
+    font-family: var(--font-mono);
+    font-stretch: 82%;
+    font-variant-numeric: tabular-nums slashed-zero;
+    letter-spacing: -0.02em;
+    font-size: 0.9em;
+  }
+
+  /* viewfinder corner brackets */
+  .brackets {
+    --bc: rgb(255 255 255 / 0.45);
+    --bl: 12px;
+    position: relative;
+  }
+  .brackets::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(var(--bc), var(--bc)) top left / var(--bl) 1.5px no-repeat,
+      linear-gradient(var(--bc), var(--bc)) top left / 1.5px var(--bl) no-repeat,
+      linear-gradient(var(--bc), var(--bc)) top right / var(--bl) 1.5px no-repeat,
+      linear-gradient(var(--bc), var(--bc)) top right / 1.5px var(--bl) no-repeat,
+      linear-gradient(var(--bc), var(--bc)) bottom left / var(--bl) 1.5px no-repeat,
+      linear-gradient(var(--bc), var(--bc)) bottom left / 1.5px var(--bl) no-repeat,
+      linear-gradient(var(--bc), var(--bc)) bottom right / var(--bl) 1.5px no-repeat,
+      linear-gradient(var(--bc), var(--bc)) bottom right / 1.5px var(--bl) no-repeat;
+  }
+
+  /* tints a white-on-black mask PNG with a colour (luminance mask) */
+  .mask-tint {
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    mask-mode: luminance;
+  }
+
+  .scanline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 28%;
+    top: -28%;
+    background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--color-signal) 22%, transparent) 85%, var(--color-signal) 100%);
+    animation: scan 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes scan {
+    to {
+      top: 100%;
+    }
+  }
+  .pulse-dot {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.25;
+    }
+  }
+  .arrive {
+    animation: arrive 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  @keyframes arrive {
+    from {
+      opacity: 0;
+      filter: brightness(2.2) saturate(0.2);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .scanline {
+    display: none;
+  }
+}
