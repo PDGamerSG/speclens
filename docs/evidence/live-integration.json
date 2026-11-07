@@ -1,0 +1,64 @@
+{
+  "checked_at": "2026-11-07T12:42:47.845502+00:00",
+  "passed": true,
+  "services": {
+    "vision": "Meta muse-spark-1.3",
+    "memory": "Hindsight Cloud"
+  },
+  "correction": {
+    "id": "correction-ca68285087294c028c2cb23158bdf9d3",
+    "sync_status": "synced",
+    "rule_text": "Sharp white printed characters on the shell are ink. Reject them as print defects; broad, smooth natural highlights alone remain acceptable."
+  },
+  "baseline": {
+    "id": "insp-1c1b303fffda41df",
+    "verdict": "defect",
+    "rationale": "Faint light-colored printed characters 'A7' visible on center of shell, constituting Print per 4.4, distinct from natural stripes and gloss.",
+    "memory_status": "disabled",
+    "image_sha256": "f7d8596da1b9a66987127a87308c04e1d2a3df61439655bf22c28a446002d110",
+    "ms": 6490,
+    "cost_usd": 0.0041005
+  },
+  "next_inspection": {
+    "id": "insp-ccf2b57a670c4710",
+    "verdict": "defect",
+    "rationale": "Sharp white printed characters 'C4' visible on center of shell are ink marking, constituting print defect per 4.4. Influenced by standard correction-ca68285087294c028c2cb23158bdf9d3 distinguishing sharp white printed characters as ink reject vs natural highlights.",
+    "memory_status": "recalled",
+    "image_sha256": "6dad0b51e8881ee29501f513542d087e80c709a65501fb833d9b9caab2bbee1f",
+    "ms": 6487,
+    "cost_usd": 0.004207850000000001,
+    "memories": [
+      {
+        "id": "fee2fe84-c461-40dd-aea6-3605092af43b",
+        "text": "Visual quality standard established: Sharp white printed characters on hazelnut shells are classified as print defects and must be rejected, while broad, smooth natural highlights remain acceptable. | When: 2026-11-07 | Clarification of part specification for future inspections.",
+        "source_id": "correction-ca68285087294c028c2cb23158bdf9d3",
+        "type": "world",
+        "reviewer": "Connection check",
+        "rule_text": "Sharp white printed characters on the shell are ink. Reject them as print defects; broad, smooth natural highlights alone remain acceptable.",
+        "source_inspection_id": "insp-1c1b303fffda41df"
+      },
+      {
+        "id": "2b16439c-5086-4712-8501-0eefc338cfec",
+        "text": "Quality engineer Connection check corrected the decision for Whole hazelnut inspection insp-1c1b303fffda41df to defect, class print. | When: 2026-11-07 | Where: SpecLens connection check 605e1fb696 | Involving: Connection check (quality engineer) | Faint light-colored printed characters 'A7' on the shell were identified as print defects.",
+        "source_id": "correction-ca68285087294c028c2cb23158bdf9d3",
+        "type": "world",
+        "reviewer": "Connection check",
+        "rule_text": "Sharp white printed characters on the shell are ink. Reject them as print defects; broad, smooth natural highlights alone remain acceptable.",
+        "source_inspection_id": "insp-1c1b303fffda41df"
+      }
+    ]
+  },
+  "comparison": {
+    "id": "compare-3fbd0e129d964299",
+    "changed": false,
+    "held_out": true,
+    "note": "One paired inspection. Model outputs can vary; this is not an accuracy benchmark."
+  },
+  "comparison_verdicts": {
+    "without_memory": "defect",
+    "with_memory": "defect"
+  },
+  "reflection": "Based on the quality engineer corrections identified for Whole hazelnut at the SpecLens connection check, the following visual quality standards have been established:\n\n### Visual Quality Standards for Whole Hazelnut\n*   **Print Defects:** Any printed characters found on hazelnut shells, including both sharp white characters and faint light-colored text (such as the 'A7' identification noted in the correction), are classified as print defects and must be rejected.\n*   **Acceptable Features:** Broad, smooth natural highlights on the shell are considered acceptable and should not be confused with print defects.\n\nThese standards were clarified following the review of inspection insp-1c1b303fffda41df under correction ID: **correction-ca68285087294c028c2cb23158bdf9d3**.",
+  "vision_cost_usd": 0.014255100000000001,
+  "limits": "Four vision calls on synthetic examples. Both comparison verdicts were reject. This verifies live integration, not a measured learning improvement. Hindsight billing is separate."
+}

@@ -101,7 +101,9 @@ The current automated acceptance scenario demonstrates a narrower contract with 
 
 Three decisions shaped the implementation. Preserve the model’s mistake instead of overwriting it. Give memory a context boundary that follows the quality specification. Treat missing recall as a visible failure.
 
-The remaining work is empirical: connect the live services, record what the model actually does, and evaluate corrections against independent parts. There is no general learning-improvement claim in the current evidence.
+I ran the complete flow against Meta vision and Hindsight Cloud on November 7. The baseline already rejected the white A7 marking. After retaining the standard, the next inspection rejected the C4 marking and explicitly cited the source correction. Reflection returned that standard as well.
+
+The paired comparison rejected the second marking with memory both off and on. That is a useful limit on the claim: live retention, retrieval, and cited application worked, but this check did not demonstrate an accuracy gain. The next empirical task is evaluating corrections against independent parts and false-positive controls.
 
 [Agent memory](https://vectorize.io/what-is-agent-memory) is useful here because the quality judgment belongs to a continuing workflow. A reviewer’s explanation should be available when the next relevant part arrives, with enough context to inspect why it was used.
 
