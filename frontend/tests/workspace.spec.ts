@@ -62,6 +62,8 @@ test('mobile navigation, part selection and settings work without horizontal ove
   await page.getByRole('button', { name: 'Quality memory', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Quality memory', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Workspace settings', exact: true }).first().click()
+  await expect(page.getByText('Server vision spend', { exact: true })).toBeVisible()
+  await expect(page.getByText('Hindsight usage is billed separately.', { exact: false })).toBeVisible()
   await page.getByLabel('Factory or workspace').fill('Mobile factory')
   await page.getByRole('button', { name: 'Save workspace' }).click()
   await expect(page.locator('.breadcrumb')).toContainText('Mobile factory')
