@@ -1,4 +1,4 @@
-# SpecLens demo walkthrough
+# Chief Skill demo walkthrough
 
 Use the normal app at http://localhost:8770 with real Meta and Hindsight credentials. Do not record the simulated browser-test server as live model evidence.
 
@@ -10,7 +10,7 @@ The samples are generated images. The white markings are controlled ink overlays
 
 ## Three-minute recording
 
-**0:00–0:20 — The problem.** Show the inspection desk. Explain: “A visual inspector can read a specification and still misinterpret a faint mark. SpecLens lets a quality engineer turn a correction into a standard the next inspection can recall.”
+**0:00–0:20 — The problem.** Show the inspection desk. Explain: “A visual inspector can read a specification and still misinterpret a faint mark. Chief Skill lets a quality engineer turn a correction into a standard the next inspection can recall.”
 
 **0:20–0:50 — Establish a decision.** Select White marking, turn quality memory off, and inspect. Read the actual verdict and rationale. If the model catches the ink correctly, say so. A demonstration must not force or invent a miss.
 
@@ -31,13 +31,13 @@ Inspect without memory → enter a clear correction → wait for Hindsight sync 
 ## Video titles
 
 - Teaching a Visual Inspector Your Standards with Hindsight
-- SpecLens: A Correction the Next Inspection Can Recall
+- Chief Skill: A Correction the Next Inspection Can Recall
 - From Quality Review to Cited Agent Memory
 - Why Inspection Corrections Need Their Own Memory
 - One Part, Two Inspections: Testing Quality Memory
 
 ## Recorded live example
 
-A completed live evaluation is available locally under workspace **SpecLens memory evaluation 10c9bf70a6**, part family **Whole hazelnut**, with the default specification. Open Memory comparison and select **source-03-defect.png** from its history. These are saved real results: the baseline accepted the faint B2 marking; the memory-enabled arm rejected it and cited the correction. The history also includes two untouched controls accepted in both arms.
+A completed live evaluation is available locally in the workspace identified by `scope.factory` in the [recorded four-case report](evidence/memory-ablation.json), part family **Whole hazelnut**, with the default specification. Open Memory comparison and select **source-03-defect.png** from its history. These are saved real results: the baseline accepted the faint B2 marking; the memory-enabled arm rejected it and cited the correction. The history also includes two untouched controls accepted in both arms.
 
 For a fresh run, use `.venv/bin/python scripts/evaluate_memory.py`. It writes a new isolated workspace and report. Do not promise the same outcome on a rerun. The raw published record and screenshots document one pass, not a production benchmark.

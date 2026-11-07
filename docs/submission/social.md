@@ -2,7 +2,7 @@
 
 An inspection correction should survive the next image.
 
-I built SpecLens for the gap between a written specification and a quality engineer’s judgment.
+I built Chief Skill for the gap between a written specification and a quality engineer’s judgment.
 
 A reviewer saves the original decision, its reasoning, and a clear visual standard. Hindsight retains that correction and recalls relevant standards for later parts, with source IDs attached.
 

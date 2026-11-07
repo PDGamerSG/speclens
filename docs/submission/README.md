@@ -2,11 +2,11 @@
 
 Repository: https://github.com/PDGamerSG/speclens
 
-**Project name:** SpecLens
+**Project name:** Chief Skill
 
 **One-line description:** Visual quality inspection that learns a factory’s standards from cited human corrections using Hindsight.
 
-**Project summary:** SpecLens gives quality engineers an inspection desk for part photos. A vision model checks the base specification, explains its decision, and identifies a defect region. When an engineer corrects that decision, SpecLens preserves the original reasoning and retains the human standard in Hindsight. The next matching inspection recalls relevant corrections with their source IDs. Memory is separated by factory, part family, and specification revision. A paired comparison fixes the image, model, and specification while showing the observed memory-off and memory-on decisions.
+**Project summary:** Chief Skill gives quality engineers an inspection desk for part photos. A vision model checks the base specification, explains its decision, and identifies a defect region. When an engineer corrects that decision, Chief Skill preserves the original reasoning and retains the human standard in Hindsight. The next matching inspection recalls relevant corrections with their source IDs. Memory is separated by factory, part family, and specification revision. A paired comparison fixes the image, model, and specification while showing the observed memory-off and memory-on decisions.
 
 **Stack:** React, TypeScript, Vite, Tailwind CSS, FastAPI, SQLite, Meta vision, Hindsight HTTP retain/recall/reflect.
 

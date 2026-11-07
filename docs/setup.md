@@ -1,4 +1,4 @@
-# Running and deploying SpecLens
+# Running and deploying Chief Skill
 
 ## Local installation
 

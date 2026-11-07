@@ -1,6 +1,6 @@
-# SpecLens web interface
+# Chief Skill web interface
 
-React, TypeScript, Vite, Tailwind CSS, and Lucide. The browser sends requests only to the SpecLens backend. Vision and Hindsight keys remain on the server.
+React, TypeScript, Vite, Tailwind CSS, and Lucide. The browser sends requests only to the Chief Skill backend. Vision and Hindsight keys remain on the server.
 
 ```bash
 npm ci

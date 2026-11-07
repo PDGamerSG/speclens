@@ -1,4 +1,4 @@
-"""Validated API for the SpecLens inspection workspace."""
+"""Validated API for the Chief Skill inspection workspace."""
 from __future__ import annotations
 
 import asyncio
@@ -20,7 +20,7 @@ from .memory import HindsightMemory, MemoryUnavailable
 from .service import WorkspaceService
 from .store import Scope, Store
 
-router = APIRouter(prefix='/api/workspace', tags=['SpecLens'])
+router = APIRouter(prefix='/api/workspace', tags=['Chief Skill'])
 DEFAULT_FACTORY = 'Bangalore Foods'
 DEFAULT_PART = 'Whole hazelnut'
 MAX_UPLOAD = 8 * 1024 * 1024
