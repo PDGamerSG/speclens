@@ -74,6 +74,10 @@ def test_the_system_message_stays_fixed_for_one_specification(monkeypatch):
     assert 'Reject ink.' in calls[0]['messages'][0]['content']
 
 
+def test_a_baseline_rationale_is_told_not_to_discuss_absent_memory():
+    assert 'If no such block follows the photo, never mention memory' in inspector.system_prompt('Reject ink.')
+
+
 def test_token_usage_reaches_the_inspection_result(monkeypatch):
     capture(monkeypatch)
     result = inspector.inspect(part(), 'Reject ink.', ['print'], with_mask=False)
