@@ -76,15 +76,12 @@ Server credentials stay on the backend. The browser uses relative `/api/workspac
 ## Verification
 
 ```bash
-.venv/bin/python -m pytest -q
-cd frontend
-npm run build
-npm run lint
-npx playwright install chromium
-npm run test:e2e
+# First time only, install the browser used by acceptance checks:
+(cd frontend && npx playwright install chromium)
+./scripts/check.sh
 ```
 
-The Python suite covers persistence, scope separation, HTTP validation, retry behavior, prompt construction, image reuse, and image-label integrity. Browser scenarios cover the full correction loop, mobile layout, interrupted sync, workspace isolation during requests, and historical comparisons. External vision and Hindsight calls are simulated in these automated tests.
+The single check command runs the same build, lint, Python, and browser checks as CI with live credentials disabled. The Python suite covers persistence, scope separation, HTTP validation, retry behavior, prompt construction, image reuse, and image-label integrity. Browser scenarios cover the full correction loop, mobile layout, interrupted sync, workspace isolation during requests, and historical comparisons. External vision and Hindsight calls are simulated in these automated tests.
 
 With both services configured and the app running, verify the actual integration:
 
