@@ -60,3 +60,17 @@ test('public demo has populated sections, honest sample labels and complete down
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
+
+test('the demo opens in one click and the password can be revealed before signing in', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Factory workspace', exact: true }).click()
+  const password = page.getByLabel('Password', { exact: true })
+  await password.fill('not-shown')
+  await expect(password).toHaveAttribute('type', 'password')
+  await page.getByRole('button', { name: 'Show password', exact: true }).click()
+  await expect(password).toHaveAttribute('type', 'text')
+  await page.getByRole('button', { name: 'Hide password', exact: true }).click()
+  await expect(password).toHaveAttribute('type', 'password')
+  await page.getByRole('button', { name: 'Open the demo workspace', exact: true }).click()
+  await expect(page.getByLabel('Demo workspace notice')).toBeVisible()
+})

@@ -150,24 +150,45 @@
 .pilot-auth-layout { max-width: 1120px; display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 80px; margin: 0 auto; min-height: calc(100dvh - 74px); padding: 55px 30px; }
 .pilot-auth-intro { display: grid; justify-items: start; gap: 25px; }
 .pilot-auth-intro > svg { color: var(--reject); }
-.pilot-auth h1 { font-size: clamp(42px, 5.1vw, 68px); max-width: 10ch; font-weight: 780; }
+.pilot-auth h1 { font-size: clamp(42px, 5.1vw, 68px); max-width: 10ch; font-weight: 780; text-wrap: balance; }
 .pilot-auth-intro > p { font-size: 17px; color: var(--ink-soft); max-width: 36ch; }
-.pilot-auth-sequence { display: grid; gap: 12px; margin-top: 8px; }
-.pilot-auth-sequence span { font-size: 13px; padding: 0 0 12px 20px; border-left: 2px solid var(--rule); }
-.pilot-auth-sequence span:last-child { border-color: var(--reject); }
+/* The three areas read as one trail from spec to decision; the last stop is the human disposition. */
+.pilot-auth-sequence { display: grid; margin: 6px 0 0; padding: 0; list-style: none; }
+.pilot-auth-sequence li { position: relative; padding: 0 0 20px 28px; font-size: 14px; font-weight: 600; line-height: 1.35; }
+.pilot-auth-sequence li::before { content: ''; position: absolute; left: 0; top: 4px; width: 11px; height: 11px; border: 2px solid var(--ink-soft); border-radius: 50%; background: var(--frost); }
+.pilot-auth-sequence li::after { content: ''; position: absolute; left: 5px; top: 19px; bottom: 3px; width: 1.5px; background: var(--rule); }
+.pilot-auth-sequence li:last-child { padding-bottom: 0; }
+.pilot-auth-sequence li:last-child::before { border-color: var(--reject); background: var(--reject); }
+.pilot-auth-sequence li:last-child::after { display: none; }
 .pilot-auth-intro .pilot-auth-note { color: var(--reject); font-size: 21px; max-width: 28ch; }
-.pilot-auth-card { display: grid; gap: 23px; padding: 32px; border: 1px solid var(--rule); border-radius: 16px; background: var(--tag); }
-.pilot-auth-tabs { display: flex; gap: 5px; flex-wrap: wrap; border-bottom: 1px solid var(--rule); padding-bottom: 14px; }
-.pilot-auth-tabs button { font-size: 11px; font-weight: 600; min-height: 34px; padding: 5px 9px; border: 1px solid transparent; border-radius: 7px; background: transparent; }
-.pilot-auth-tabs button.selected { background: #fff; border-color: var(--rule); color: var(--reject); }
+.pilot-auth-card { display: grid; gap: 22px; padding: 32px; border: 1px solid var(--rule); border-radius: 18px; background: var(--tag); box-shadow: 0 1px 2px rgb(23 32 43 / .05), 0 18px 40px -22px rgb(23 32 43 / .32); }
+.pilot-auth-card h2 { font-size: 24px; }
+.pilot-auth-tabs { display: flex; gap: 3px; padding: 3px; border-radius: 12px; background: var(--frost); }
+.pilot-auth-tabs button { flex: 1 1 auto; min-height: 38px; padding: 6px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 600; line-height: 1.2; transition: background-color .15s, color .15s, box-shadow .15s; }
+.pilot-auth-tabs button:hover:not(:disabled):not(.selected) { color: var(--ink); background: rgb(255 255 255 / .5); }
+.pilot-auth-tabs button.selected { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgb(23 32 43 / .12), 0 2px 6px -2px rgb(23 32 43 / .12); }
 .pilot-auth .alert { font-size: 12px; }
-.pilot-demo-login { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.pilot-auth input { caret-color: var(--reject); }
+.pilot-auth input:focus { border-color: var(--ink-soft); }
+.pilot-auth .pilot-form .button.primary { width: 100%; min-height: 48px; font-size: 15px; }
+.pilot-password { position: relative; }
+.pilot-password input { padding-right: 48px; }
+.pilot-password .icon-button { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); color: var(--ink-soft); }
+.pilot-password .icon-button:hover { color: var(--ink); }
+.pilot-demo-login { display: grid; gap: 12px; padding-top: 22px; border-top: 1px solid var(--rule); }
+.pilot-demo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pilot-demo-head span { padding: 2px 9px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-soft); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .pilot-demo-login h3 { margin: 0; font-size: 15px; font-weight: 700; }
-.pilot-demo-login dl { display: grid; gap: 8px; margin: 0; }
+.pilot-demo-login > p { font-size: 13px; color: var(--ink-soft); }
+.pilot-demo-login .button { min-height: 44px; }
+.pilot-demo-login dl { display: grid; gap: 6px; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--frost); }
 .pilot-demo-login dl > div { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: baseline; }
 .pilot-demo-login dt { color: var(--ink-soft); font-size: 12px; }
 .pilot-demo-login dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
-.pilot-demo-login code { user-select: text; }
+.pilot-demo-login code { user-select: all; }
+.pilot-auth-privacy { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--ink-soft); }
+.pilot-auth-privacy svg { flex: none; margin-top: 2px; }
+.pilot-auth ::selection { background: var(--marker); color: var(--ink); }
 .pilot-demo-notice { display: grid; gap: 8px; margin-bottom: 24px; }
 .pilot-demo-notice p { margin: 0; }
 .pilot-demo-notice .pilot-demo-counts { color: var(--ink); font-size: 13px; font-weight: 600; }
@@ -226,13 +247,15 @@
   .pilot-auth-header { padding: 12px 18px; height: 65px; }
   .pilot-auth-header .brand { font-size: 17px; }
   .pilot-auth-header .text-link { font-size: 11px; }
-  .pilot-auth-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; padding: 35px 18px; gap: 28px; max-width: 500px; }
+  .pilot-auth-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; padding: 32px 16px 40px; gap: 26px; max-width: 500px; }
   .pilot-auth-intro { gap: 15px; }
   .pilot-auth-intro > svg { display: none; }
   .pilot-auth h1 { font-size: 41px; max-width: 13ch; }
   .pilot-auth-intro > p { font-size: 14px; }
   .pilot-auth-sequence, .pilot-auth-intro .pilot-auth-note { display: none; }
-  .pilot-auth-card { padding: 23px; }
+  .pilot-auth-card { padding: 22px 18px; gap: 18px; }
+  .pilot-auth-card h2 { font-size: 21px; }
+  .pilot-auth-tabs button { padding: 6px; font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pilot-app *, .pilot-auth * { scroll-behavior: auto !important; transition: none !important; }
