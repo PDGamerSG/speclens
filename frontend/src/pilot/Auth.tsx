@@ -1,0 +1,47 @@
+import { ArrowLeft, Factory, LockKeyhole } from 'lucide-react'
+import { useState } from 'react'
+import { Chief } from '../workspace/Chief'
+import { errorMessage, pilotApi } from './api'
+import type { Session } from './types'
+import { Field, Submit } from './ui'
+
+export function Auth({ onSession, onExit, initialError }: { onSession: (session: Session) => void; onExit: () => Promise<void>; initialError?: string | null }) {
+  const [mode, setMode] = useState<'login' | 'register' | 'join'>('login')
+  const [error, setError] = useState<string | null>(initialError || null)
+  const [busy, setBusy] = useState(false)
+  return <div className="pilot-auth">
+    <header className="pilot-auth-header"><span className="brand"><Chief size={38} />SpecLens.</span><button className="text-link" onClick={async () => { if (busy) return; setBusy(true); setError(null); try { await onExit() } catch (error) { setError(errorMessage(error)) } finally { setBusy(false) } }} disabled={busy}><ArrowLeft size={16} />Return to public demo</button></header>
+    <main className="pilot-auth-layout">
+      <div className="pilot-auth-intro"><Factory size={40} strokeWidth={1.4} /><h1>A shared desk for your factory.</h1><p>Freeze the spec. Capture the part. Keep the human decision on record.</p><div className="pilot-auth-sequence"><span>Products & specs</span><span>Lots & captures</span><span>Review & standards</span></div><p className="pilot-auth-note handwritten">One team. A clear trail from photo to disposition.</p></div>
+      <section className="pilot-auth-card" aria-labelledby="pilot-auth-title">
+        <h2 id="pilot-auth-title">{mode === 'login' ? 'Sign in to your team' : mode === 'register' ? 'Create your team workspace' : 'Join your team'}</h2>
+        <div className="pilot-auth-tabs" aria-label="Account options">{(['login', 'register', 'join'] as const).map(option => <button key={option} className={mode === option ? 'selected' : ''} aria-pressed={mode === option} disabled={busy} onClick={() => { setMode(option); setError(null) }}>{option === 'login' ? 'Sign in' : option === 'register' ? 'Create a team' : 'Join with invitation'}</button>)}</div>
+        {error && <div className="alert error" role="alert">{error}</div>}
+        <form key={mode} className="pilot-form" onSubmit={async event => {
+          event.preventDefault(); if (busy) return
+          const fields = new FormData(event.currentTarget)
+          const username = String(fields.get('username') || '').trim()
+          const password = String(fields.get('password') || '')
+          setBusy(true); setError(null)
+          try {
+            const session = mode === 'login' ? await pilotApi.login({ username, password }) : mode === 'register'
+              ? await pilotApi.register({ username, password, name: String(fields.get('name')).trim(), team_name: String(fields.get('team_name')).trim() })
+              : await pilotApi.join({ username, password, name: String(fields.get('name')).trim(), token: String(fields.get('token')).trim() })
+            onSession(session)
+          } catch (error) { setError(errorMessage(error)) } finally { setBusy(false) }
+        }}>
+          <fieldset disabled={busy}>
+            {mode === 'join' && <Field label="Invitation token"><input name="token" required autoComplete="off" maxLength={500} /></Field>}
+            {mode !== 'login' && <Field label="Your name"><input name="name" required maxLength={100} autoComplete="name" /></Field>}
+            <Field label="Username"><input name="username" required minLength={3} maxLength={64} pattern="[A-Za-z0-9_.\-]+" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" /></Field>
+            <Field label="Password"><input name="password" type="password" required minLength={mode === 'login' ? 1 : 12} maxLength={256} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></Field>
+            {mode !== 'login' && <p className="pilot-help">Use at least 12 characters. Usernames use letters, numbers, dots, underscores or hyphens.</p>}
+            {mode === 'register' && <Field label="Team name"><input name="team_name" required maxLength={100} autoComplete="organization" /></Field>}
+            <Submit busy={busy}>{mode === 'login' ? 'Sign in to workspace' : mode === 'register' ? 'Create team workspace' : 'Join team workspace'}</Submit>
+          </fieldset>
+        </form>
+        <p className="pilot-help"><LockKeyhole size={14} />Named local accounts. Your team’s records stay separate from the public demo.</p>
+      </section>
+    </main>
+  </div>
+}

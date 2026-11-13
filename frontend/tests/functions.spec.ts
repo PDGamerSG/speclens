@@ -232,3 +232,30 @@ test('saved comparisons reopen and export their own image and optional expected 
   expect(labeled.record.expected_verdict).toBe('defect')
   expect(labeled.record.baseline.filename).toBe('white-print.jpg')
 })
+
+test('history loads older pages and exports records that have not been loaded into the table', async ({ page }) => {
+  await openWorkspace(page, 'paged history')
+  const scope = await page.evaluate(() => JSON.parse(localStorage.getItem('speclens-scope')!))
+  const inspected = await page.request.post('/api/workspace/inspect', { multipart: { ...scope, sample_id: 'white-print', memory_enabled: 'false' } })
+  expect(inspected.ok()).toBe(true)
+  const source = await inspected.json()
+  const overview = await (await page.request.get('/api/workspace/overview', { params: scope })).json()
+  const records = [0, 1, 2].map(index => ({ ...source, id: `insp-page-${index}`, filename: `paged-part-${index}.jpg`, created_at: `2026-11-14T01:00:0${3 - index}Z` }))
+  await page.route('**/api/workspace/export', route => route.fulfill({ json: { inspections: records, corrections: [], comparisons: [] } }))
+  await page.route('**/api/workspace/overview?*', async route => {
+    const query = new URL(route.request().url()).searchParams
+    const older = !!query.get('before')
+    const exportPage = query.get('limit') === '500'
+    await route.fulfill({ json: { ...overview, stats: { ...overview.stats, inspections: 3 }, inspections: exportPage ? records : older ? records.slice(2) : records.slice(0, 2), has_more: !exportPage && !older, next_before: !exportPage && !older ? `${records[1].created_at}|${records[1].id}` : null } })
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Inspection history', exact: true }).click()
+  await expect(page.locator('#history tbody tr')).toHaveCount(2)
+  const { record } = await readDownload<Overview>(page, 'Export records')
+  expect(record.inspections).toHaveLength(3)
+  expect(record.inspections.map(item => item.filename)).toContain('paged-part-2.jpg')
+  await page.getByRole('button', { name: 'Load older inspections', exact: true }).click()
+  await expect(page.locator('#history tbody tr')).toHaveCount(3)
+  await page.getByRole('searchbox', { name: 'Search inspection history', exact: true }).fill('paged-part-2')
+  await expect(page.locator('#history tbody tr')).toHaveCount(1)
+})

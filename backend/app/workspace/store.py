@@ -37,6 +37,7 @@ class Scope:
     part_family: str
     spec_text: str
     owner_id: str = ''
+    revision_id: str | None = None
 
     def __post_init__(self):
         for field in ('factory', 'part_family', 'spec_text'):
@@ -47,8 +48,11 @@ class Scope:
 
     @property
     def id(self) -> str:
-        identity = [self.factory.casefold(), self.part_family.casefold(), self.spec_text]
-        if self.owner_id:
+        if self.revision_id:
+            identity = ['pilot', self.owner_id, self.revision_id]
+        else:
+            identity = [self.factory.casefold(), self.part_family.casefold(), self.spec_text]
+        if self.owner_id and not self.revision_id:
             identity.append(self.owner_id)
         data = json.dumps(identity, ensure_ascii=False)
         return hashlib.sha256(data.encode()).hexdigest()[:24]
@@ -88,11 +92,44 @@ class Store:
             self._specs[sid] = text
         return self._specs[sid]
 
-    def taxonomy(self, sid: str) -> dict | None:
+    @staticmethod
+    def reading_id(sid: str, owner_id: str) -> str:
+        return 'reading-' + hashlib.sha256(json.dumps([owner_id, sid]).encode()).hexdigest()[:32]
+
+    def taxonomy(self, sid: str, owner_id: str = '') -> dict | None:
+        if owner_id:
+            from ..pilot.store import PilotStore
+            from fastapi import HTTPException
+            try:
+                return PilotStore(self.engine).get(owner_id, self.reading_id(sid, owner_id), 'spec_reading')['taxonomy']
+            except HTTPException as error:
+                if error.status_code != 404:
+                    raise
+                return None
         with self.engine.connect() as c:
             return c.execute(sa.select(spec_revisions.c.taxonomy).where(spec_revisions.c.id == sid)).scalar()
 
-    def save_taxonomy(self, spec_text: str, taxonomy: dict) -> str:
+    def save_taxonomy(self, spec_text: str, taxonomy: dict, owner_id: str = '') -> str:
+        if owner_id:
+            from ..pilot.store import PilotStore
+            from fastapi import HTTPException
+            sid = spec_revision_id(spec_text)
+            readings = PilotStore(self.engine)
+            rid = self.reading_id(sid, owner_id)
+            try:
+                current = readings.get(owner_id, rid, 'spec_reading')
+            except HTTPException as error:
+                if error.status_code != 404:
+                    raise
+                try:
+                    readings.create(owner_id, 'spec_reading', {'spec_revision_id': sid, 'taxonomy': taxonomy}, id=rid)
+                    return sid
+                except HTTPException as conflict:
+                    if conflict.status_code != 409:
+                        raise
+                    current = readings.get(owner_id, rid, 'spec_reading')
+            readings.update(owner_id, rid, current['version'], {'taxonomy': taxonomy})
+            return sid
         with self.engine.begin() as c:
             sid = self.save_spec(c, spec_text)
             c.execute(spec_revisions.update().where(spec_revisions.c.id == sid).values(taxonomy=taxonomy))
@@ -152,7 +189,10 @@ class Store:
                     with_spec: bool = True) -> list[dict]:
         query = sa.select(inspections_table.c.payload).where(inspections_table.c.scope_id == scope_id)
         if before:
-            query = query.where(inspections_table.c.created_at < before)
+            stamp, separator, last_id = before.partition('|')
+            query = query.where(sa.or_(inspections_table.c.created_at < stamp, sa.and_(
+                inspections_table.c.created_at == stamp, inspections_table.c.id < last_id))) if separator else query.where(
+                    inspections_table.c.created_at < stamp)
         query = query.order_by(inspections_table.c.created_at.desc(), inspections_table.c.id.desc())
         if limit is not None:
             query = query.limit(limit)
@@ -196,6 +236,12 @@ class Store:
             payload = c.execute(sa.select(corrections_table.c.payload).where(corrections_table.c.id == id)).scalar()
         return self._unpack(payload) if payload is not None else None
 
+    def correction_for_inspection(self, inspection_id: str) -> dict | None:
+        with self.engine.connect() as c:
+            payload = c.execute(sa.select(corrections_table.c.payload).where(
+                corrections_table.c.inspection_id == inspection_id)).scalar()
+        return self._unpack(payload) if payload is not None else None
+
     def corrections(self, scope_id: str, with_spec: bool = True) -> list[dict]:
         query = (sa.select(corrections_table.c.payload).where(corrections_table.c.scope_id == scope_id)
                  .order_by(corrections_table.c.created_at.desc()))
@@ -223,11 +269,17 @@ class Store:
                 item = c.execute(sa.select(table.c.payload).where(table.c.id == id)).scalar_one()
         return self._unpack(item)
 
-    def due_corrections(self, limit: int = 20) -> list[str]:
+    def due_corrections(self, limit: int = 20, approved_only: bool = False) -> list[str]:
         """Pending corrections whose next memory sync attempt is due: the outbox the worker drains."""
         table = corrections_table
-        query = (sa.select(table.c.id).where(table.c.sync_status != 'synced', table.c.next_sync_at <= time.time())
-                 .order_by(table.c.next_sync_at).limit(limit))
+        query = sa.select(table.c.id).where(table.c.sync_status != 'synced', table.c.next_sync_at <= time.time())
+        if approved_only:
+            from ..pilot.tables import records
+            approved = sa.select(records.c.payload['correction_id'].as_string()).where(
+                records.c.kind == 'standard', records.c.payload['status'].as_string() == 'approved',
+                records.c.owner_id == table.c.owner_id)
+            query = query.where(sa.or_(~table.c.owner_id.startswith('team-'), table.c.id.in_(approved)))
+        query = query.order_by(table.c.next_sync_at).limit(limit)
         with self.engine.connect() as c:
             return list(c.execute(query).scalars())
 
@@ -285,6 +337,7 @@ class Store:
                     job_filter, j.c.status.in_(('queued', 'running'))).limit(1)).first() is not None:
                 raise ValueError('Wait for your queued and running inspections to finish before deleting your data.')
             inspection_ids = list(c.execute(sa.select(i.c.id).where(inspection_filter)).scalars())
+            inspection_payloads = list(c.execute(sa.select(i.c.payload).where(i.c.id.in_(inspection_ids))).scalars())
             removed_corrections = c.execute(sa.select(k.c.id, k.c.scope_id, k.c.sync_status).where(
                 sa.or_(correction_filter, k.c.inspection_id.in_(inspection_ids)))).all()
             scope_ids = set(c.execute(sa.select(i.c.scope_id).where(i.c.id.in_(inspection_ids))).scalars())
@@ -294,6 +347,9 @@ class Store:
             c.execute(i.delete().where(i.c.id.in_(inspection_ids)))
             jobs = c.execute(j.delete().where(job_filter)).rowcount
         media = [f'{id}{suffix}' for id in inspection_ids for suffix in ('.jpg', '_overlay.jpg', '_mask.png')]
+        media += [url.removeprefix('/files/workspace/') for p in inspection_payloads
+                  for field in ('image_url', 'mask_url', 'overlay_url')
+                  if isinstance((url := p.get(field)), str) and url.startswith('/files/workspace/')]
         media += [f'{r.id}_crop.jpg' for r in removed_corrections]
         media += [u for u in uploads if u]
         return {'inspections': len(inspection_ids), 'corrections': len(removed_corrections), 'comparisons': comparisons,
@@ -307,6 +363,10 @@ class Store:
 
     def purge_before(self, cutoff: str, jobs_before: float) -> dict:
         """Records created before an ISO timestamp, and finished or abandoned jobs older than an epoch time."""
-        return self._delete_where(inspections_table.c.created_at < cutoff, corrections_table.c.created_at < cutoff,
-                                  comparisons_table.c.created_at < cutoff,
-                                  sa.and_(db.jobs.c.updated_at < jobs_before, db.jobs.c.status.in_(('done', 'failed'))))
+        # Pilot records retain their operational evidence until an administrator explicitly deletes it.
+        # The demo's age policy must not quietly erase an approved standard's source photo.
+        return self._delete_where(
+            sa.and_(inspections_table.c.created_at < cutoff, ~inspections_table.c.owner_id.startswith('team-')),
+            sa.and_(corrections_table.c.created_at < cutoff, ~corrections_table.c.owner_id.startswith('team-')),
+            sa.and_(comparisons_table.c.created_at < cutoff, ~comparisons_table.c.owner_id.startswith('team-')),
+            sa.and_(db.jobs.c.updated_at < jobs_before, db.jobs.c.status.in_(('done', 'failed'))))

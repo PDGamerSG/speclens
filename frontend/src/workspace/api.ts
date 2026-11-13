@@ -16,18 +16,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return response.json() as Promise<T>
 }
+function scopeQuery(scope: ScopeSettings, extra: Record<string, string> = {}) {
+  return new URLSearchParams({ ...Object.fromEntries(Object.entries(scope).filter((entry): entry is [string, string] => typeof entry[1] === 'string')), ...extra })
+}
 const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 function photoForm(input: PartInput, scope: ScopeSettings) {
   const form = new FormData()
   if (input.file) form.append('file', input.file, input.file.name)
   else form.append('sample_id', input.sample.id)
-  for (const [key, value] of Object.entries(scope)) form.append(key, value)
+  for (const [key, value] of Object.entries(scope)) if (typeof value === 'string') form.append(key, value)
   return form
 }
 export const workspaceApi = {
   status: () => request<Status>('/status'),
   samples: () => request<{ samples: Sample[] }>('/samples'),
-  overview: (scope: ScopeSettings) => request<Overview>('/overview?' + new URLSearchParams({ ...scope })),
+  overview: (scope: ScopeSettings, before?: string, limit?: number) => request<Overview>('/overview?' + scopeQuery(scope, { ...(before ? { before } : {}), ...(limit ? { limit: String(limit) } : {}) })),
+  exportRecords: () => request<{ inspections: Inspection[]; corrections: Correction[]; comparisons: Comparison[] }>('/export'),
+  findInspection: async (id: string, scope: ScopeSettings): Promise<Inspection> => {
+    let before: string | undefined
+    const seen = new Set<string>()
+    do {
+      const page = await request<Overview>('/overview?' + scopeQuery(scope, { limit: '500', ...(before ? { before } : {}) }))
+      const inspection = page.inspections.find(item => item.id === id)
+      if (inspection) return inspection
+      if (!page.has_more || !page.next_before || seen.has(page.next_before)) break
+      before = page.next_before; seen.add(before)
+    } while (before)
+    throw new Error('The source inspection is unavailable. Refresh the workspace or ask an admin to check its retention.')
+  },
   inspect: (input: PartInput, scope: ScopeSettings, memory: boolean) => {
     const form = photoForm(input, scope)
     form.append('memory_enabled', String(memory))
@@ -47,7 +63,7 @@ export const workspaceApi = {
   exportUrl: `${BASE}/export`,
   deleteData: () => request<{ inspections: number; corrections: number; memory_failed: number }>('/data', {
     method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE' }) }),
-  dashboard: (scope: ScopeSettings, days: number) => request<DashboardData>('/dashboard?' + new URLSearchParams({ ...scope, days: String(days) })),
+  dashboard: (scope: ScopeSettings, days: number) => request<DashboardData>('/dashboard?' + scopeQuery(scope, { days: String(days) })),
   parseSpec: (spec_text: string) => request<Taxonomy>('/specs/parse', json({ spec_text })),
   extractSpec: (source: { file: File } | { text: string }, useModel: boolean) => {
     const form = new FormData()

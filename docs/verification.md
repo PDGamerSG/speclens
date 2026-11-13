@@ -2,7 +2,11 @@
 
 ## Automated application checks
 
-The current SpecLens release passed **88 Python tests**, **24 browser scenarios**, the production build, and clean lint. The same checks run in CI. The two new backend regressions verify that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
+The factory workspace implementation passed **292 Python tests**, **37 browser scenarios**, the production build, and clean lint on 14 November 2026. Provider responses were simulated; these checks do not measure factory detection accuracy. The full browser suite covers both the public demo and authenticated factory workflows, including role isolation, controlled capture, retakes, independent review/teaching, issues, validation, exports, expired-session recovery and concurrent-edit conflicts.
+
+Backend regressions cover additive migration, scoped ownership, approval/retirement, frozen capture identity, evidence races, memory outbox eligibility, revoked job streams, terminal worker recovery and complete part-resolution reports. A private restored copy of the production backup migrated from `0002` to `0003` with every existing table count unchanged, SQLite integrity `ok`, and no foreign-key violations. Live release checks are recorded separately below after deployment.
+
+The earlier one-page release passed **88 Python tests** and **24 browser scenarios**. Two backend regressions verified that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
 
 The [GitHub run for 4bd3a5e](https://github.com/PDGamerSG/speclens/actions/runs/42385604175) passed 63 Python tests and 14 browser scenarios before the final mobile-history regression was added. [Current main checks](https://github.com/PDGamerSG/speclens/actions/workflows/ci.yml) run the full suite. These tests simulate external vision and Hindsight calls.
 

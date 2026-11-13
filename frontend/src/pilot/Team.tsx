@@ -1,0 +1,25 @@
+import { Copy, KeyRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { dateTime } from '../workspace/api'
+import { pilotApi } from './api'
+import type { Member, Role, SectionProps, TeamData } from './types'
+import { Empty, Field, Panel, Status, Submit } from './ui'
+
+const invitationMillis = (value: string | number) => typeof value === 'number' ? value * 1000 : Date.parse(value)
+const invitationDate = (value: string | number) => dateTime(new Date(invitationMillis(value)).toISOString())
+const ROLES: Role[] = ['admin', 'engineer', 'operator', 'viewer']
+function MemberRow({ member, props }: { member: Member; props: SectionProps }) {
+  const [role, setRole] = useState(member.role)
+  const [active, setActive] = useState(member.active)
+  return <form className="pilot-member" onSubmit={event => { event.preventDefault(); void props.run('Update member', () => pilotApi.member(member.id, { version: member.version, role, active }), 'Team member updated.') }}><div><h3>{member.name}</h3><p className="pilot-help">{member.username}{member.user_id === props.session.user?.id ? ' (you)' : ''}</p></div><Field label={`Role for ${member.name}`}><select value={role} disabled={props.busy} onChange={event => setRole(event.target.value as Role)}>{ROLES.map(item => <option value={item} key={item}>{item}</option>)}</select></Field><label className="pilot-check"><input type="checkbox" checked={active} disabled={props.busy} onChange={event => setActive(event.target.checked)} aria-label={`Active membership for ${member.name}`} />Active</label><button className="button secondary compact" type="submit" aria-label={`Save member ${member.name}`} disabled={props.busy || (role === member.role && active === member.active)}>Save member</button></form>
+}
+
+export function Team(props: SectionProps & { team: TeamData | null }) {
+  const [invitation, setInvitation] = useState<{ token: string; expires_at: string | number } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer) }, [])
+  if (props.session.role !== 'admin') return <Panel title="Your team"><p>{props.session.team?.name}</p><p>Signed in as {props.session.user?.name} with the {props.session.role} role.</p><p className="pilot-help">Ask a team admin to invite members or change access. Admins manage membership, engineers review and propose standards, operators capture, and viewers read records.</p></Panel>
+  if (!props.team) return <Empty title="Team details are unavailable">Refresh the workspace to reload team membership.</Empty>
+  return <div className="pilot-stack"><Panel title="Team members"><p className="pilot-help">Admins publish revisions and standards. Engineers manage setup and review. Operators capture. Viewers read. The last active admin cannot be demoted or deactivated.</p><div className="pilot-members">{props.team.members.map(member => <MemberRow key={`${member.id}:${member.version}`} member={member} props={props} />)}</div></Panel><div className="pilot-columns"><Panel title="Invite a team member"><p className="pilot-help">The token is shown once, expires and can be used by one new member. Share it privately with the intended teammate.</p><form className="pilot-form" onSubmit={event => { event.preventDefault(); const role = new FormData(event.currentTarget).get('role') as Role; void props.run('Create invitation', async () => { setInvitation(await pilotApi.invite(role)); setCopied(false) }, 'One-use invitation created. Copy the token before leaving this section.') }}><fieldset disabled={props.busy}><Field label="Invitation role"><select name="role" defaultValue="operator">{ROLES.map(role => <option value={role} key={role}>{role}</option>)}</select></Field><Submit busy={props.busy}><KeyRound size={15} />Create invitation</Submit></fieldset></form>{invitation && <div className="pilot-invite-result"><Field label="One-use invitation token"><input readOnly value={invitation.token} autoComplete="off" onFocus={event => event.target.select()} /></Field><p className="pilot-help">Expires {invitationDate(invitation.expires_at)}</p><button className="button secondary compact" onClick={async () => { try { await navigator.clipboard.writeText(invitation.token); setCopied(true) } catch { setCopied(false) } }}><Copy size={14} />{copied ? 'Copied token' : 'Copy token'}</button><p className="pilot-help">Your teammate can choose Factory workspace, then Join with invitation.</p></div>}</Panel><Panel title="Invitation history">{props.team.invites.length ? <div className="pilot-invites">{props.team.invites.map(invite => <div key={invite.id}><strong>{invite.role}</strong><Status value={invite.used_at ? 'used' : invitationMillis(invite.expires_at) <= now ? 'expired' : 'pending'} /><p className="pilot-help">Expires {invitationDate(invite.expires_at)}</p></div>)}</div> : <p className="pilot-help">No invitations yet. Create one to add the next operator or reviewer.</p>}</Panel></div></div>
+}

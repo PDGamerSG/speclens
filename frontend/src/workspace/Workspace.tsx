@@ -1,5 +1,8 @@
-import { BarChart3, BookOpen, Camera, CheckCircle2, ChevronDown, History, RefreshCw, ScanLine, Settings2, ArrowLeftRight, Upload, X, XCircle } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Factory, BarChart3, BookOpen, Camera, CheckCircle2, ChevronDown, History, RefreshCw, ScanLine, Settings2, ArrowLeftRight, Upload, X, XCircle } from 'lucide-react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { PilotError, pilotApi } from '../pilot/api'
+import { SIGNED_OUT, type Session } from '../pilot/types'
+const FactoryWorkspace = lazy(() => import('../pilot/FactoryWorkspace'))
 import { workspaceApi as api } from './api'
 import { BatchSection } from './Batch'
 import { Chief } from './Chief'
@@ -26,13 +29,13 @@ const NAV: { id: Section; label: string; short: string; icon: typeof ScanLine }[
 function storedScope(): ScopeSettings {
   try {
     const saved = JSON.parse(localStorage.getItem('speclens-scope') || 'null')
-    if (saved && typeof saved.factory === 'string' && typeof saved.part_family === 'string' && typeof saved.spec_text === 'string') return saved
+    if (saved && typeof saved.factory === 'string' && typeof saved.part_family === 'string' && typeof saved.spec_text === 'string') return { factory: saved.factory, part_family: saved.part_family, spec_text: saved.spec_text }
   } catch { /* A new workspace uses the documented defaults. */ }
   return DEFAULT_SCOPE
 }
 const message = (error: unknown) => error instanceof Error ? error.message : 'This action could not be completed.'
 
-export default function Workspace() {
+function DemoWorkspace({ onFactory }: { onFactory: () => void }) {
   const [scope, setScope] = useState<ScopeSettings>(storedScope)
   const [status, setStatus] = useState<Status | null>(null)
   const [samples, setSamples] = useState<Sample[]>([])
@@ -172,6 +175,7 @@ export default function Workspace() {
         {NAV.map(item => <button key={item.id} aria-label={item.label} aria-current={active === item.id ? 'true' : undefined} className={'nav-item' + (active === item.id ? ' active' : '')} onClick={() => goTo(item.id)}>
           <item.icon size={17} strokeWidth={1.8} /><span>{item.short}</span>
         </button>)}
+        <button className="nav-item demo-factory-entry" aria-label="Factory workspace" disabled={!!busy} onClick={onFactory}><Factory size={17} strokeWidth={1.8} /><span>Factory</span></button>
       </nav>
       <div className="topbar-right">
         <button className="workspace-switch" disabled={!!busy} onClick={openSettings}><span><strong>{scope.factory}</strong><small>{scope.part_family}</small></span><ChevronDown size={14} /></button>
@@ -246,7 +250,20 @@ export default function Workspace() {
       <DashboardSection data={board} days={days} part={scope.part_family} factory={scope.factory} onDays={setDays} onInspect={() => goTo('inspect')} />
 
       <RecordsSection overview={overview} query={historyQuery} busy={!!busy} onQuery={setHistoryQuery}
-        onExport={() => downloadJson('speclens-inspection-records.json', { format_version: 1, exported_at: new Date().toISOString(), scope, ...overview })}
+        onLoadMore={() => void act('history', async () => {
+          if (!overview?.next_before) return
+          const next = await api.overview(scope, overview.next_before)
+          setOverview(current => current?.scope_id === next.scope_id ? { ...next, inspections: Array.from(new Map([...current.inspections, ...next.inspections].map(item => [item.id, item])).values()) } : current)
+        })}
+        onExport={() => void act('export', async () => {
+          if (!overview) return
+          const records = await api.exportRecords()
+          const scopeId = overview.scope_id
+          const inspections = records.inspections.filter(item => item.scope_id === scopeId)
+          const corrections = records.corrections.filter(item => item.scope_id === scopeId)
+          const comparisons = records.comparisons.filter(item => item.baseline.scope_id === scopeId)
+          downloadJson('speclens-inspection-records.json', { format_version: 1, exported_at: new Date().toISOString(), scope, ...overview, inspections, corrections, comparisons, has_more: false, next_before: null, record_counts: { inspections: inspections.length, corrections: corrections.length, comparisons: comparisons.length } })
+        })}
         onOpen={item => { setResult(item); selectInput(null); setCorrecting(false); goTo('inspect') }} onInspect={() => goTo('inspect')} />
     </main>
 
@@ -263,4 +280,21 @@ export default function Workspace() {
         void refresh()
       }} />}
   </div>
+}
+
+
+export default function Workspace() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [factory, setFactory] = useState(false)
+  const [generation, setGeneration] = useState(0)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  useEffect(() => {
+    let current = true
+    pilotApi.session().then(identity => { if (current) { setSession(identity); setFactory(identity.authenticated) } }).catch(error => { if (current) { setSession(SIGNED_OUT); if (error instanceof PilotError && error.status === 401) { setFactory(true); setSessionError(error.message) } } })
+    return () => { current = false }
+  }, [])
+  const changeSession = useCallback((identity: Session) => { setSession(identity); setGeneration(value => value + 1); setSessionError(null) }, [])
+  const returnToDemo = useCallback(() => { setSession(SIGNED_OUT); setGeneration(value => value + 1); setFactory(false); setSessionError(null) }, [])
+  if (!session) return <div className="pilot-loading" role="status">Loading workspace…</div>
+  return factory ? <Suspense fallback={<div className="pilot-loading" role="status">Opening factory workspace…</div>}><FactoryWorkspace key={`${generation}:${session.team?.id || 'signed-out'}`} session={session} onSession={changeSession} onExit={returnToDemo} initialError={sessionError} /></Suspense> : <DemoWorkspace key={generation} onFactory={() => setFactory(true)} />
 }

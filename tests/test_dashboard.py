@@ -35,3 +35,13 @@ def test_another_scope_is_not_counted(tmp_path, monkeypatch):
     other = client.get('/api/workspace/dashboard', params={'factory': 'Other plant'}).json()
     assert other['totals']['inspections'] == 0
     assert other['totals']['reject_rate'] is None
+
+
+def test_comparison_arms_do_not_inflate_production_assessment_counts(tmp_path, monkeypatch):
+    client, _ = setup_client(tmp_path, monkeypatch)
+    response = client.post('/api/workspace/compare', files={'file': ('p.png', png(), 'image/png')})
+    assert response.status_code == 200
+    client.post('/api/workspace/inspect', files={'file': ('p.png', png(), 'image/png')}, data={'memory_enabled': 'false'})
+    board = client.get('/api/workspace/dashboard').json()
+    assert board['totals']['inspections'] == 1
+    assert board['excluded_evaluation_assessments'] == 2

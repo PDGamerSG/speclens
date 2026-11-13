@@ -26,10 +26,20 @@ def dashboard(store: Store, scope_id: str, classes: list[dict], days: int) -> di
     i, k = db.inspections, db.corrections
     with store.engine.connect() as c:
         rows = c.execute(sa.select(i.c.created_at, i.c.verdict, i.c.defect_type, i.c.cost_usd, i.c.latency_ms,
-                                   i.c.memory_enabled, i.c.cited_memories)
+                                   i.c.memory_enabled, i.c.cited_memories, i.c.payload)
                          .where(i.c.scope_id == scope_id, i.c.created_at >= since.isoformat())).all()
         corrections = c.execute(sa.select(k.c.created_at, k.c.verdict, k.c.payload)
                                 .where(k.c.scope_id == scope_id, k.c.created_at >= since.isoformat())).all()
+
+        comparison_payloads = c.execute(sa.select(db.comparisons.c.payload)
+            .where(db.comparisons.c.scope_id == scope_id)).scalars().all()
+    comparison_ids = {arm['id'] for pair in comparison_payloads for key in ('baseline', 'with_memory')
+                      if isinstance((arm := pair.get(key)), dict) and arm.get('id')}
+    excluded = [r for r in rows if r.payload.get('activity_kind') in {'comparison', 'evaluation'}
+                or r.payload.get('id') in comparison_ids]
+    excluded_ids = {r.payload.get('id') for r in excluded}
+    rows = [r for r in rows if r.payload.get('id') not in excluded_ids]
+    corrections = [r for r in corrections if r.payload.get('inspection_id') not in excluded_ids]
 
     daily: dict[str, dict] = {}
     for offset in range(days, -1, -1):
@@ -67,6 +77,8 @@ def dashboard(store: Store, scope_id: str, classes: list[dict], days: int) -> di
     total_defects = sum(pareto.values())
     return {
         'days': days, 'since': since.isoformat(),
+        'excluded_evaluation_assessments': len(excluded),
+        'denominator': 'Inspection assessments excluding comparisons/evaluations; repeated captures are not independent physical parts.',
         'totals': {
             'inspections': n, 'accepted': n - rejected - review, 'rejected': rejected, 'review': review,
             'reject_rate': rejected / n if n else None, 'review_rate': review / n if n else None,

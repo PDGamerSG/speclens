@@ -131,16 +131,16 @@ export function CompareSection({ comparison, history, samples, selectedSample, p
   </section>
 }
 
-export function RecordsSection({ overview, query, busy, onQuery, onExport, onOpen, onInspect }: {
+export function RecordsSection({ overview, query, busy, onQuery, onExport, onOpen, onInspect, onLoadMore }: {
   overview: Overview | null; query: string; busy: boolean; onQuery: (value: string) => void; onExport: () => void;
-  onOpen: (item: Inspection) => void; onInspect: () => void;
+  onOpen: (item: Inspection) => void; onInspect: () => void; onLoadMore: () => void;
 }) {
   const reviewOf = (id: string) => overview?.corrections.find(c => c.inspection_id === id)
   const items = (overview?.inspections || []).filter(item => `${item.filename} ${item.id} ${reviewOf(item.id)?.reviewer || ''}`.toLowerCase().includes(query.trim().toLowerCase()))
   return <section id="history" className="page-section" aria-labelledby="history-title">
     <SectionHead id="history-title" title="Inspection history" lead="Every decision stays on record, with the model’s original call beside the human one.">
       <input type="search" aria-label="Search inspection history" placeholder="Part, ID or reviewer" value={query} onChange={e => onQuery(e.target.value)} />
-      <button className="button secondary" onClick={onExport} disabled={!overview?.inspections.length}><ArrowDownToLine size={14} />Export records</button>
+      <button className="button secondary" onClick={onExport} disabled={busy || !overview?.inspections.length}><ArrowDownToLine size={14} />Export records</button>
     </SectionHead>
     {overview?.inspections.length ? <div className="table-scroll">
       <table>
@@ -162,7 +162,8 @@ export function RecordsSection({ overview, query, busy, onQuery, onExport, onOpe
           {!items.length && <tr><td colSpan={7} className="history-no-matches">No matching inspections. Try another part, ID, or reviewer.</td></tr>}
         </tbody>
       </table>
-      <p className="history-count" aria-live="polite">Showing {items.length} of {overview.inspections.length} inspections. Export includes every record.</p>
+      {overview.has_more && <button className="button secondary compact" disabled={busy} onClick={onLoadMore}>Load older inspections</button>}
+      <p className="history-count" aria-live="polite">Showing {items.length} matching inspections from {overview.inspections.length} loaded of {overview.stats.inspections} total. {overview.has_more ? 'Load older inspections to search earlier records. ' : ''}Export includes every record in this specification scope.</p>
     </div> : <Empty title="A clear trail for every decision" text="Inspections and corrections appear here as you work." action="Inspect your first part" onAction={onInspect} />}
   </section>
 }

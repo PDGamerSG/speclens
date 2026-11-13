@@ -7,15 +7,16 @@ Where to find each part of the SpecLens documentation. Product guides describe t
 | Document | What it covers |
 | --- | --- |
 | [README](../README.md) | What SpecLens is, the team, the live link, how it works and the quick start |
-| [User guide](user-guide.md) | Each section of the page and what it does |
+| [Demo guide](user-guide.md) | The anonymous photo inspection, correction and comparison desk |
+| [Factory workspace guide](factory-guide.md) | Team setup, products, approved revisions, stations, lots, review, standards, issues and validation |
 | [Setup](setup.md) | Local install, Windows, Docker, backups and connection checks |
 | [Troubleshooting](TROUBLESHOOTING.md) | Setup, inspection, memory, test and deploy problems |
 
 ## Suggested reading order
 
 1. [README](../README.md): what SpecLens does and the "How it works" diagram.
-2. [User guide](user-guide.md): try the live site section by section.
-3. [Architecture](ARCHITECTURE.md): how the parts connect and what is not built yet.
+2. [Demo guide](user-guide.md) or [Factory workspace guide](factory-guide.md): follow the workflow you are using.
+3. [Architecture](ARCHITECTURE.md): the underlying inspector and service boundaries; the factory guides describe the added team domain.
 4. [Configuration](CONFIGURATION.md): the settings each part reads.
 5. [Test plan](testing/test-plan.md): what the checks prove and what they do not.
 
@@ -25,7 +26,8 @@ Where to find each part of the SpecLens documentation. Product guides describe t
 | --- | --- |
 | [Architecture](ARCHITECTURE.md) | The parts, outside services, the main request, the data model and deployment |
 | [Configuration](CONFIGURATION.md) | Every environment variable, its default and what reads it |
-| [HTTP API](api/README.md) | Every route, its input and output, and which routes public mode blocks |
+| [Demo HTTP API](api/README.md) | Existing inspection routes and anonymous demo behavior |
+| [Factory HTTP API](api/factory.md) | Team authentication, permissions, typed workflows, validation, capture context and lot exports |
 | [Design](design.md) | The product's acceptance rules, boundaries and visual direction |
 | [Deployment](deployment.md) | The Vercel frontend, the Lightsail server, publishing, backups and recovery |
 | [Threat model](security/threat-model.md) | What data the site stores and sends, and how it is protected |
@@ -49,11 +51,12 @@ These record what happened. They do not change as the code changes, so an older 
 
 ## Research and proposals
 
-These investigate possible future work. They do not describe implemented features or approved release commitments.
+These retain the source research and original proposals. The team workspace described in the factory guides is implemented in the repository; research findings and proposed later extensions are not evidence of factory performance or regulatory compliance. Older walkthroughs, screenshots and release reports describe the releases when they were recorded.
 
 | Document | What it covers |
 | --- | --- |
-| [Factory pilot roadmap](research/2026-11-14-factory-pilot/00-roadmap.md) | Source audit, five-vendor comparison, proposed sections, priorities, pilot validation, and a concrete first build proposal, with a [visual roadmap](research/2026-11-14-factory-pilot/roadmap.html) |
+| [Factory pilot roadmap](research/2026-11-14-factory-pilot/00-roadmap.md) | Original source audit, vendor comparison and roadmap, with a [visual roadmap](research/2026-11-14-factory-pilot/roadmap.html); use the factory guide/API for current shipped behavior |
+| [Quality workflow research](research/2026-11-14-factory-pilot/06-additional-quality-workflows.md) | Primary-source rationale for the bounded issue register, containment, corrective action and closure evidence |
 
 ## Other files
 

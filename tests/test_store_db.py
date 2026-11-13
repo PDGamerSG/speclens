@@ -72,6 +72,17 @@ def test_history_pages_by_creation_time(store):
     assert store.count_inspections(s.id) == 5
 
 
+def test_history_cursor_preserves_records_with_the_same_timestamp(store):
+    s = scope()
+    for n in range(5):
+        store.add_inspection(inspection(s, id=f'insp-{s.id}-{n}', created_at='2026-11-07T12:00:00+00:00'))
+    first = store.inspections(s.id, limit=2)
+    cursor = f'{first[-1]["created_at"]}|{first[-1]["id"]}'
+    second = store.inspections(s.id, limit=3, before=cursor)
+    assert len(first + second) == 5
+    assert len({i['id'] for i in first + second}) == 5
+
+
 def test_a_second_correction_is_refused_and_sync_never_reverts(store):
     s = scope()
     item = store.add_inspection(inspection(s))
@@ -127,7 +138,7 @@ def test_a_database_from_the_first_release_is_migrated_in_place(tmp_path, sync_s
                         .where(db.inspections.c.id == 'insp-legacy')).one()
         version = c.execute(sa.text('SELECT version_num FROM alembic_version')).scalar_one()
     assert tuple(row) == ('owner-a', 'good')
-    assert version == '0002'
+    assert version == '0003'
 
 
 def test_render_postgres_urls_use_the_psycopg_driver():

@@ -72,6 +72,18 @@ class JobQueue:
             row = c.execute(sa.select(db.jobs).where(db.jobs.c.id == id)).first()
         return dict(row._mapping) if row else None
 
+    def retry_failed(self, id: str, owner_id: str) -> dict | None:
+        """Explicitly retry a failed owned submission without changing its immutable payload."""
+        with self.engine.begin() as connection:
+            changed = connection.execute(db.jobs.update().where(
+                db.jobs.c.id == id, db.jobs.c.owner_id == owner_id, db.jobs.c.status == 'failed').values(
+                    status='queued', error=None, attempts=0, locked_at=None, run_after=time.time(), updated_at=time.time()))
+        if changed.rowcount and mode() == 'inline' and self.runner is not None:
+            if self._pool is None:
+                self._pool = ThreadPoolExecutor(self._workers, thread_name_prefix='speclens-job')
+            self._pool.submit(self.process, id)
+        return self.get(id)
+
     def batch(self, batch_id: str) -> list[dict]:
         with self.engine.connect() as c:
             rows = c.execute(sa.select(db.jobs).where(db.jobs.c.batch_id == batch_id)
@@ -118,7 +130,15 @@ class JobQueue:
                 status=status, error={'status_code': error.status_code, 'detail': error.detail},
                 run_after=t + BACKOFF * 2 ** (job['attempts'] - 1) if retry else job['run_after'],
                 locked_at=None, updated_at=t))
+            if not retry:
+                self._fail_capture(c, job, error.detail)
         return status
+
+    def _fail_capture(self, connection, job: dict, message: str):
+        context = job.get('payload', {}).get('context')
+        if context and job.get('owner_id', '').startswith('team-'):
+            from ..pilot.store import PilotStore
+            PilotStore(self.engine).fail_capture(connection, job['owner_id'], context['capture_id'], message)
 
     def process(self, id: str | None = None) -> dict | None:
         """Claim one job (a given one, or the next due), run it and record the outcome."""
@@ -143,10 +163,12 @@ class JobQueue:
             requeued = c.execute(jobs.update().where(
                 jobs.c.status == 'running', jobs.c.locked_at < t - STALE_AFTER, jobs.c.attempts < MAX_ATTEMPTS,
             ).values(status='queued', run_after=t, locked_at=None, updated_at=t)).rowcount
-            c.execute(jobs.update().where(
+            failed = c.execute(jobs.update().where(
                 jobs.c.status == 'running', jobs.c.locked_at < t - STALE_AFTER,
             ).values(status='failed', locked_at=None, updated_at=t,
-                     error={'status_code': 500, 'detail': 'The worker stopped during this job.'}))
+                     error={'status_code': 500, 'detail': 'The worker stopped during this job.'}).returning(*jobs.c)).mappings().all()
+            for job in failed:
+                self._fail_capture(c, job, 'The worker stopped during this job.')
         return requeued
 
     async def wait(self, id: str, timeout: float, interval: float = 0.25) -> dict:

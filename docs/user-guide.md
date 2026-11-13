@@ -1,8 +1,8 @@
-# User guide
+# Public demo guide
 
-What each part of the SpecLens page does, in the order a first-time visitor meets it. The live site is at [speclens.pallabdas.me](https://speclens.pallabdas.me/).
+This guide covers the anonymous inspection demo. Choose **Factory workspace** for named team accounts, approved revisions, stations, lots, controlled captures, human review, standards approval, issues and validation; follow the [Factory workspace guide](factory-guide.md) and [Factory API reference](api/factory.md). Returning from the factory workspace to the demo signs you out. The live site is at [speclens.pallabdas.me](https://speclens.pallabdas.me/).
 
-SpecLens is one page at `/`. Four sections stack down the page, and the top bar jumps to each one: **Inspect**, **Memory**, **Compare** and **History** (`frontend/src/workspace/Workspace.tsx:16-21`). The usual loop is:
+The public demo is one page at `/`. Its inspection, memory, comparison and history sections share the same photo desk; the separate signed-in factory interface has its own section navigation. The usual demo loop is:
 
 1. Inspect a part.
 2. Correct the decision if it is wrong.
@@ -135,10 +135,11 @@ The page works the same way on a phone. The first screen holds the photo, the pa
 
 ## Accounts and sign-in
 
-SpecLens has no accounts and no sign-in.
+The anonymous demo does not require sign-in. The separate **Factory workspace** does: register a team or join with an admin's invitation. Factory passwords, sessions and permissions are described in the [factory guide](factory-guide.md#create-or-join-a-team).
 
-- **On the public site**, a cookie gives your browser a private workspace: your own records, photos and memory (`backend/app/public.py:89-93`). Keep the same browser and cookies to come back to your history. Clearing cookies or changing browser starts a new workspace, and the old one cannot be recovered. The cookie lasts 30 days from when it was set, and return visits do not renew it (`backend/app/public.py:115-118`). The site allows 30 POST requests per browser per hour and 120 per IP address.
-- **On a local install**, everyone who can reach the server shares one workspace set (`backend/app/public.py:32-33`).
+- **Anonymous public demo:** a cookie selects your own records/photos/memory. Keep the same browser and cookies for history; clearing it or changing profile starts another visitor workspace. API visits renew the cookie's 30-day lifetime. Demo POST limits are 30/browser/hour and 120/address/hour, comparisons count twice and free rule parsing is exempt.
+- **Anonymous local mode:** with `SPECLENS_PUBLIC=0`, callers share the demo workspace. Keep it on a private interface.
+- **Signed-in factory mode:** active membership selects team data even on existing media/history/inspection endpoints. Sessions expire after seven days; invalid sessions require sign-in, and logout revokes the current session. Team evidence is excluded from the anonymous 90-day default purge. No password-reset/recovery flow is implemented.
 
 Your browser also stores two conveniences in local storage: your workspace fields (`speclens-scope`) and your reviewer name (`speclens-reviewer`).
 

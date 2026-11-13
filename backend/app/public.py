@@ -31,6 +31,10 @@ _tokens = re.compile(r'^[a-f0-9]{64}$')
 
 
 def owner(request: Request) -> str:
+    from .pilot.auth import current_identity
+    identity = current_identity(request)
+    if identity is not None:
+        return identity['team']['id']
     return getattr(request.state, 'workspace_owner', '')
 
 
@@ -165,7 +169,8 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
                     if value.strip()
                 }):
             response = JSONResponse({'detail': 'Open this workspace directly to make changes.'}, status_code=403)
-        elif request.method == 'POST' and path not in FREE_POSTS and not (allowed := _allowed(visitor, request, path)):
+        elif (request.method == 'POST' and path not in FREE_POSTS and not path.startswith('/api/workspace/pilot/')
+              and not (allowed := _allowed(visitor, request, path))):
             if allowed is None:
                 response = JSONResponse({'detail': 'The request limiter is unavailable. Try again shortly.'}, status_code=503)
             else:

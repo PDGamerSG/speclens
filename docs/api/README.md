@@ -1,13 +1,13 @@
 # HTTP API reference
 
-Every route the SpecLens server answers, with its input and output. The page uses only the routes under `/api/workspace` (`frontend/src/workspace/api.ts:3`).
+This reference describes the original inspection/demo API under `/api/workspace`. The signed-in team domain uses `/api/workspace/pilot`; see the [Factory API reference](factory.md) for authentication, server-enforced roles, approved revisions, controlled captures, reviews, standards, validation and complete lot reports. Those factory rules take precedence over anonymous examples below when signed in.
 
 ## Basics
 
 - **Base URL:** the same origin as the page. Locally that is `http://localhost:8770`. The live site is `https://speclens.pallabdas.me`.
-- **Authentication:** there are no accounts. In local mode every route is open to anyone who can reach the server. In public mode the server sets a `speclens_workspace` cookie on the first response, and that cookie selects your records (`backend/app/public.py:89-93`, `backend/app/public.py:115-118`).
+- **Authentication:** anonymous public demos use the `speclens_workspace` visitor cookie. Factory accounts use a separate expiring/revocable `speclens_session` cookie and active team membership, including on old inspection/media/job routes. An invalid factory session returns 401 rather than falling back. With public mode off, anonymous development routes remain shared; factory access controls still apply.
 - **Scope:** most routes take `factory`, `part_family` and `spec_text`. Together they select one workspace. Leave them out to use `Bangalore Foods`, `Whole hazelnut` and the default specification (`backend/app/workspace/routes.py:25-26`, `backend/app/workspace/routes.py:50-56`).
-- **Limits in public mode:** every POST counts toward 30 per browser and 120 per IP address per hour, a comparison counts as two, and a write from an origin outside `SPECLENS_ALLOWED_ORIGINS` gets 403 (`backend/app/public.py:99-108`).
+- **Limits in public mode:** non-factory POSTs except the free rule parser count toward 30 per browser and 120 per address per hour; a comparison counts as two. `/api/workspace/pilot/` uses separate auth/role controls and independent registration/login/join limits. Foreign writes outside exact allowed origins get 403.
 
 ## Workspace routes
 
@@ -57,7 +57,7 @@ Returns `{"samples": [...]}`. Each sample has `id`, `name`, `detail`, `source_gr
 
 ### `GET /api/workspace/overview`
 
-Query parameters: `factory`, `part_family`, `spec_text`. There is no paging, and the lists are newest first.
+Query parameters: `factory`, `part_family`, `spec_text`; factory scope reads also accept `revision_id`. Inspections use `limit` (default 100, max 500) and `before`; the lists are newest first. Use complete lot export for factory evidence beyond the current page.
 
 | Field | Meaning |
 | --- | --- |

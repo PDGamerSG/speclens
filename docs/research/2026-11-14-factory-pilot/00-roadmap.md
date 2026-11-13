@@ -1,6 +1,8 @@
 # SpecLens roadmap: earn a real factory pilot
 
-Research date: **14 November 2026, Asia/Kolkata**. Application baseline: `main` at `3e39563`. Status: **research and proposed product direction; the features below are not implemented or approved for implementation**. The user selected a real factory pilot as the leading outcome.
+Research date: **14 November 2026, Asia/Kolkata**. Historical application baseline: `main` at `3e39563`. The user selected a real factory pilot as the leading outcome and subsequently approved implementation.
+
+**Implementation update:** the shared factory workspace now implements accounts/roles, controlled product revisions, stations/lots, durable physical-part captures and retakes, independent human review, approved standards, nonconformances, activity, complete lot exports and imported validation. The [factory guide](../../factory-guide.md) describes shipped behavior and limitations; [additional workflow research](06-additional-quality-workflows.md) covers issue containment and activity. Findings below describe the historical baseline and the broader conditional roadmap. Imported validation does not execute or verify live inference, and real factory performance remains unmeasured.
 
 ## Recommendation
 
@@ -90,7 +92,7 @@ Later candidates include incoming supplier review, an evidence-backed nonconform
 
 ## Concrete first implementation proposal
 
-**Build the foundation for one shared controlled part, then the review workflow on top.** This is an architectural change; this research is a proposal for review, not an implementation authorization or a production-readiness claim.
+**Build the foundation for one shared controlled part, then the review workflow on top.** This section records the original proposal, subsequently authorized and implemented in the factory workspace. It does not establish production readiness or factory accuracy.
 
 The first engineering increment should establish a verified pilot team, small server-enforced roles, one tenant-owned part/spec revision, human-confirmed taxonomy, and immutable recipe/capture context attached to submitted jobs and resulting inspections. Reuse the current parser, inspection service, stores, and media viewer. Keep existing demo cookie scopes distinct; do not silently turn historical corrections into approved shared standards.
 

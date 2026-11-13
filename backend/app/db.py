@@ -128,6 +128,9 @@ benchmark_runs = sa.Table(
     sa.Column('payload', JSONType, nullable=False),
 )
 
+# Register the additive factory schema with the same metadata and engine.
+from .pilot import tables as pilot_tables  # noqa: E402,F401
+
 
 _engines: dict[str, sa.Engine] = {}
 _lock = threading.Lock()

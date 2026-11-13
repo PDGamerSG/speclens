@@ -33,6 +33,9 @@ from .runs import manager
 from .public import PublicWorkspaceMiddleware, owner
 from .workspace import routes as workspace_routes
 from .workspace.routes import router as workspace_router
+from .pilot.routes import router as pilot_router
+from .pilot.validation_routes import router as validation_router
+from .pilot.reports import router as reports_router
 from .worker import Worker
 
 
@@ -55,6 +58,9 @@ app = FastAPI(title="SpecLens", version="1.0", lifespan=lifespan)
 app.add_middleware(PublicWorkspaceMiddleware)
 app.add_middleware(RequestIdMiddleware)  # added last, so it runs first and every response gets an ID
 app.include_router(workspace_router)
+app.include_router(pilot_router)
+app.include_router(validation_router)
+app.include_router(reports_router)
 
 
 class TaxonomyIn(BaseModel):

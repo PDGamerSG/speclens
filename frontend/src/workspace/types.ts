@@ -1,4 +1,4 @@
-export interface ScopeSettings { factory: string; part_family: string; spec_text: string }
+export interface ScopeSettings { factory: string; part_family: string; spec_text: string; revision_id?: string; lot_id?: string; station_id?: string; physical_part_id?: string; capture_id?: string; retake_of?: string }
 export interface Status {
   ok: boolean; model_configured: boolean; memory_configured: boolean; model: string;
   spent_usd: number; budget_usd: number; default_factory: string; default_part: string; default_spec: string;
@@ -13,6 +13,7 @@ export interface Inspection {
   memory_enabled: boolean; memory_status: 'disabled' | 'empty' | 'recalled'; memories: MemoryFact[];
   source_kind?: 'synthetic_sample' | 'upload' | 'unknown'; source_group?: string | null; sample_id?: string | null;
   filename: string; image_sha256: string; ms: number; cost_usd: number; created_at: string; model: string;
+  pilot?: { revision_id: string; product_id: string; lot_id: string; station_id: string; physical_part_id: string; capture_id: string; retake_of?: string | null; [key: string]: unknown };
   part_visible?: boolean; prompt_tokens?: number; cached_tokens?: number;
   mask_url?: string; overlay_url?: string; measurement?: Measurement | null; size_note?: string; reference_crops?: string[];
 }

@@ -14,9 +14,9 @@ Live link: [speclens.pallabdas.me](https://speclens.pallabdas.me/)
        alt="The SpecLens page with the headline Correct it once. It remembers the next part. A hazelnut photo carries a red pencil ring around a printed marking and a REJECT stamp. The inspection ticket beside it shows Reject part, the reason, and the recalled standard written by a quality engineer.">
 </p>
 
-A quality engineer should not have to explain the same inspection mistake twice. SpecLens checks a part photo against your specification, explains its decision, and marks any defect. When the decision is wrong, you correct it once. SpecLens remembers that standard and cites it when it checks the next part. It is for quality teams who inspect parts by eye and want each correction to count.
+A quality engineer should not have to explain the same inspection mistake twice. SpecLens checks a part photo against your specification, explains its decision, and marks any defect. The public demo lets you correct a decision and reuse that visual standard. The signed-in Factory workspace adds approved specification revisions, controlled captures, human review and approval of reusable standards. It is for quality teams who inspect parts by eye and want each correction to count.
 
-This repository holds the whole app: a one-page React interface, a FastAPI server that keeps the model and memory keys off the browser, SQLite records, synthetic sample parts with exact masks, automated tests, and the deployment setup for the public site.
+This repository holds the React demo and factory workspace, a FastAPI server that keeps model and memory keys off the browser, durable SQLite/Postgres records, synthetic sample parts with exact masks, automated tests, and the deployment setup for the public site. Start with the [Factory workspace guide](docs/factory-guide.md) for the team workflow.
 
 ## Features
 
@@ -24,18 +24,25 @@ This repository holds the whole app: a one-page React interface, a FastAPI serve
 | --- | --- |
 | Inspect a part | Choose a sample or upload a photo. You get Accept, Reject, or Review, with the reason, the model's confidence, and a ring around any defect. |
 | Correct a decision | Record the right decision and the visual rule to apply next time. The original model decision stays on record beside yours. |
-| Quality memory | Saved corrections go to Hindsight. A later inspection recalls them and cites the correction it used. A failed save stays visibly pending and can be retried. |
+| Quality memory | Demo corrections sync to Hindsight. Factory corrections start as candidates; an admin must approve a standard before it is eligible for sync and reuse in its precise team/revision. Failed sync remains pending and retryable. |
 | Memory comparison | Run the same photo with memory off and on, with the same model and specification, and compare the two decisions. |
 | Photo checks | A photo that does not show the part gets Review, with what the photo shows and what a usable photo needs. |
-| Inspection history | Search every inspection, reopen one, and export the full record as JSON. |
+| Inspection history | Browse and filter loaded history, reopen an inspection, and export records. Factory lot reports include the complete lot beyond the current view. |
 | Private workspaces | On the public site, a browser cookie keeps each visitor's records, photos, and memory apart. |
+| Factory teams | Named username/password accounts, one-use invitations and admin, engineer, operator and viewer roles keep team records separate from the demo. |
+| Products and specifications | Create a product and draft revision, check parsed defect classes and dimensions, then publish an immutable approved recipe. Replacement specifications use new revisions. |
+| Stations, lots and captures | Record setup instructions, open lots against an approved revision and compatible station, and track physical parts separately from capture attempts and retakes. |
+| Human review | Every factory assessment creates a review. Accept, reject, hold and retake decisions preserve the model result and human reason separately. All open reviews must close before the lot can close. |
+| Nonconformances and activity | Track severity, requirement, containment, root cause, corrective action and closure evidence with attributable lifecycle history. |
+| Validation imports | Evaluate matched, precomputed baseline/memory outputs with explicit denominators, Review/error workload and connected lot/session cluster intervals. Imports make no model calls and do not verify the supplied truth or provenance. |
+| Complete lot evidence | Export all captures, inspections, dispositions, issues and related standards/activity as JSON, or every capture as CSV. Media URLs, availability and SHA-256 hashes identify files; images are not embedded. |
 | Any specification | Paste or import a PDF specification. Reject classes, clause numbers, size limits and the part width are read from it, and they drive the model, the correction form and validation. |
 | Outlines and sizes | SAM 3.1 outlines each defect. The part width turns the outline into millimetres, checked against the clause's size limit. |
 | Visual memory | A correction keeps a crop of the corrected region. Recall shows up to two crops to the model beside the written standard. |
 | Batch inspection | Queue up to 20 photos. Results arrive as each finishes, with Review and low-confidence decisions first, and export as CSV. |
 | Quality dashboard | Reject rate per day, defect Pareto, corrections per week, memory use, cost and time for each scope. |
 | Benchmark | `scripts/benchmark.py` compares memory off and on across held-out source photos, with paired bootstrap 95% intervals. |
-| Your data | Export every record, or delete records, photos and memory banks. Records past the retention period are purged nightly. |
+| Your data | Export or explicitly delete operational records, photos and memory banks. Anonymous evidence is purged after `RETENTION_DAYS` (90 days by default); factory evidence remains until explicit admin deletion. Team authentication records remain after operational deletion. |
 
 ## How it works
 
@@ -65,11 +72,11 @@ flowchart TB
   service --> memory
 ```
 
-Vercel serves the page. The browser calls relative `/api` and `/files` paths on that same origin, and Vercel rewrites them to the FastAPI server on AWS Lightsail, so the model and memory keys never reach the browser. The service recalls standards from Hindsight when memory is on, keeps only facts tied to a synced correction in that workspace, and passes them to the inspector. The inspector calls the vision model and records the cost in the ledger. The service saves the result in SQLite. A correction saves in SQLite first, then goes to Hindsight, so a failed memory write loses nothing. [The architecture notes](docs/ARCHITECTURE.md) have the component diagram, the request flow, and the data model.
+Vercel serves the interface. The browser calls relative `/api` and `/files` paths on that same origin, and Vercel rewrites them to the FastAPI server on AWS Lightsail, so the model and memory keys never reach the browser. The service recalls standards from Hindsight when memory is on and keeps facts tied to eligible, synced corrections. Factory eligibility additionally requires the precise team/revision and an active approved standard version. The inspector calls the vision model and records its cost. The service saves the result and creates a human review for a factory capture. A correction saves locally first; factory candidates wait for admin approval before memory sync. [The architecture notes](docs/ARCHITECTURE.md) describe the underlying inspector; the [factory API](docs/api/factory.md) covers the added workflows.
 
 ### How memory is isolated
 
-A Hindsight bank belongs to a normalized factory name, part family, and exact specification revision. A change to any of these starts a separate scope. Changing the base specification is explicit; saving a correction never rewrites it. Public mode also adds the browser's visitor identity to each scope.
+Demo scopes include normalized factory and part names, exact specification text, and the visitor identity in public mode. Factory scopes use stable team and approved revision IDs, so editable display labels cannot merge teams or revision histories. Saving a correction never rewrites a specification. Retiring a revision or standard blocks new use; an affected in-flight assessment is preserved and quarantined for human follow-up.
 
 When memory is on, a failed recall stops the inspection with a visible error. The app never substitutes a simulated result for a failed live request.
 
@@ -106,7 +113,7 @@ Taken from the live site with real model and memory calls in headless Chromium, 
 
 | Component | Purpose | License |
 | --- | --- | --- |
-| React 19 and Vite | One-page interface and build | MIT |
+| React 19 and Vite | Demo and factory interfaces, and build | MIT |
 | TypeScript | Frontend types | Apache-2.0 |
 | WebGL | Point cloud scan of the real photo, written without a library | Browser API |
 | Lucide | Interface icons | ISC |
@@ -163,7 +170,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Add the server credentials to `.env` first, then open http://localhost:8770. The `speclens-data` volume holds SQLite, images, and the API spend ledger across restarts. The default local mode is a single-team workspace, so use a private network or an authenticated reverse proxy for remote team access.
+Add the server credentials to `.env` first, then open http://localhost:8770. The `speclens-data` volume holds SQLite, accounts, images, jobs and spend records across restarts. Choose **Factory workspace** to register an isolated team or join an invitation. Its sign-in and role checks also apply locally. With `SPECLENS_PUBLIC=0`, the anonymous demo remains shared and earlier development routes are exposed; keep that mode on a private interface.
 
 ### Checks
 
@@ -190,15 +197,16 @@ node frontend/scripts/live-smoke.mjs
 
 The live site has two parts. Vercel builds `frontend/` and publishes it from the connected GitHub repository, with the settings in `frontend/vercel.json`. The API, SQLite records, and photos stay on one AWS Lightsail server, with Docker Compose and Caddy. To update the server, `./scripts/deploy-speclens.sh` archives the current source, builds it there, and checks its health. Runtime credentials stay in a private server file, and `SPECLENS_ALLOWED_ORIGINS` lists the frontend origins the server accepts writes from. [The deployment guide](docs/deployment.md) covers access, publishing, backups, and recovery.
 
-The move to Render is ready but not yet live. `render.yaml` declares the API, a worker that runs inspections from a job queue, a nightly purge, Postgres and Key Value, and photos move to Cloudflare R2. `scripts/migrate_to_render.py` copies the Lightsail data across. [The deployment guide](docs/deployment.md#moving-the-backend-to-render) lists the cut-over steps. Every new store has a local default, so local runs and tests need none of these services.
+The Render deployment template is available but not yet live. `render.yaml` declares the API, an inspection worker, nightly purge, Postgres and Key Value, with photos in Cloudflare R2. The existing `scripts/migrate_to_render.py` copies legacy demo records/media; it does not copy factory identity or pilot records. A factory cut-over needs a tested complete migration before changing traffic. [The deployment guide](docs/deployment.md#moving-the-backend-to-render) records that limit. Local runs and tests need none of these hosted services.
 
-The public site allows 30 POST requests per browser per hour, and a comparison counts as two. A second limit of 120 per hour counts the visitor's IP address. The server accepts that address from Vercel only when `SPECLENS_PROXY_SECRET` matches on both sides. Without it, the limit counts the Vercel address, which visitors can share. Keep the same browser and cookies to revisit your history.
+The public demo quota allows 30 POST units per browser per hour, and a comparison counts as two; the free rule parser is exempt. A second limit of 120 per hour counts the visitor's IP address. Factory workflow routes use their own access controls; registration, login and invitation redemption also have independent, database-backed attempt limits even when public mode is off. The server accepts the visitor address from Vercel only when `SPECLENS_PROXY_SECRET` matches on both sides. Without it, the limit counts the Vercel address, which visitors can share. Keep the same browser/cookies for anonymous history; sign in to revisit team history.
 
 ## Repository map
 
 | Path | What it holds |
 | --- | --- |
 | `backend/app/workspace/` | Record store, Hindsight adapter, inspection service, spec reader, dashboard, validated routes |
+| `backend/app/pilot/` | Factory authentication, typed workflows, capture governance, validation, lifecycle history and complete lot reports |
 | `backend/app/db.py`, `backend/app/migrations/` | Tables for SQLite and Postgres, and their Alembic migrations |
 | `backend/app/jobs/`, `backend/app/worker.py` | Job queue, job runner, retention purge, and the background worker |
 | `backend/app/media.py` | Photo storage: a local folder or Cloudflare R2 |
@@ -207,7 +215,8 @@ The public site allows 30 POST requests per browser per hour, and a comparison c
 | `backend/app/meta/` | Server-side model client, retries, cost ledger |
 | `backend/app/forge/` | Image compositing, labels, and severity utilities |
 | `backend/app/public.py` | Visitor cookie, request limits, and security headers |
-| `frontend/src/workspace/` | One-page workspace: stage and point cloud scan, inspection ticket, quality memory, comparison, history |
+| `frontend/src/workspace/` | Public inspection desk, point cloud scan, ticket, quality memory, comparison and history |
+| `frontend/src/pilot/` | Signed-in factory sections, controlled capture desk, human reviews and team management |
 | `frontend/vercel.json` | Vercel build settings, the API and media rewrites, and response headers |
 | `fixtures/speclens/` | Synthetic white-print examples and exact masks |
 | `tests/`, `frontend/tests/` | Backend regression tests and browser acceptance tests |
@@ -219,8 +228,8 @@ The public site allows 30 POST requests per browser per hour, and a comparison c
 - [Documentation index](docs/README.md): every guide in one list.
 - [Architecture](docs/ARCHITECTURE.md): how the parts fit together, the request flow, and the data model.
 - [Configuration](docs/CONFIGURATION.md): every environment variable, its default, and what reads it.
-- [User guide](docs/user-guide.md): each part of the page and what it does.
-- [API](docs/api/README.md): the workspace routes.
+- [Demo guide](docs/user-guide.md) and [Factory workspace guide](docs/factory-guide.md): setup, captures, reviews, standards and quality follow-up.
+- [Demo API](docs/api/README.md) and [Factory API](docs/api/factory.md): routes, authentication, permissions and lifecycle rules.
 - [Troubleshooting](docs/TROUBLESHOOTING.md): setup and deploy problems and their fixes.
 - [Threat model](docs/security/threat-model.md): what the public site protects and how.
 - [Test plan](docs/testing/test-plan.md): what each check covers.
@@ -237,7 +246,10 @@ The public site allows 30 POST requests per browser per hour, and a comparison c
 - Sizes in millimetres assume a top-down photo with the part's width across the frame.
 - Corrections are immutable. Use another inspection to add a further clarification.
 - The page and the API are hosted apart, so the page can load while the API is down. Inspections then fail with a visible error. Until the Render cut-over, the API runs on one Lightsail server.
-- Local mode serves one team without sign-in. Public visitors are separated only by a browser cookie, so clearing cookies starts a new workspace.
+- Factory accounts have no self-service password reset/recovery, verified email, MFA or SSO. Sessions expire after seven days; logout and membership deactivation revoke access. Keep at least two trusted admins and retain passwords securely.
+- Anonymous public visitors are separated by a browser cookie; clearing it starts another demo workspace. Local anonymous mode is shared. Neither behavior grants access to signed-in team records.
+- Factory evidence is retained beyond the anonymous 90-day purge. An admin can delete operational data; that does not erase users, memberships, sessions or invitations. Keep exports and backups private.
+- Validation imports assess unverified supplied outputs and labels. Cluster intervals do not establish independent sampling, absence of leakage, industrial accuracy or authorization to release material.
 - People remain responsible for disposition.
 
 ## License

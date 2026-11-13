@@ -14,6 +14,8 @@ The canonical public hostname is `speclens.pallabdas.me`. Namecheap has one CNAM
 
 `render.yaml` describes the target: the API (`speclens-api`), a background worker (`speclens-worker`), a nightly purge (`speclens-purge`), Postgres (`speclens-db`) and Key Value (`speclens-kv`), all in the `singapore` region. Photos go to Cloudflare R2, because Render services have no lasting disk. Vercel keeps serving the page. The Lightsail server stays live until the cut-over below is done and checked.
 
+The copy helper below currently covers legacy demo tables and media, not `pilot_*` identities, memberships, sessions/invitations or factory records. These steps alone are insufficient after factory data exists. Keep the current backend active until a tested full factory migration preserves those tables, their owner relationships, operational counts and media. This limitation concerns a future SQLite-to-Postgres move; migration 0003 on the existing Lightsail database remains additive.
+
 1. Create an R2 bucket named `speclens-media` and an R2 API token with read and write access to that bucket only. Note the account endpoint, `https://<account id>.r2.cloudflarestorage.com`.
 2. In Render, choose **New > Blueprint**, select this repository, and apply `render.yaml`. Render asks for each `sync: false` secret: `MODEL_API_KEY`, `HINDSIGHT_API_KEY`, `SPECLENS_PROXY_SECRET`, the two R2 keys and `SENTRY_DSN` (leave it empty if there is no Sentry project). Use the same proxy secret that Vercel holds.
 3. In the `speclens-config` environment group, set `R2_ENDPOINT` to the account endpoint.
@@ -54,7 +56,7 @@ The current cookie is `speclens_workspace`. On the same hostname, a valid legacy
 
 Both `speclens.13-236-192-155.sslip.io` and `chief-skill.13-236-192-155.sslip.io` remain aliases without redirects. Browser cookies belong to their hostname, so revisit the same hostname for visitor history created there. Cookies created on the custom domain continue through the Vercel proxy to the same persistent backend. Moving between different hostnames starts a separate visitor workspace. The canonical public hostname is `speclens.pallabdas.me`.
 
-The public server limits POST requests to 30 per browser per hour and 120 per IP per hour, and a comparison counts as two. Behind Vercel, the server connects to a Vercel address, so Vercel forwards the visitor's address in `x-real-ip` and proves it with the `x-speclens-proxy-secret` header. Run `./scripts/set-proxy-secret.sh` once to create that secret and store it in Vercel and on the server. Without a matching secret, the limit counts the connecting address, and a forged `x-real-ip` is ignored. These request limits are separate from the persisted vision budget and Hindsight billing. The default local mode remains a shared single-team workspace with `SPECLENS_PUBLIC=0`.
+The public server limits non-factory POST requests to 30 per browser per hour and 120 per IP per hour, and a comparison counts as two. The free rule parser is exempt. Factory routes under `/api/workspace/pilot/` are exempt from that demo quota; registration/login/join have separate durable auth limits. Behind Vercel, the server connects to a Vercel address, so Vercel forwards the visitor's address in `x-real-ip` and proves it with the `x-speclens-proxy-secret` header. Run `./scripts/set-proxy-secret.sh` once to create that secret and store it in Vercel and on the server. Without a matching secret, the limit counts the connecting address, and a forged `x-real-ip` is ignored. These request limits are separate from the persisted vision budget and Hindsight billing. With `SPECLENS_PUBLIC=0`, only the anonymous demo remains shared; factory sign-in, ownership and role checks remain active.
 
 ## Server access
 
@@ -147,7 +149,7 @@ The AWS CLI must be authenticated to publish. SSH access alone is sufficient for
 
 The fixed Compose project uses the named Docker volume `chief-skill_speclens-data`, mounted at `/app/var`. It contains SQLite, inspection media, uploaded images, and the model spend ledger. The service uses a single container and single volume; updates briefly replace the running container. The data survives container replacement, image rebuilds, instance restarts, and instance stops. Deleting the Lightsail instance or the Docker volume can destroy it. Hindsight retains its own remote banks; it does not replace the local audit records.
 
-This new server starts with a fresh application volume. Local inspection history is not automatically uploaded. To migrate existing records, make a consistent backup of the complete local runtime directory with the local app stopped, then restore it into the server volume before starting the service.
+The initial installation created a fresh application volume; updates reuse it. Local inspection history is not automatically uploaded. To migrate existing records, make a consistent backup of the complete local runtime directory with the local app stopped, then restore it into the server volume before starting the service.
 
 For a consistent server backup, stop the application while archiving the volume. Run these commands on the server; the backup may include private inspection records and must be kept private:
 
@@ -173,3 +175,47 @@ sudo docker ps --filter name=chief-skill-https
 ```
 
 The server incurs ongoing Lightsail charges until it is deleted. Stopping it preserves its disk and does not end those charges. Take and verify an off-server backup before deleting it.
+
+## Factory workspace release, migration and retention
+
+The factory release adds named local accounts, team membership, hashed sessions/invitations/auth counters, and versioned operational JSON records through additive Alembic migration **0003**. Existing anonymous inspections/corrections/comparisons remain in place. Both SQLite and Postgres use the same schema; opening the application engine automatically upgrades it, and `python -m app.db upgrade` can apply the migration explicitly. The new API does not need an identity-provider subscription.
+
+Treat first startup of the new image as a database migration. Prepare a consistent backup and a rollback target **before** running the deployment script or starting that image:
+
+1. Record the reviewed source commit/release path, currently running image and database revision. Pause writes and allow queued/running inspections to finish. Stop the API, any external worker and the scheduled purge while taking the snapshot. On Lightsail use the complete-volume backup procedure above, with a unique timestamped archive rather than overwriting the only previous backup. On Postgres use a consistent database backup plus the corresponding private media snapshot. Keep runtime settings and the prior image/source separately; do not print secrets.
+2. Verify that the archive can be listed and restored into a separate private directory/volume. Run SQLite `PRAGMA integrity_check` on the restored copy, or verify a Postgres restore. Record counts for inspections, corrections, comparisons, jobs and existing `pilot_*` tables/kinds if present. Inventory media file counts and hashes. Keep the snapshot, counts and backup checksum off-server with restricted access. A source archive or a running-volume `cp` alone is not a consistent operational-data backup.
+3. Deploy the authorized release through the existing command above. Keep the API and worker on the same code/schema, and do not change the volume/project name. Check logs for migration `0003`; verify the actual `alembic_version` and that all preexisting row counts remain intact. Compare factory kinds/member counts and media inventory on an update that already contains factory records. Resume the purge only after its factory-retention behavior is confirmed.
+4. Verify `/healthz`, `/api/workspace/status`, public samples and frontend asset version without provider calls. On the same approved frontend origin verify `/api/workspace/pilot/session` returns signed-out fields without a cookie and protected overview returns 401. Use the offline automated suites for mutation/role/retake checks; reserve live provider smoke tests for the intended integration checks. A healthy endpoint or frontend push is not proof that the backend migration and static version are live.
+5. Record release identity, backup identity/checksum, before/after counts, migration revision and verification results. Reopen writes once those checks agree. Subsequent frontend publication should match the verified backend contract; keep deployment status separate from Git publication status.
+
+Read the restored SQLite backup without opening the application engine, for example:
+
+```python
+import sqlite3
+
+connection = sqlite3.connect('file:/private/restore/speclens.sqlite3?mode=ro', uri=True)
+assert connection.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+print('schema', connection.execute('SELECT version_num FROM alembic_version').fetchone()[0])
+tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+for name in ('inspections', 'corrections', 'comparisons', 'jobs', 'pilot_users',
+             'pilot_teams', 'pilot_memberships', 'pilot_records'):
+    if name in tables:
+        print(name, connection.execute(f'SELECT COUNT(*) FROM {name}').fetchone()[0])
+if 'pilot_records' in tables:
+    print('kinds', connection.execute('SELECT kind,COUNT(*) FROM pilot_records GROUP BY kind').fetchall())
+connection.close()
+```
+
+Replace the example private restore path with the restored copy; it is not a command to run against a live writable file. Counts contain no bearer tokens, but the database/archive contains password hashes, membership and private evidence and must remain private.
+
+For rollback, stop the new API/worker/purge, preserve a separate consistent copy of the failed release's current state, and restore the matching pre-release database **and media** snapshot with the prior application image/source into an isolated recovery target. Verify schema, counts, media and health before redirecting traffic. Changes accepted after the snapshot need explicit reconciliation; restoring a backup does not preserve them automatically. Hindsight is remote state and is not rolled back by a local-volume restore. Prefer a forward fix when compatible. Do not run an Alembic downgrade, drop `pilot_*` tables, clear the volume, or start an older image blindly against the upgraded live database to undo this release.
+
+### Proxy, account and retention checks
+
+`SPECLENS_ALLOWED_ORIGINS` must contain the exact HTTPS frontend origins. Vercel rewrites can give the backend a different Host from the browser Origin, so configure both the custom domain and intended Vercel alias. The factory origin guard requires the same scheme, rejects suffix matches and cross-site writes, and does not trust an arbitrary forwarded host to authorize an origin. Keep forwarded HTTPS metadata correct so `speclens_session` is Secure. A session is valid for seven days; invitation tokens for 48 hours. Registration/login/join limits remain enabled when the demo limiter is disabled.
+
+Factory operational records and their inspection/media evidence are excluded from the anonymous age purge. `RETENTION_DAYS` defaults to **90 days for anonymous demo evidence**. Finished technical jobs and upload objects can be cleaned after seven days while captures/reviews and saved factory evidence remain. Do not describe session expiry, job cleanup or an inactive member as evidence deletion.
+
+An active admin can explicitly delete team operational data through `DELETE /api/workspace/data` with `{"confirm":"DELETE"}` after queued/running jobs finish. Configured Hindsight bank deletion runs before local removal; a remote failure leaves records available for retry. Check returned cleanup failure counts and server logs for media failures. The operation clears operational pilot records, inspections/corrections/comparisons, relevant jobs and media; **users, teams, memberships, sessions, invitations and auth-limit records remain**. It is not account erasure. Backups and provider retention are separate, and the repository records no provider-wide retention guarantee.
+
+There is no built-in password reset/recovery, MFA, SSO or verified email. Keep at least two trusted admins and establish an operator recovery/retention process appropriate to the deployment. Lifecycle activity is not tamper-proof security auditing. See the [factory guide](factory-guide.md), [factory API](api/factory.md) and [threat model](security/threat-model.md).
