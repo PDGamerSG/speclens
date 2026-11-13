@@ -31,6 +31,8 @@ def make_runner(get_service: Callable[[], object]) -> Callable[[dict], dict]:
     def run(job: dict) -> dict:
         service = get_service()
         payload = job['payload']
+        if not isinstance(payload.get('upload'), str) or not isinstance(payload.get('scope'), dict):
+            raise JobFailed(400, 'This job is missing its photo or scope. Queue it again.')
         data = service.media.get(payload['upload'])
         if data is None:
             raise JobFailed(410, 'The photo for this job is no longer stored. Upload it again.')
