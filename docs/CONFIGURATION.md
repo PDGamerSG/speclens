@@ -47,6 +47,22 @@ Two points catch people out:
 
 The live check scripts write under `var/` at the repository root, whatever `SPECLENS_VAR` says: `var/checks/` (`scripts/system_check.py:23`, `frontend/scripts/live-smoke.mjs:37`), `var/evaluations/` (`scripts/evaluate_memory.py:57`) and `var/submission/` (`frontend/scripts/record-demo.mjs:29`).
 
+## Render and production stores
+
+Each of these has a local default, so a fresh checkout runs with none of them set. `render.yaml` sets them on Render.
+
+| Variable | Default | Read by | What it does |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Empty: SQLite at `SPECLENS_VAR/speclens.sqlite3` | `backend/app/db.py` | Postgres for records, jobs, the spend ledger and the budget. Render's `postgres://` URL is accepted as is. Migrations run when the engine opens and with `python -m app.db upgrade` |
+| `REDIS_URL` | Empty: limits counted in process | `backend/app/public.py` | Render Key Value for the hourly request limits, shared by every API instance. If it is set but unreachable, writes return 503 |
+| `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Empty: files in `SPECLENS_VAR/workspace` | `backend/app/media.py` | Cloudflare R2 for photos, masks, crops and job uploads. All four must be set, or the local folder is used |
+| `SPECLENS_WORKER` | `inline` | `backend/app/jobs/queue.py` | `inline` runs jobs in a thread pool inside the API. `external` queues them for `python -m app.worker`, and the inspect and compare routes wait for the job |
+| `WORKER_CONCURRENCY` | `4` | `backend/app/worker.py` | Jobs one worker runs at once |
+| `RETENTION_DAYS` | `90` | `backend/app/jobs/purge.py` | Age after which the nightly purge deletes records, media and Hindsight documents |
+| `SENTRY_DSN` | Empty | `backend/app/observability.py` | Turns on Sentry for the API, worker and purge. `SENTRY_TRACES_SAMPLE_RATE` defaults to `0.1` |
+| `LOG_FORMAT` | `json` on Render, otherwise `text` | `backend/app/observability.py` | One JSON object per log line, with the request ID |
+| `SPECLENS_HOUSEKEEPING` | `1` | `backend/app/main.py` | In `inline` mode, the API retries due memory syncs and recovers stale jobs every minute. Tests set it to `0` |
+
 ## Deployment settings
 
 | Variable | Default | Set in | Read by | What it does |

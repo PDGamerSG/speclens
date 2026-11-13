@@ -1,0 +1,112 @@
+# SpecLens backend on Render. Vercel keeps serving the page and rewrites /api and /files to speclens-api.
+# Secrets use sync: false, so Render asks for each value when the Blueprint is first created.
+# sync: false is not allowed inside an env group, which is why secrets sit on each service.
+services:
+  - type: web
+    name: speclens-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: 0.5c-512mb
+    region: singapore
+    healthCheckPath: /healthz
+    preDeployCommand: python -m app.db upgrade
+    autoDeployTrigger: checksPass
+    envVars:
+      - fromGroup: speclens-config
+      - key: SPECLENS_WORKER
+        value: external
+      - key: DATABASE_URL
+        fromDatabase: { name: speclens-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: speclens-kv, property: connectionString }
+      - key: MODEL_API_KEY
+        sync: false
+      - key: HINDSIGHT_API_KEY
+        sync: false
+      - key: SPECLENS_PROXY_SECRET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: worker
+    name: speclens-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: python -m app.worker
+    plan: 0.5c-512mb
+    region: singapore
+    autoDeployTrigger: checksPass
+    envVars:
+      - fromGroup: speclens-config
+      - key: DATABASE_URL
+        fromDatabase: { name: speclens-db, property: connectionString }
+      - key: MODEL_API_KEY
+        sync: false
+      - key: HINDSIGHT_API_KEY
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: cron
+    name: speclens-purge
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: python -m app.jobs.purge
+    schedule: "30 20 * * *"  # 20:30 UTC is 02:00 IST
+    plan: 0.5c-512mb
+    region: singapore
+    envVars:
+      - fromGroup: speclens-config
+      - key: DATABASE_URL
+        fromDatabase: { name: speclens-db, property: connectionString }
+      - key: HINDSIGHT_API_KEY
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+
+  - type: keyvalue
+    name: speclens-kv
+    plan: 256mb
+    region: singapore
+    maxmemoryPolicy: noeviction  # never drop rate-limit counters silently
+    ipAllowList: []  # private network only
+
+databases:
+  - name: speclens-db
+    plan: 0.1c-256mb
+    region: singapore
+    postgresMajorVersion: "17"
+    diskSizeGB: 5
+
+envVarGroups:
+  - name: speclens-config
+    envVars:
+      - key: SPECLENS_PUBLIC
+        value: "1"
+      - key: BUDGET_USD
+        value: "5"
+      - key: RETENTION_DAYS
+        value: "90"
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      - key: HINDSIGHT_BASE_URL
+        value: https://api.hindsight.vectorize.io
+      - key: R2_ENDPOINT
+        value: https://ACCOUNT_ID.r2.cloudflarestorage.com
+      - key: R2_BUCKET
+        value: speclens-media
+      - key: SPECLENS_ALLOWED_ORIGINS
+        value: https://speclens.pallabdas.me,https://speclens-lake.vercel.app
