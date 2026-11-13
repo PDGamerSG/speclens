@@ -5,7 +5,7 @@ import math
 import re
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 import sqlalchemy as sa
 
@@ -214,6 +214,15 @@ def overview(request: Request):
     for standard in result['standards']:
         standard['sync_status'] = correction_states.get(standard.get('correction_id'), standard.get('sync_status', 'pending'))
     return result
+
+
+@router.get('/insights')
+def factory_insights(request: Request, days: int = Query(30, ge=1, le=365)):
+    """Overview figures for the team: daily outcomes, yield by product, defects, open lots and what needs attention."""
+    _, owner, _ = access(request)
+    from ..workspace.routes import service
+    from .insights import insights
+    return insights(records(), service.store, owner, days)
 
 
 @router.post('/products', status_code=201)

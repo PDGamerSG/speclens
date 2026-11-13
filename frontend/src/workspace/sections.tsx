@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowLeftRight, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3, LoaderCircle, MemoryStick, RefreshCw, ScanLine, Sparkles, X } from 'lucide-react'
+import { ArrowDown, ArrowDownToLine, ArrowLeftRight, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3, LoaderCircle, MemoryStick, RefreshCw, ScanLine, Sparkles, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { dateTime, decision, shortId } from './api'
 import { Chief } from './Chief'
@@ -48,12 +48,13 @@ function Standard({ correction: c, busy, onRetry }: { correction: Correction; bu
   </article>
 }
 
-export function StandardsSection({ corrections, summary, synced, busy, part, factory, onSummarize, onRetry, onInspect }: {
+export function StandardsSection({ corrections, summary, synced, busy, part, factory, onSummarize, onRetry, onInspect, onCompare }: {
   corrections: Correction[]; summary: string | null; synced: number; busy: string | null; part: string; factory: string;
-  onSummarize: () => void; onRetry: (id: string) => void; onInspect: () => void;
+  onSummarize: () => void; onRetry: (id: string) => void; onInspect: () => void; onCompare: () => void;
 }) {
   return <section id="standards" className="page-section" aria-labelledby="standards-title">
     <SectionHead id="standards-title" title="Quality memory" lead={`What your team has taught it for ${part.toLowerCase()} at ${factory}. Changing the specification starts a separate memory.`}>
+      <button className="text-link jump-link" aria-label="Memory comparison" onClick={onCompare}><ArrowDown size={14} />Compare memory off and on</button>
       <button className="button secondary" onClick={onSummarize} disabled={!!busy || !synced}>{busy === 'reflect' ? <LoaderCircle size={15} className="spin" /> : <Sparkles size={15} />}Summarize standards</button>
     </SectionHead>
     {summary && <div className="reflection"><h3>What your inspector has learned</h3><p>{summary}</p><small>Written by Hindsight from your corrections. Check it against the tags below.</small></div>}

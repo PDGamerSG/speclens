@@ -4,6 +4,20 @@ The Factory workspace connects products, specification revisions, capture setup,
 
 This is an inspection evidence workspace. People remain responsible for physical containment, disposition and material release. A software workflow or imported result does not establish factory accuracy or regulatory compliance.
 
+## Overview and navigation
+
+The workspace opens on **Overview**. It shows, for the chosen period of 7, 30 or 90 days:
+
+- first-pass yield (parts accepted on their first capture, out of parts with a final accept or reject), the reviewer reject and hold rates, and how often the model's recommendation matched the reviewer's accept or reject;
+- open reviews and the age of the oldest, open lots and how many are ready to close, and open quality issues by severity;
+- captures per day, coloured by the human outcome;
+- **Needs attention**: quarantined results, critical and major issues, the oldest waiting reviews, proposed standards and lots ready to close, a few of each kind, with a link to each record;
+- each product line's parts, captures, first-pass yield and outcome mix, the defect classes the model flagged and how many a reviewer confirmed, open lots, and recent activity.
+
+The figures come from `GET /api/workspace/pilot/insights?days=30`, computed on the server from the team's own records. Reviewer outcomes are the decisions; the model's recommendation is only compared with them. A new team sees its setup steps here instead.
+
+The sidebar groups the rest by the order the work happens: **Setup** (Products & specs, Capture stations), **Production** (Lots, Capture, Review), **Quality** (Standards, Nonconformances, Validation) and **Team** (Activity, Team).
+
 ## Create or join a team
 
 For a shared sample workspace, use the credentials displayed below **Sign in**: username `demo.speclens`, password `SpecLensDemo2026!`. This public account has engineer access to the dedicated **SpecLens Demo Factory**. Everyone using these credentials shares its records; use sample data only. The published login is provisioned on the hosted site, separate from private teams. Local installations need their own accounts.
@@ -11,6 +25,8 @@ For a shared sample workspace, use the credentials displayed below **Sign in**: 
 The populated demo adds six example product lines: hazelnuts, blister packs, moulded caps, machined washers, printed labels and sensor boards. It includes 18 specification revisions, 12 stations, 18 lots, 180 physical parts with 186 capture/review records (including six linked retakes), 24 standards, 18 quality issues and four validation runs. The earlier introductory product and lot remain available. Counts can grow as visitors use the shared workspace.
 
 Seeded images are labeled synthetic diagrams and decisions are staged. They make no model calls and record no measured model confidence, latency or cost. Example standards, including later proposals made from seeded images, are excluded from quality-memory synchronization and recall even when their lifecycle status is approved. Validation examples use staged matched predictions for 240 parts and 12 repeated views per run; they demonstrate the evaluation UI, not observed factory accuracy.
+
+Seeded records are spread over the four weeks before the seed runs, so the overview shows a working month rather than one moment. A record a visitor has edited keeps its timestamps. To spread records written by an earlier seed run, add `--retime-existing` once; it moves visitor edits to seeded records too.
 
 An operator can populate an already provisioned demo account with `python scripts/seed_factory_demo.py --team-id TEAM_ID`. This previews the dataset; add `--apply` to write it after backing up the runtime data. The command checks the exact team name, public username and active engineer membership, and refuses other targets. It creates no accounts, changes no passwords and does not auto-run at startup. Stable IDs preserve existing records and visitor edits on subsequent runs. On the deployed container, use `sudo docker exec chief-skill-speclens-1 python scripts/seed_factory_demo.py --team-id TEAM_ID --apply` with the actual demo team ID.
 

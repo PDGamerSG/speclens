@@ -1,4 +1,4 @@
-import type { Issue, Lot, Member, Overview, Product, Revision, Role, Session, Standard, Station, TeamData, ValidationCase, ValidationRun, Review } from './types'
+import type { Insights, Issue, Lot, Member, Overview, Product, Revision, Role, Session, Standard, Station, TeamData, ValidationCase, ValidationRun, Review } from './types'
 
 const BASE = '/api/workspace/pilot'
 export class PilotError extends Error { status: number; constructor(message: string, status: number) { super(message); this.status = status } }
@@ -26,6 +26,7 @@ export const pilotApi = {
   join: (value: { token: string; username: string; password: string; name: string }) => request<Session>('/join', body(value)),
   logout: () => request<unknown>('/logout', body({})),
   overview: () => request<Overview>('/overview'),
+  insights: (days: number) => request<Insights>(`/insights?days=${days}`),
   team: () => request<TeamData>('/team'),
   invite: (role: Role) => request<{ token: string; expires_at: string | number }>('/invites', body({ role })),
   member: (id: string, value: Pick<Member, 'version' | 'role' | 'active'>) => request<Member>(`/members/${encodeURIComponent(id)}`, body(value, 'PATCH')),

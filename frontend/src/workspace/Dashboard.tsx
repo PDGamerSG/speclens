@@ -1,3 +1,4 @@
+import { ArrowDown } from 'lucide-react'
 import { Chief } from './Chief'
 import type { DashboardData } from './types'
 
@@ -15,9 +16,9 @@ function DailyBars({ daily }: { daily: DashboardData['daily'] }) {
   </div>
 }
 
-export function DashboardSection({ data, days, part, factory, onDays, onInspect }: {
+export function DashboardSection({ data, days, part, factory, onDays, onInspect, onHistory }: {
   data: DashboardData | null; days: number; part: string; factory: string;
-  onDays: (days: number) => void; onInspect: () => void;
+  onDays: (days: number) => void; onInspect: () => void; onHistory: () => void;
 }) {
   const t = data?.totals
   const weeklyPeak = Math.max(1, ...(data?.corrections_weekly || []).map(w => w.corrections))
@@ -25,6 +26,7 @@ export function DashboardSection({ data, days, part, factory, onDays, onInspect 
     <header className="section-head">
       <div><h2 id="dashboard-title">Quality dashboard</h2><p>{`Decisions, defects and corrections for ${part.toLowerCase()} at ${factory}.`}</p></div>
       <div className="section-actions">
+        <button className="text-link jump-link" aria-label="Inspection history" onClick={onHistory}><ArrowDown size={14} />Every inspection</button>
         <label className="period-select">Period<select value={days} onChange={e => onDays(Number(e.target.value))} aria-label="Dashboard period">
           {PERIODS.map(p => <option key={p} value={p}>Last {p} days</option>)}
         </select></label>

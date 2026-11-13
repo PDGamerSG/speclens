@@ -17,3 +17,16 @@ export function isReviewUnresolved(review: Review, data: Overview) {
     && !!replacement.inspection_id && !data.reviews.some(item => item.inspection_id === replacement.inspection_id && item.quarantined)
   return !validReplacement
 }
+
+/** Capture attempts, physical parts and the human outcome of each attempt in one lot. */
+export function lotStats(data: Overview, lotId: string) {
+  const captures = data.captures.filter(item => item.lot_id === lotId)
+  const reviews = new Map(data.reviews.filter(item => item.lot_id === lotId).map(item => [item.inspection_id, item]))
+  const stats = { captures: captures.length, parts: new Set(captures.map(item => item.physical_part_id)).size, accept: 0, reject: 0, hold: 0, retake: 0, open: 0 }
+  for (const capture of captures) {
+    const review = capture.inspection_id ? reviews.get(capture.inspection_id) : undefined
+    const outcome = review?.status === 'closed' && review.outcome ? review.outcome : 'open'
+    stats[outcome] += 1
+  }
+  return stats
+}

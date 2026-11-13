@@ -14,6 +14,10 @@ async function createTeam(page: Page) {
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByLabel('Team name', { exact: true }).fill(`Bangalore line ${suffix}`)
   await page.getByRole('button', { name: 'Create team workspace', exact: true }).click()
+  // A new team lands on its overview, which lists the setup steps in order.
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Set up your first inspection line', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Products & specs', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Products & specs', exact: true })).toBeVisible()
   return { username: `owner-${suffix}`, team: `Bangalore line ${suffix}` }
 }
@@ -117,7 +121,8 @@ test('quality issues and imported validation produce durable, attributable recor
   await expect(page.getByText('Review workload', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/Imported results/).first()).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Products & specs', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
+  await expect(page.locator('.factory-kpis')).toBeVisible()
   await page.getByRole('button', { name: 'Validation', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Matched intake results', exact: true })).toBeVisible()
 })

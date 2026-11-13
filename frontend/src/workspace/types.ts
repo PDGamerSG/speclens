@@ -40,7 +40,7 @@ export interface Overview {
   stats: { inspections: number; corrections: number; synced: number; pending: number; comparisons?: number };
   taxonomy?: Taxonomy; has_more?: boolean; next_before?: string | null;
 }
-export type Section = 'inspect' | 'standards' | 'compare' | 'dashboard' | 'history';
+export type Section = 'inspect' | 'batch' | 'standards' | 'compare' | 'dashboard' | 'history';
 export type PartInput = { sample: Sample; file?: never } | { file: File; sample?: never };
 export interface DashboardData {
   days: number; since: string;
