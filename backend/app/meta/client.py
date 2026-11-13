@@ -59,7 +59,11 @@ def spark_json(messages: list, schema: dict, name: str, *, effort: str = "low", 
                cache_key: str | None = None, run_id: str | None = None, model: str | None = None) -> dict:
     """Chat Completions with a strict flat JSON schema. Returns {data, ms, cost_usd, usage}."""
     model = model or MODELS["spark"]
-    ledger.check_budget()
+    with ledger.reserve(ledger.spark_estimate(model, max_tokens)):
+        return _spark_json(messages, schema, name, effort, max_tokens, cache_key, run_id, model)
+
+
+def _spark_json(messages, schema, name, effort, max_tokens, cache_key, run_id, model) -> dict:
     kw = {"extra_body": {"prompt_cache_key": cache_key}} if cache_key else {}
     for attempt in range(3):
         t = time.time()
@@ -107,21 +111,21 @@ def _image_slot() -> None:
 def _image_post(path: str, payload: dict, op: str, run_id: str | None) -> dict:
     model = payload["model"]
     for attempt in range(4):
-        ledger.check_budget(PRICE[model]["image"])
         _image_slot()
         t = time.time()
         try:
-            r = httpx.post(f"{BASE_URL}{path}", json=payload, timeout=240, headers={"Authorization": f"Bearer {API_KEY}"})
+            with ledger.reserve(PRICE[model]["image"]):
+                r = httpx.post(f"{BASE_URL}{path}", json=payload, timeout=240, headers={"Authorization": f"Bearer {API_KEY}"})
+                if r.status_code == 200:
+                    imgs = [base64.b64decode(d["b64_json"]) for d in r.json()["data"]]
+                    cost = PRICE[model]["image"] * len(imgs)
+                    ledger.record(model, op, (time.time() - t) * 1000, 200, cost, run_id, n=len(imgs))
+                    return {"images": imgs, "ms": (time.time() - t) * 1000, "cost_usd": cost}
         except httpx.HTTPError as e:
             ledger.record(model, op, (time.time() - t) * 1000, "neterr", 0.0, run_id, err=str(e)[:200])
             time.sleep(2 ** attempt + random.random())
             continue
         ms = (time.time() - t) * 1000
-        if r.status_code == 200:
-            imgs = [base64.b64decode(d["b64_json"]) for d in r.json()["data"]]
-            cost = PRICE[model]["image"] * len(imgs)
-            ledger.record(model, op, ms, 200, cost, run_id, n=len(imgs))
-            return {"images": imgs, "ms": ms, "cost_usd": cost}
         # failed and filtered images are not billed
         ledger.record(model, op, ms, r.status_code, 0.0, run_id, err=r.text[:300])
         if r.status_code not in RETRYABLE:
@@ -167,7 +171,12 @@ def sam_segment(img: Image.Image, *, text: str | None = None, boxes: list | None
             for i, pts in enumerate(points)])
     else:
         prompt = text
-    ledger.check_budget(PRICE["sam-3.1"]["image"])
+    with ledger.reserve(PRICE["sam-3.1"]["image"]):
+        return _sam_segment(img, prompt, run_id, op)
+
+
+def _sam_segment(img: Image.Image, prompt, run_id: str | None, op: str) -> dict:
+    w, h = img.size
     t = time.time()
     last_err = None
     for attempt in range(3):

@@ -106,13 +106,11 @@ def test_the_photo_payload_is_stable_for_the_same_pixels(monkeypatch):
 
 
 def test_cache_stats_report_reuse_and_the_saving_against_the_full_input_price(tmp_path, monkeypatch):
-    target = tmp_path / 'ledger.jsonl'
-    target.write_text('\n'.join(json.dumps(row) for row in [
-        {'model': 'muse-spark-1.3', 'op': 'inspect', 'status': 200, 'prompt_tokens': 1000, 'cached_tokens': 800, 'cost_usd': .001},
-        {'model': 'muse-spark-1.3', 'op': 'inspect', 'status': 200, 'prompt_tokens': 1000, 'cached_tokens': 0, 'cost_usd': .002},
-        {'model': 'sam-3.1', 'op': 'mask', 'status': 200, 'cost_usd': .0025},
-    ]))
-    monkeypatch.setattr(ledger, 'LEDGER', target)
+    monkeypatch.setattr(ledger, 'LEDGER', tmp_path / 'none.jsonl')
+    monkeypatch.setattr(ledger, 'TARGET', tmp_path / 'ledger.sqlite3')
+    ledger.record('muse-spark-1.3', 'inspect', 10, 200, .001, prompt_tokens=1000, cached_tokens=800)
+    ledger.record('muse-spark-1.3', 'inspect', 10, 200, .002, prompt_tokens=1000, cached_tokens=0)
+    ledger.record('sam-3.1', 'mask', 10, 200, .0025)
     stats = ledger.cache_stats()
     assert stats['prompt_tokens'] == 2000
     assert stats['cached_tokens'] == 800
