@@ -1,4 +1,5 @@
 """Inspections can run on a separate worker: queued in the database, claimed once, retried, and never lost."""
+import os
 import threading
 import time
 
@@ -11,15 +12,22 @@ from app.workspace.memory import MemoryUnavailable
 from test_workspace_api import png, setup_client
 
 
-def queue(tmp_path, runner=None):
+TARGETS = ['sqlite'] + (['postgres'] if os.environ.get('SPECLENS_TEST_DATABASE_URL') else [])
+
+
+def queue(tmp_path, runner=None, target='sqlite'):
     from app import db
-    engine = db.engine(tmp_path / 'jobs.sqlite3')
+    engine = db.engine(tmp_path / 'jobs.sqlite3' if target == 'sqlite' else os.environ['SPECLENS_TEST_DATABASE_URL'])
     return JobQueue(lambda: engine, runner)
 
 
-def test_a_job_is_claimed_by_one_worker_only(tmp_path, monkeypatch):
+@pytest.mark.parametrize('target', TARGETS)
+def test_a_job_is_claimed_by_one_worker_only(tmp_path, monkeypatch, target):
     monkeypatch.setenv('SPECLENS_WORKER', 'external')
-    q = queue(tmp_path)
+    q = queue(tmp_path, target=target)
+    # Earlier runs on a shared Postgres may have left queued jobs; finish them so only this job is claimable.
+    while (old := q.claim()) is not None:
+        q.complete(old['id'], {})
     job = q.submit('inspect', {'x': 1}, 'owner')
     claims = []
     barrier = threading.Barrier(6)
