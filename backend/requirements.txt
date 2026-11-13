@@ -1,7 +1,7 @@
 fastapi==0.162.0
 uvicorn[standard]==0.54.0
 python-multipart==0.0.33
-sse-starlette==3.6.0
+sse-starlette==3.7.0
 httpx==0.28.1
 openai==3.43.0
 meta-sam-parser==0.1.0
