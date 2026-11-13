@@ -4,14 +4,19 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import os
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import cv2
+import numpy as np
 from PIL import Image, ImageOps
 
+from ..forge.composite import overlay
 from ..inspect.inspector import inspect
+from ..inspect.measure import measure
 from ..media import LocalMedia, MediaStore
 from .memory import HindsightMemory, MemoryUnavailable
 from .spec import parse_spec
@@ -44,6 +49,7 @@ class WorkspaceService:
         self.inspector = inspector or inspect
         self.media = media or LocalMedia(Path(media_root))
         self._taxonomies: dict[str, tuple[float, dict]] = {}
+        self.masks = os.environ.get('SPECLENS_MASKS', '1') == '1'  # SAM 3.1 outline for each defect, $0.0025 each
 
     def run(self, data: bytes, filename: str, scope: Scope, *, use_memory: bool, source_kind: str = 'upload',
             source_group: str | None = None, sample_id: str | None = None) -> dict:
@@ -60,21 +66,80 @@ class WorkspaceService:
         # Hash canonical pixels before resizing; this does not detect near-duplicates.
         image_hash = hashlib.sha256(f'RGB:{image.width}x{image.height}:'.encode() + image.tobytes()).hexdigest()
         image.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
-        classes = [c['defect_type'] for c in self.taxonomy(scope.spec_text)['classes']]
-        result = self.inspector(image, scope.spec_text, classes, memory_context=memories, with_mask=False)
-        result.pop('mask', None)
+        taxonomy = self.taxonomy(scope.spec_text)
+        classes = [c['defect_type'] for c in taxonomy['classes']]
+        references, used = self.reference_crops(memories, sources)
+        options = {'memory_exemplars': references} if references else {}
+        result = self.inspector(image, scope.spec_text, classes, memory_context=memories,
+                                with_mask=self.masks, require_mask=False, **options)
+        mask = result.pop('mask', None)
         id = f'insp-{uuid.uuid4().hex[:16]}'
         self.media.put(f'{id}.jpg', jpeg(image), 'image/jpeg')
-        item = {**result, 'id': id, 'scope_id': scope.id, 'factory': scope.factory,
+        extra = self.save_mask(id, image, mask, result, taxonomy) if mask is not None and mask.any() else {}
+        item = {**result, **extra, 'id': id, 'scope_id': scope.id, 'factory': scope.factory,
                 'owner_id': scope.owner_id,
                 'part_family': scope.part_family, 'spec_text': scope.spec_text,
                 'image_sha256': image_hash, 'filename': filename,
                 'source_kind': source_kind, 'source_group': source_group, 'sample_id': sample_id,
                 'image_url': f'/files/workspace/{id}.jpg', 'image_width': image.width, 'image_height': image.height,
                 'memory_enabled': use_memory, 'memory_status': ('recalled' if memories else 'empty') if use_memory else 'disabled',
-                'memories': memories, 'bank_id': scope.bank_id if use_memory else None,
+                'memories': memories, 'reference_crops': used, 'bank_id': scope.bank_id if use_memory else None,
                 'created_at': now(), 'model': 'muse-spark-1.3'}
         return self.store.add_inspection(item)
+
+    def save_mask(self, id: str, image: Image.Image, mask: np.ndarray, result: dict, taxonomy: dict) -> dict:
+        """Store the mask and an outlined copy of the photo, and measure the defect against its clause."""
+        if mask.shape != (image.height, image.width):
+            mask = cv2.resize(mask.astype(np.uint8), image.size, interpolation=cv2.INTER_NEAREST).astype(bool)
+        png = io.BytesIO()
+        Image.fromarray(mask.astype(np.uint8) * 255).save(png, 'PNG')
+        self.media.put(f'{id}_mask.png', png.getvalue(), 'image/png')
+        outlined = Image.fromarray(overlay(np.array(image), mask, color=(207, 42, 30)))
+        self.media.put(f'{id}_overlay.jpg', jpeg(outlined, 92), 'image/jpeg')
+        clause = next((c for c in taxonomy['classes'] if c['defect_type'] == result.get('type')), None)
+        measurement = measure(mask, result.get('part_box_px'), taxonomy.get('part_width_mm'),
+                              clause['limit_mm'] if clause else None)
+        extra = {'mask_url': f'/files/workspace/{id}_mask.png', 'overlay_url': f'/files/workspace/{id}_overlay.jpg',
+                 'measurement': measurement}
+        if measurement and measurement['within_limit'] and result['verdict'] == 'defect':
+            # The clause rejects only above its size limit, so a smaller defect goes to a person, not to the scrap bin.
+            result['verdict'] = 'uncertain'
+            extra['size_note'] = (f'Measured {measurement["length_mm"]} mm, within the {measurement["limit_mm"]} mm limit '
+                                  f'of clause {clause["clause"]}. Confirm before rejecting.')
+        return extra
+
+    def reference_crops(self, memories: list[dict], sources: dict, limit: int = 2) -> tuple[list, list[str]]:
+        """Up to two defect crops saved with the recalled corrections, in a stable order so the prompt caches."""
+        ids = sorted({m['source_id'] for m in memories if sources.get(m['source_id'], {}).get('crop_url')})
+        references, used = [], []
+        for cid in ids:
+            data = self.media.get(f'{cid}_crop.jpg')
+            if data is None:
+                continue
+            c = sources[cid]
+            decision = 'reject' if c['verdict'] == 'defect' else 'accept'
+            label = (f'Reference crop from correction {cid}: a quality engineer decided to {decision} this '
+                     f'({c["defect_type"]}). Use it to compare with the part above.')
+            references.append((label, Image.open(io.BytesIO(data)).convert('RGB')))
+            used.append(cid)
+            if len(used) == limit:
+                break
+        return references, used
+
+    def crop(self, inspection: dict) -> bytes | None:
+        """The defect region the engineer corrected, with context around it, at most 384 pixels on a side."""
+        data = self.media.get(f'{inspection["id"]}.jpg')
+        if data is None:
+            return None
+        with Image.open(io.BytesIO(data)) as photo:
+            image = photo.convert('RGB')
+        box = inspection.get('box_px')
+        if box:
+            x0, y0, x1, y1 = box
+            pad = max(48, int(0.35 * max(x1 - x0, y1 - y0)))
+            image = image.crop((max(0, x0 - pad), max(0, y0 - pad), min(image.width, x1 + pad), min(image.height, y1 + pad)))
+        image.thumbnail((384, 384), Image.Resampling.LANCZOS)
+        return jpeg(image, 90)
 
     def taxonomy(self, spec_text: str) -> dict:
         """Reject classes for a specification: the model's reading if one was saved, else the rule-based one."""
@@ -96,7 +161,21 @@ class WorkspaceService:
         return allowed | ({inspection['type']} - {'good'})
 
     def correct(self, inspection_id: str, **values) -> dict:
-        correction = self.store.add_correction(inspection_id, **values)
+        inspection = self.store.inspection(inspection_id)
+        if inspection is None:
+            raise KeyError('Inspection not found.')
+        id = f'correction-{uuid.uuid4().hex}'
+        crop = self.crop(inspection) if inspection.get('image_url', '').startswith('/files/workspace/') else None
+        extra = {}
+        if crop:
+            self.media.put(f'{id}_crop.jpg', crop, 'image/jpeg')
+            extra['crop_url'] = f'/files/workspace/{id}_crop.jpg'
+        try:
+            correction = self.store.add_correction(inspection_id, id=id, **values, **extra)
+        except Exception:
+            if crop:
+                self.media.delete(f'{id}_crop.jpg')
+            raise
         return self.sync_correction(correction['id'])
 
     def sync_correction(self, id: str) -> dict:

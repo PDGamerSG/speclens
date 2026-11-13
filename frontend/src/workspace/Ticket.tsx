@@ -63,10 +63,18 @@ export function Ticket({ result, correction, classes, busy, ready, canInspect, m
         </div>
         <div className="confidence-track"><span className={result.verdict} style={{ width: `${confidence}%` }} /></div>
         <div className="reasoning"><h4>Why this decision</h4><p>{result.rationale}</p></div>
+        {result.measurement && <div className="measurement" aria-label="Defect size">
+          <h4>Measured from the outline</h4>
+          {result.measurement.length_mm !== null
+            ? <p><strong>{result.measurement.length_mm} mm</strong> long · {result.measurement.area_mm2} mm²{result.measurement.limit_mm !== null && <> · limit {result.measurement.limit_mm} mm, <span className={result.measurement.within_limit ? 'within' : 'over'}>{result.measurement.within_limit ? 'within limit' : 'over limit'}</span></>}</p>
+            : <p>{Math.round(result.measurement.length_px)} px long. Add the part width to the specification to measure in millimetres.</p>}
+          {result.size_note && <p className="ticket-hint">{result.size_note}</p>}
+        </div>}
         {result.part_visible === false && <p className="ticket-hint">Use a sharp, top-down photo of one part, or record the decision yourself below.</p>}
         <div className="inspection-meta">
           <span>{(result.ms / 1000).toFixed(1)}s</span>
           <span>{result.memory_enabled ? `${recalled.length} recalled standard${recalled.length === 1 ? '' : 's'}` : 'Memory off'}</span>
+          {!!result.reference_crops?.length && <span title="Defect crops saved with corrections, shown to the model next to this photo.">{result.reference_crops.length} reference crop{result.reference_crops.length === 1 ? '' : 's'}</span>}
           {cachedShare !== null && <span title="Share of this request’s input tokens served from the Model API prompt cache.">{cachedShare}% of prompt from cache</span>}
         </div>
         {recalled.length > 0 && <div className="recalled-list">

@@ -26,6 +26,7 @@ export function PartViewer({ url, name, result, busy, generated, onFile }: {
   const engine = useRef<PointScan | null>(null)
   const scanning = useRef(false)
   const box = result?.box_px
+  const outline = !!result?.overlay_url && showBox
 
   useEffect(() => {
     if (!canvas.current || !motionAllowed()) return
@@ -94,7 +95,7 @@ export function PartViewer({ url, name, result, busy, generated, onFile }: {
       onDragLeave={() => setDropping(false)}
       onDrop={event => { event.preventDefault(); setDropping(false); const file = event.dataTransfer.files[0]; if (file) onFile(file) }}>
       {url && !imageError ? <div className="part-image-wrap" style={{ transform: `scale(${zoom})` }}>
-        <img ref={photo} src={url} alt={name || 'Part under inspection'} className="part-image" onError={() => setImageError(true)} />
+        <img ref={photo} src={outline && phase === 'rest' ? result!.overlay_url : url} alt={name || 'Part under inspection'} className="part-image" onError={() => setImageError(true)} />
         {result && box && showBox && phase === 'rest' && <PencilRing box={box} width={result.image_width} height={result.image_height} label={result.type} seed={result.id} />}
       </div> : <div className="viewer-empty" role="status">
         <ScanLine size={36} strokeWidth={1.2} />
@@ -114,7 +115,7 @@ export function PartViewer({ url, name, result, busy, generated, onFile }: {
       {dropping && <div className="drop-hint">Drop the photo to use it</div>}
     </div>
     <div className="viewer-footer">
-      <button className={'pill-toggle overlay-control' + (showBox && box ? ' selected' : '')} onClick={() => setShowBox(!showBox)} aria-pressed={showBox && !!box} disabled={!box || imageError}><ScanLine size={15} />Defect outline</button>
+      <button className={'pill-toggle overlay-control' + (showBox && (box || result?.overlay_url) ? ' selected' : '')} onClick={() => setShowBox(!showBox)} aria-pressed={showBox && !!(box || result?.overlay_url)} disabled={!(box || result?.overlay_url) || imageError}><ScanLine size={15} />Defect outline</button>
       <span className="viewer-hint">{busy ? 'Reading the photo against your specification' : zoom === 1 ? 'Hover the photo to magnify' : 'Zoomed view'}</span>
       <div className="zoom-controls">
         <button className="icon-button" aria-label="Zoom out" onClick={() => setZoom(Math.max(1, zoom - 0.25))} disabled={zoom === 1}><Minus size={15} /></button>

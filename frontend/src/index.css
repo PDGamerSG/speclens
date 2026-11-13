@@ -412,3 +412,9 @@ td { padding: 9px 14px; border-bottom: 1px solid var(--frost); vertical-align: m
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.measurement { display: grid; gap: 4px; padding: 10px 12px; border: 1.5px solid var(--rule); border-radius: 12px; background: var(--frost); }
+.measurement h4 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.measurement p { font-size: 14px; font-variant-numeric: tabular-nums; }
+.measurement .over { color: var(--reject); font-weight: 700; }
+.measurement .within { color: var(--accept); font-weight: 700; }

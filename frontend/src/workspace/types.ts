@@ -14,11 +14,17 @@ export interface Inspection {
   source_kind?: 'synthetic_sample' | 'upload' | 'unknown'; source_group?: string | null; sample_id?: string | null;
   filename: string; image_sha256: string; ms: number; cost_usd: number; created_at: string; model: string;
   part_visible?: boolean; prompt_tokens?: number; cached_tokens?: number;
+  mask_url?: string; overlay_url?: string; measurement?: Measurement | null; size_note?: string; reference_crops?: string[];
+}
+export interface Measurement {
+  length_px: number; width_px: number; area_px: number; mm_per_px: number | null;
+  length_mm: number | null; width_mm: number | null; area_mm2: number | null; limit_mm: number | null; within_limit: boolean | null;
 }
 export interface Correction {
   id: string; inspection_id: string; scope_id: string; rule_text: string; reviewer: string;
   original_verdict: string; original_type: string; original_rationale: string; image_url: string;
   verdict: 'good' | 'defect'; defect_type: string; created_at: string; sync_status: 'pending' | 'synced'; sync_error: string | null;
+  crop_url?: string;
 }
 export interface Comparison {
   id: string; baseline: Inspection; with_memory: Inspection; created_at: string;
