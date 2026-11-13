@@ -25,6 +25,7 @@ from ..media import media_from_env
 from ..observability import request_id
 from ..meta import ledger
 from ..public import owner
+from .dashboard import dashboard
 from .memory import HindsightMemory
 from .spec import from_model, pdf_text
 from .service import WorkspaceService
@@ -400,3 +401,11 @@ async def extract_specification(file: UploadFile | None = File(None), spec_text:
         reading = await asyncio.to_thread(run_operation, taxonomy_model, spec_text)
         return {'spec_text': spec_text, 'taxonomy': service.save_taxonomy(spec_text, from_model(reading))}
     return {'spec_text': spec_text, 'taxonomy': service.taxonomy(spec_text)}
+
+
+@router.get('/dashboard')
+def quality_dashboard(request: Request, factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART,
+                      spec_text: str = '', days: int = Query(30, ge=1, le=365)):
+    """Reject rate, defect Pareto, corrections, memory use, cost and latency for this scope."""
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    return dashboard(service.store, scope.id, service.taxonomy(scope.spec_text)['classes'], days)

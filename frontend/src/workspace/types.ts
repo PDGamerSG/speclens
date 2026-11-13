@@ -38,5 +38,17 @@ export interface Overview {
   stats: { inspections: number; corrections: number; synced: number; pending: number; comparisons?: number };
   taxonomy?: Taxonomy; has_more?: boolean; next_before?: string | null;
 }
-export type Section = 'inspect' | 'standards' | 'compare' | 'history';
+export type Section = 'inspect' | 'standards' | 'compare' | 'dashboard' | 'history';
 export type PartInput = { sample: Sample; file?: never } | { file: File; sample?: never };
+export interface DashboardData {
+  days: number; since: string;
+  totals: {
+    inspections: number; accepted: number; rejected: number; review: number; reject_rate: number | null; review_rate: number | null;
+    corrections: number; overturned: number; corrected_share: number | null; memory_inspections: number; citation_rate: number | null;
+    cost_usd: number; cost_per_inspection: number | null; latency_p50_ms: number | null; latency_p95_ms: number | null;
+  };
+  daily: { day: string; inspections: number; accepted: number; rejected: number; review: number; cost_usd: number }[];
+  pareto: { defect_type: string; label: string; clause: string; count: number; share: number }[];
+  corrections_weekly: { week: string; corrections: number }[];
+  cache: { prompt_tokens: number; cached_tokens: number; hit_rate: number; saved_usd: number };
+}

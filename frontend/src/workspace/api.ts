@@ -1,4 +1,4 @@
-import type { Comparison, Correction, Inspection, MemoryFact, Overview, PartInput, Sample, ScopeSettings, Status, Taxonomy } from './types'
+import type { Comparison, Correction, DashboardData, Inspection, MemoryFact, Overview, PartInput, Sample, ScopeSettings, Status, Taxonomy } from './types'
 
 const BASE = '/api/workspace'
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -37,6 +37,7 @@ export const workspaceApi = {
   sync: (id: string) => request<Correction>(`/corrections/${encodeURIComponent(id)}/sync`, json({})),
   recall: (scope: ScopeSettings) => request<{ memories: MemoryFact[]; bank_id: string }>('/recall', json(scope)),
   reflect: (scope: ScopeSettings) => request<{ summary: string; bank_id: string }>('/reflect', json(scope)),
+  dashboard: (scope: ScopeSettings, days: number) => request<DashboardData>('/dashboard?' + new URLSearchParams({ ...scope, days: String(days) })),
   parseSpec: (spec_text: string) => request<Taxonomy>('/specs/parse', json({ spec_text })),
   extractSpec: (source: { file: File } | { text: string }, useModel: boolean) => {
     const form = new FormData()
