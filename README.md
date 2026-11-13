@@ -29,6 +29,13 @@ This repository holds the whole app: a one-page React interface, a FastAPI serve
 | Photo checks | A photo that does not show the part gets Review, with what the photo shows and what a usable photo needs. |
 | Inspection history | Search every inspection, reopen one, and export the full record as JSON. |
 | Private workspaces | On the public site, a browser cookie keeps each visitor's records, photos, and memory apart. |
+| Any specification | Paste or import a PDF specification. Reject classes, clause numbers, size limits and the part width are read from it, and they drive the model, the correction form and validation. |
+| Outlines and sizes | SAM 3.1 outlines each defect. The part width turns the outline into millimetres, checked against the clause's size limit. |
+| Visual memory | A correction keeps a crop of the corrected region. Recall shows up to two crops to the model beside the written standard. |
+| Batch inspection | Queue up to 20 photos. Results arrive as each finishes, with Review and low-confidence decisions first, and export as CSV. |
+| Quality dashboard | Reject rate per day, defect Pareto, corrections per week, memory use, cost and time for each scope. |
+| Benchmark | `scripts/benchmark.py` compares memory off and on across held-out source photos, with paired bootstrap 95% intervals. |
+| Your data | Export every record, or delete records, photos and memory banks. Records past the retention period are purged nightly. |
 
 ## How it works
 
@@ -106,11 +113,15 @@ Taken from the live site with real model and memory calls in headless Chromium, 
 | Archivo and Kalam | Self-hosted fonts through Fontsource | OFL-1.1 |
 | FastAPI | Server and validated routes | MIT |
 | Uvicorn | Application server | BSD-3-Clause |
-| SQLite | Inspection, correction, and comparison records | Public domain |
+| SQLAlchemy and Alembic | One store and its migrations for SQLite locally and Postgres in production | MIT |
+| SQLite or Postgres | Records, jobs, the spend ledger and the budget | Public domain / PostgreSQL |
 | Meta Model API, `muse-spark-1.3` | Vision decisions | Hosted service |
 | Hindsight | Retain, recall, and reflect for quality memory | Hosted service |
 | Vercel | Serves the interface and rewrites API and media requests to the server | Hosted service |
-| AWS Lightsail | Runs the FastAPI server with its SQLite data and photos | Hosted service |
+| AWS Lightsail | Runs the FastAPI server today, until the Render cut-over | Hosted service |
+| Render | Target backend: API, background worker, nightly purge, Postgres and Key Value, from `render.yaml` | Hosted service |
+| Cloudflare R2 | Photos, masks and crops in production | Hosted service |
+| Sentry | Error reports from the API, worker and purge, when `SENTRY_DSN` is set | Hosted service |
 | Caddy | HTTPS proxy in front of the FastAPI server | Apache-2.0 |
 | Playwright | Browser acceptance tests | Apache-2.0 |
 
@@ -179,13 +190,19 @@ node frontend/scripts/live-smoke.mjs
 
 The live site has two parts. Vercel builds `frontend/` and publishes it from the connected GitHub repository, with the settings in `frontend/vercel.json`. The API, SQLite records, and photos stay on one AWS Lightsail server, with Docker Compose and Caddy. To update the server, `./scripts/deploy-speclens.sh` archives the current source, builds it there, and checks its health. Runtime credentials stay in a private server file, and `SPECLENS_ALLOWED_ORIGINS` lists the frontend origins the server accepts writes from. [The deployment guide](docs/deployment.md) covers access, publishing, backups, and recovery.
 
+The move to Render is ready but not yet live. `render.yaml` declares the API, a worker that runs inspections from a job queue, a nightly purge, Postgres and Key Value, and photos move to Cloudflare R2. `scripts/migrate_to_render.py` copies the Lightsail data across. [The deployment guide](docs/deployment.md#moving-the-backend-to-render) lists the cut-over steps. Every new store has a local default, so local runs and tests need none of these services.
+
 The public site allows 30 POST requests per browser per hour, and a comparison counts as two. A second limit of 120 per hour counts the visitor's IP address. The server accepts that address from Vercel only when `SPECLENS_PROXY_SECRET` matches on both sides. Without it, the limit counts the Vercel address, which visitors can share. Keep the same browser and cookies to revisit your history.
 
 ## Repository map
 
 | Path | What it holds |
 | --- | --- |
-| `backend/app/workspace/` | SQLite records, Hindsight adapter, inspection service, validated routes |
+| `backend/app/workspace/` | Record store, Hindsight adapter, inspection service, spec reader, dashboard, validated routes |
+| `backend/app/db.py`, `backend/app/migrations/` | Tables for SQLite and Postgres, and their Alembic migrations |
+| `backend/app/jobs/`, `backend/app/worker.py` | Job queue, job runner, retention purge, and the background worker |
+| `backend/app/media.py` | Photo storage: a local folder or Cloudflare R2 |
+| `render.yaml` | The Render Blueprint for the backend |
 | `backend/app/inspect/` | Vision prompt, output validation, defect localization |
 | `backend/app/meta/` | Server-side model client, retries, cost ledger |
 | `backend/app/forge/` | Image compositing, labels, and severity utilities |
@@ -214,11 +231,12 @@ The public site allows 30 POST requests per browser per hour, and a comparison c
 ## Known limits
 
 - The included white-print images are synthetic test inputs with deterministic overlays. Their [manifest](fixtures/speclens/manifest.json) records provenance. They are not production validation data.
-- A paired comparison is one observation from a stochastic model. It is not an accuracy benchmark. A [four-case live ablation](docs/evidence/memory-ablation.json) scored 3/4 decisions correctly without memory and 4/4 with memory, using only two held-aside source photos.
+- A paired comparison is one observation from a stochastic model. It is not an accuracy benchmark. A [four-case live ablation](docs/evidence/memory-ablation.json) scored 3/4 decisions correctly without memory and 4/4 with memory, using only two held-aside source photos. `scripts/benchmark.py` runs a larger held-out comparison with intervals, but it has not yet been run live, and its 18 default cases are synthetic.
 - An identical decoded image is marked as a reused correction image, but unknown near-duplicates still need manual exclusion from an independent evaluation.
-- The current workflow covers one part family, with four fixed defect classes: hole, crack, cut, and print.
+- Reject classes are read from numbered clauses under a REJECT heading. A specification written another way gets one generic class until the model reads it. Only the hazelnut samples are bundled; other parts need uploaded photos.
+- Sizes in millimetres assume a top-down photo with the part's width across the frame.
 - Corrections are immutable. Use another inspection to add a further clarification.
-- The page and the API are hosted apart, so the page can load while the one Lightsail server is down. Inspections then fail with a visible error.
+- The page and the API are hosted apart, so the page can load while the API is down. Inspections then fail with a visible error. Until the Render cut-over, the API runs on one Lightsail server.
 - Local mode serves one team without sign-in. Public visitors are separated only by a browser cookie, so clearing cookies starts a new workspace.
 - People remain responsible for disposition.
 

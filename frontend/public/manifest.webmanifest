@@ -1,0 +1,12 @@
+{
+  "name": "SpecLens quality inspection",
+  "short_name": "SpecLens",
+  "description": "Visual quality inspection that learns your factory's standards from human corrections.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#dee3e8",
+  "theme_color": "#dee3e8",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

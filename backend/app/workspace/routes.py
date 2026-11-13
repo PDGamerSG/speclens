@@ -3,23 +3,33 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import os
+import re
+import uuid
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from openai import APIError
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator, model_validator
+from sse_starlette.sse import EventSourceResponse
 
 from ..config import API_KEY, BUDGET_USD, FIXTURES, VAR
 from ..forge.spec import DEFAULT_SPEC
+from ..forge.spec import taxonomy as taxonomy_model
+from ..jobs.queue import JobQueue
+from ..jobs.queue import mode as queue_mode
+from ..jobs.runner import failure, make_runner
+from ..media import media_from_env
+from ..observability import request_id
 from ..meta import ledger
-from ..meta.client import MetaAPIError
 from ..public import owner
-from .memory import HindsightMemory, MemoryUnavailable
+from .dashboard import dashboard
+from .memory import HindsightMemory
+from .spec import from_model, pdf_text
 from .service import WorkspaceService
-from .store import Scope, Store
+from .store import Scope, Store, now
 
 router = APIRouter(prefix='/api/workspace', tags=['SpecLens'])
 DEFAULT_FACTORY = 'Bangalore Foods'
@@ -28,8 +38,8 @@ MAX_UPLOAD = 8 * 1024 * 1024
 memory_url = os.environ.get('HINDSIGHT_BASE_URL', '').strip()
 if not memory_url and os.environ.get('HINDSIGHT_API_KEY'):
     memory_url = 'https://api.hindsight.vectorize.io'
-service = WorkspaceService(Store(VAR / 'speclens.sqlite3'),
-    HindsightMemory(memory_url, os.environ.get('HINDSIGHT_API_KEY', '')), media_root=VAR / 'workspace')
+service = WorkspaceService(Store(), HindsightMemory(memory_url, os.environ.get('HINDSIGHT_API_KEY', '')),
+                           media=media_from_env(VAR / 'workspace'))
 
 SAMPLES = [
     {'id': 'natural-shell', 'name': 'Natural shell', 'detail': 'Good part · generated sample',
@@ -45,6 +55,19 @@ SAMPLES = [
     {'id': 'second-natural', 'name': 'Natural texture', 'detail': 'Good part · generated sample',
      'path': 'parts/hazelnut_gen_02.jpg', 'source_group': 'generated-hazelnut-02', 'expected_verdict': 'good'},
 ]
+
+
+_INSPECTION_MEDIA = re.compile(r'^(insp-[A-Za-z0-9]{1,40})(?:\.jpg|_overlay\.jpg|_mask\.png)$')
+_CORRECTION_MEDIA = re.compile(r'^(correction-[A-Za-z0-9]{1,40})_crop\.jpg$')
+
+
+def media_owner(filename: str) -> dict | None:
+    """The record a media file belongs to, so the photo route can check its owner. Unknown names match nothing."""
+    if match := _INSPECTION_MEDIA.fullmatch(filename):
+        return service.store.inspection(match.group(1))
+    if match := _CORRECTION_MEDIA.fullmatch(filename):
+        return service.store.correction(match.group(1))
+    return None
 
 
 def make_scope(factory: str, part_family: str, spec_text: str, owner_id: str = '') -> Scope:
@@ -92,12 +115,38 @@ def require_model():
 def run_operation(function, *args, **kwargs):
     try:
         return function(*args, **kwargs)
-    except MemoryUnavailable as e:
-        raise HTTPException(503, str(e)) from None
-    except ledger.BudgetExceeded as e:
-        raise HTTPException(402, str(e)) from None
-    except (APIError, MetaAPIError):
-        raise HTTPException(502, 'The vision model could not complete this inspection. Check the model connection and try again.') from None
+    except Exception as error:
+        mapped = failure(error)
+        if mapped is None:
+            raise
+        raise HTTPException(mapped.status_code, mapped.detail) from None
+
+
+jobs = JobQueue(lambda: service.store.engine, make_runner(lambda: service))
+WAIT_SECONDS = 110  # under the 120 s Vercel waits for an origin's first byte
+
+
+def enqueue(kind: str, data: bytes, name: str, scope: Scope, source: dict, batch_id: str | None = None, **options) -> dict:
+    """Store the photo where any worker can read it, then queue the job."""
+    id = f'job-{uuid.uuid4().hex[:20]}'
+    upload = f'uploads/{id}'
+    service.media.put(upload, data, 'application/octet-stream')
+    payload = {'upload': upload, 'filename': name, 'source': source, 'request_id': request_id.get(), **options,
+               'scope': {'factory': scope.factory, 'part_family': scope.part_family,
+                         'spec_text': scope.spec_text, 'owner_id': scope.owner_id}}
+    return jobs.submit(kind, payload, scope.owner_id, batch_id=batch_id, id=id)
+
+
+async def finished(job: dict) -> dict:
+    """Wait for a queued job and answer like the synchronous route always has."""
+    done = await jobs.wait(job['id'], WAIT_SECONDS)
+    if done is None:
+        raise HTTPException(404, 'Job not found.')
+    if done['status'] == 'done':
+        return done['result']
+    if done['status'] == 'failed':
+        raise HTTPException(done['error']['status_code'], done['error']['detail'])
+    raise HTTPException(504, f'The inspection is still running. Check job {job["id"]} for the result.')
 
 
 @router.get('/status')
@@ -115,16 +164,22 @@ def samples():
 
 
 @router.get('/overview')
-def overview(request: Request, factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, spec_text: str = ''):
+def overview(request: Request, factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, spec_text: str = '',
+             limit: int = Query(100, ge=1, le=500), before: str = Query('', max_length=40)):
+    """One page of history, newest first. Records leave out the specification text, which the caller already has."""
     scope = make_scope(factory, part_family, spec_text, owner(request))
-    inspections = service.store.inspections(scope.id)
-    corrections = service.store.corrections(scope.id)
-    comparisons = service.store.comparisons(scope.id)
-    with service.store.connection() as db:
-        total = db.execute('SELECT COUNT(*) FROM inspections WHERE scope_id=?', (scope.id,)).fetchone()[0]
-    return {'scope_id': scope.id, 'bank_id': scope.bank_id, 'inspections': inspections,
-            'corrections': corrections, 'comparisons': comparisons,
-            'stats': {'inspections': total, 'corrections': len(corrections),
+    store = service.store
+    inspections = store.inspections(scope.id, limit=limit + 1, before=before or None, with_spec=False)
+    has_more = len(inspections) > limit
+    inspections = inspections[:limit]
+    corrections = store.corrections(scope.id, with_spec=False)
+    comparisons = store.comparisons(scope.id, limit=50, with_spec=False)
+    return {'scope_id': scope.id, 'bank_id': scope.bank_id, 'spec_revision_id': scope.spec_revision_id,
+            'taxonomy': service.taxonomy(scope.spec_text),
+            'inspections': inspections, 'corrections': corrections, 'comparisons': comparisons,
+            'has_more': has_more, 'next_before': inspections[-1]['created_at'] if has_more else None,
+            'stats': {'inspections': store.count_inspections(scope.id), 'corrections': len(corrections),
+                      'comparisons': store.count_comparisons(scope.id),
                       'synced': sum(c['sync_status'] == 'synced' for c in corrections),
                       'pending': sum(c['sync_status'] != 'synced' for c in corrections)}}
 
@@ -136,13 +191,15 @@ async def inspect_part(request: Request, file: UploadFile | None = File(None), s
     data, name, source = await read_input(file, sample_id)
     require_model()
     scope = make_scope(factory, part_family, spec_text, owner(request))
+    if queue_mode() == 'external':
+        return await finished(await asyncio.to_thread(enqueue, 'inspect', data, name, scope, source, use_memory=memory_enabled))
     return await asyncio.to_thread(run_operation, service.run, data, name, scope, use_memory=memory_enabled, **source)
 
 
 class CorrectionIn(BaseModel):
     inspection_id: str = Field(min_length=1, max_length=80)
     verdict: Literal['good', 'defect']
-    defect_type: Literal['good', 'hole', 'crack', 'cut', 'print']
+    defect_type: str = Field(min_length=1, max_length=24, pattern=r'^[a-z0-9_]+$')
     rule_text: str = Field(min_length=10, max_length=2000)
     reviewer: str = Field(default='Quality engineer', min_length=1, max_length=80)
 
@@ -167,6 +224,8 @@ def correct(body: CorrectionIn, request: Request):
     item = service.store.inspection(body.inspection_id)
     if item is None or item.get('owner_id', '') != owner(request):
         raise HTTPException(404, 'Inspection not found.')
+    if body.defect_type != 'good' and body.defect_type not in service.correction_classes(item):
+        raise HTTPException(422, 'Choose a defect class from this specification.')
     try:
         return service.correct(**body.model_dump())
     except KeyError:
@@ -214,5 +273,163 @@ async def compare(request: Request, file: UploadFile | None = File(None), sample
                   spec_text: str = Form(''), expected_verdict: Literal['good', 'defect', ''] = Form('')):
     data, name, source = await read_input(file, sample_id)
     require_model()
-    return await asyncio.to_thread(run_operation, service.compare, data, name,
-        make_scope(factory, part_family, spec_text, owner(request)), expected_verdict=expected_verdict or None, **source)
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    if queue_mode() == 'external':
+        return await finished(await asyncio.to_thread(enqueue, 'compare', data, name, scope, source,
+                                                      expected_verdict=expected_verdict or None))
+    return await asyncio.to_thread(run_operation, service.compare, data, name, scope,
+                                   expected_verdict=expected_verdict or None, **source)
+
+
+def own_job(id: str, request: Request) -> dict:
+    job = jobs.get(id)
+    if job is None or job['owner_id'] != owner(request):
+        raise HTTPException(404, 'Job not found.')
+    return job
+
+
+@router.post('/jobs/inspect', status_code=202)
+async def queue_inspection(request: Request, file: UploadFile | None = File(None), sample_id: str = Form(''),
+                           factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
+                           spec_text: str = Form(''), memory_enabled: bool = Form(True),
+                           batch_id: str = Form('', pattern=r'^(batch-[a-f0-9]{8,32})?$')):
+    """Queue one inspection and return at once. Read the result from the job or its event stream.
+
+    A batch is several of these requests sharing a batch_id, one photo each, so every request stays under the
+    upload limit and counts once against the hourly limit."""
+    data, name, source = await read_input(file, sample_id)
+    require_model()
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    if batch_id and len(await asyncio.to_thread(jobs.batch, batch_id)) >= MAX_BATCH:
+        raise HTTPException(413, f'A batch holds at most {MAX_BATCH} photos. Start another batch for the rest.')
+    job = await asyncio.to_thread(enqueue, 'inspect', data, name, scope, source, batch_id=batch_id or None,
+                                  use_memory=memory_enabled)
+    return {**JobQueue.public(job), 'filename': name}
+
+
+@router.post('/jobs/compare', status_code=202)
+async def queue_comparison(request: Request, file: UploadFile | None = File(None), sample_id: str = Form(''),
+                           factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
+                           spec_text: str = Form(''), expected_verdict: Literal['good', 'defect', ''] = Form('')):
+    data, name, source = await read_input(file, sample_id)
+    require_model()
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    job = await asyncio.to_thread(enqueue, 'compare', data, name, scope, source, expected_verdict=expected_verdict or None)
+    return JobQueue.public(job)
+
+
+MAX_BATCH = 50
+
+
+@router.get('/batches/{batch_id}')
+def get_batch(batch_id: str, request: Request):
+    """Every job in one of this visitor's batches, with its result once finished."""
+    items = [j for j in jobs.batch(batch_id) if j['owner_id'] == owner(request)]
+    if not items:
+        raise HTTPException(404, 'Batch not found.')
+    counts = {status: sum(j['status'] == status for j in items) for status in ('queued', 'running', 'done', 'failed')}
+    return {'batch_id': batch_id, 'counts': counts, 'finished': counts['queued'] + counts['running'] == 0,
+            'jobs': [{**JobQueue.public(j), 'filename': j['payload'].get('filename')} for j in items]}
+
+
+@router.get('/jobs/{id}')
+def get_job(id: str, request: Request):
+    return JobQueue.public(own_job(id, request))
+
+
+@router.get('/jobs/{id}/events')
+async def job_events(id: str, request: Request):
+    """Server-sent events: one 'status' per change, then 'done' or 'failed'. A 15 s ping keeps proxies open."""
+    await asyncio.to_thread(own_job, id, request)
+
+    async def stream():
+        last = None
+        while True:
+            job = await asyncio.to_thread(jobs.get, id)
+            if job is None:
+                return
+            if job['status'] != last:
+                last = job['status']
+                if last in ('done', 'failed'):
+                    yield {'event': last, 'data': json.dumps(JobQueue.public(job))}
+                    return
+                yield {'event': 'status', 'data': json.dumps({'id': id, 'status': last, 'attempts': job['attempts']})}
+            if await request.is_disconnected():
+                return
+            await asyncio.sleep(0.5)
+
+    return EventSourceResponse(stream(), ping=15)
+
+
+@router.get('/export')
+def export_data(request: Request):
+    """Every record this visitor stored, as one JSON download."""
+    records = service.store.export_owner(owner(request))
+    body = json.dumps({'format_version': 1, 'exported_at': now(), **records}, ensure_ascii=False)
+    return Response(body, media_type='application/json',
+                    headers={'Content-Disposition': 'attachment; filename="speclens-workspace-export.json"'})
+
+
+class DeleteIn(BaseModel):
+    confirm: Literal['DELETE']
+
+
+@router.delete('/data')
+def delete_data(body: DeleteIn, request: Request):
+    """Delete this visitor's records, photos and Hindsight banks. The body must say DELETE, so it is never an accident."""
+    try:
+        return run_operation(service.delete_owner, owner(request))
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from None
+
+
+class SpecIn(BaseModel):
+    spec_text: str = Field(min_length=1, max_length=12000)
+
+
+@router.post('/specs/parse')
+def parse_specification(body: SpecIn):
+    """Reject classes, clauses, limits and part width read by rules. No model call, so it is free to repeat."""
+    return service.taxonomy(body.spec_text)
+
+
+MAX_SPEC_FILE = 4 * 1024 * 1024
+
+
+@router.post('/specs/extract')
+async def extract_specification(file: UploadFile | None = File(None), spec_text: str = Form(''),
+                                use_model: bool = Form(False)):
+    """Read a specification from a PDF or text file, or from text. With use_model, the vision model reads the
+    classes and the result is saved for every later inspection under this specification."""
+    if file is not None:
+        data = await file.read(MAX_SPEC_FILE + 1)
+        if len(data) > MAX_SPEC_FILE:
+            raise HTTPException(413, 'Choose a specification file smaller than 4 MB.')
+        if data[:5] == b'%PDF-':
+            try:
+                spec_text = await asyncio.to_thread(pdf_text, data)
+            except Exception:
+                raise HTTPException(400, 'This PDF could not be read. Paste the specification text instead.') from None
+        else:
+            try:
+                spec_text = data.decode('utf-8')
+            except UnicodeDecodeError:
+                raise HTTPException(400, 'Upload a PDF or a UTF-8 text file.') from None
+    spec_text = spec_text.strip()
+    if not spec_text:
+        raise HTTPException(422, 'The specification is empty. A scanned PDF needs its text pasted in.')
+    if len(spec_text) > 12000:
+        raise HTTPException(422, f'The specification has {len(spec_text):,} characters. The limit is 12,000.')
+    if use_model:
+        require_model()
+        reading = await asyncio.to_thread(run_operation, taxonomy_model, spec_text)
+        return {'spec_text': spec_text, 'taxonomy': service.save_taxonomy(spec_text, from_model(reading))}
+    return {'spec_text': spec_text, 'taxonomy': service.taxonomy(spec_text)}
+
+
+@router.get('/dashboard')
+def quality_dashboard(request: Request, factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART,
+                      spec_text: str = '', days: int = Query(30, ge=1, le=365)):
+    """Reject rate, defect Pareto, corrections, memory use, cost and latency for this scope."""
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    return dashboard(service.store, scope.id, service.taxonomy(scope.spec_text)['classes'], days)

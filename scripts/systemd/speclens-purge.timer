@@ -1,0 +1,10 @@
+[Unit]
+Description=Run SpecLens retention cleanup nightly
+
+[Timer]
+OnCalendar=*-*-* 20:30:00 UTC
+Persistent=true
+Unit=speclens-purge.service
+
+[Install]
+WantedBy=timers.target

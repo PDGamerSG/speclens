@@ -138,6 +138,10 @@ if ((!ready)); then
   exit 1
 fi
 sudo ln -sfn "$release_dir" /opt/chief-skill/current
+sudo install -m 0644 "$release_dir/scripts/systemd/speclens-purge.service" /etc/systemd/system/speclens-purge.service
+sudo install -m 0644 "$release_dir/scripts/systemd/speclens-purge.timer" /etc/systemd/system/speclens-purge.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now speclens-purge.timer
 if ((publish)); then
   proxy_hosts="$hostname"
   for alias_hostname in "${alias_hostnames[@]-}"; do

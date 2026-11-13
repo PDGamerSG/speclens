@@ -32,7 +32,7 @@ function Standard({ correction: c, busy, onRetry }: { correction: Correction; bu
     </div>
     <p className="standard-rule handwritten">{c.rule_text}</p>
     <div className="standard-source">
-      <img src={c.image_url} alt="Source part for this correction" />
+      <img src={c.crop_url || c.image_url} alt={c.crop_url ? 'Defect region the model sees as a reference' : 'Source part for this correction'} />
       <span><strong className="handwritten">{c.reviewer}</strong><small>{dateTime(c.created_at)}</small></span>
       <Badge verdict={c.verdict} />
     </div>

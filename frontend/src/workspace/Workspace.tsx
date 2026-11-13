@@ -1,7 +1,9 @@
-import { BookOpen, CheckCircle2, ChevronDown, History, RefreshCw, ScanLine, Settings2, ArrowLeftRight, Upload, X, XCircle } from 'lucide-react'
+import { BarChart3, BookOpen, Camera, CheckCircle2, ChevronDown, History, RefreshCw, ScanLine, Settings2, ArrowLeftRight, Upload, X, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { workspaceApi as api } from './api'
+import { BatchSection } from './Batch'
 import { Chief } from './Chief'
+import { DashboardSection } from './Dashboard'
 import { downloadJson } from './download'
 import { InkFilter, Rolling } from './marks'
 import { PartViewer } from './PartViewer'
@@ -9,7 +11,7 @@ import { photoError } from './photo'
 import { CompareSection, RecordsSection, StandardsSection } from './sections'
 import { SettingsDialog } from './SettingsDialog'
 import { Ticket, type CorrectionValue } from './Ticket'
-import type { Comparison, Inspection, Overview, PartInput, Sample, ScopeSettings, Section, Status } from './types'
+import type { Comparison, DashboardData, Inspection, Overview, PartInput, Sample, ScopeSettings, Section, Status } from './types'
 
 const DEFAULT_SCOPE: ScopeSettings = { factory: 'Bangalore Foods', part_family: 'Whole hazelnut', spec_text: '' }
 const EMPTY_STATS = { inspections: 0, corrections: 0, synced: 0, pending: 0 }
@@ -17,6 +19,7 @@ const NAV: { id: Section; label: string; short: string; icon: typeof ScanLine }[
   { id: 'inspect', label: 'Inspection desk', short: 'Inspect', icon: ScanLine },
   { id: 'standards', label: 'Quality memory', short: 'Memory', icon: BookOpen },
   { id: 'compare', label: 'Memory comparison', short: 'Compare', icon: ArrowLeftRight },
+  { id: 'dashboard', label: 'Quality dashboard', short: 'Trends', icon: BarChart3 },
   { id: 'history', label: 'Inspection history', short: 'History', icon: History },
 ]
 
@@ -52,7 +55,10 @@ export default function Workspace() {
   const [historyQuery, setHistoryQuery] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [active, setActive] = useState<Section>('inspect')
+  const [board, setBoard] = useState<DashboardData | null>(null)
+  const [days, setDays] = useState(30)
   const upload = useRef<HTMLInputElement>(null)
+  const camera = useRef<HTMLInputElement>(null)
   const currentInput = useRef<PartInput | null>(null)
   const objectUrl = useRef<string | null>(null)
 
@@ -64,7 +70,13 @@ export default function Workspace() {
   const refresh = useCallback(async () => {
     const [state, health] = await Promise.all([api.overview(scope), api.status()])
     setOverview(state); setStatus(health)
-  }, [scope])
+    api.dashboard(scope, days).then(setBoard).catch(() => { /* The dashboard is secondary; the desk keeps working. */ })
+  }, [scope, days])
+  useEffect(() => {
+    const lifecycle = new AbortController()
+    api.dashboard(scope, days).then(next => { if (!lifecycle.signal.aborted) setBoard(next) }).catch(() => { /* Shown as loading. */ })
+    return () => lifecycle.abort()
+  }, [scope, days])
 
   useEffect(() => {
     const lifecycle = new AbortController()
@@ -144,7 +156,7 @@ export default function Workspace() {
   const saveSettings = (next: ScopeSettings) => {
     localStorage.setItem('speclens-scope', JSON.stringify(next))
     setLoaded(false); setOverview(null); setScope(next); setResult(null); setComparison(null); setOpenedRecord(false)
-    setCorrecting(false); setSummary(null); setHistoryQuery(''); setError(null); setConnectionError(null); setShowSettings(false)
+    setCorrecting(false); setSummary(null); setHistoryQuery(''); setError(null); setConnectionError(null); setShowSettings(false); setBoard(null)
   }
 
   const correction = result ? overview?.corrections.find(c => c.inspection_id === result.id) : undefined
@@ -196,6 +208,9 @@ export default function Workspace() {
               <button className={'rail-tile rail-upload' + (input?.file ? ' selected' : '')} onClick={() => upload.current?.click()} title="JPG, PNG or WebP, up to 8 MB" disabled={!!busy}>
                 <span className="rail-photo">{input?.file && preview ? <img src={preview} alt="" /> : <Upload size={20} />}</span><span>Upload part</span>
               </button>
+              <button className="rail-tile rail-camera" onClick={() => camera.current?.click()} title="Use the phone camera, top-down, one part in frame" disabled={!!busy}>
+                <span className="rail-photo"><Camera size={20} /></span><span>Take photo</span>
+              </button>
               {samples.map(sample => <button key={sample.id} className={'rail-tile' + (input?.sample?.id === sample.id ? ' selected' : '')} onClick={() => choose({ sample })} disabled={!!busy}>
                 <span className="rail-photo"><img src={sample.image_url} alt="" /></span><span>{sample.name}</span>
               </button>)}
@@ -205,11 +220,19 @@ export default function Workspace() {
               if (file) takeFile(file)
               e.target.value = ''
             }} />
+            <input ref={camera} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Take a part photo" onChange={e => {
+              const file = e.target.files?.[0]
+              if (file) takeFile(file)
+              e.target.value = ''
+            }} />
           </div>
-          <Ticket result={result} correction={correction} busy={busy} ready={loaded} canInspect={!!input} memory={memory} onMemory={setMemory}
+          <Ticket result={result} correction={correction} classes={overview?.taxonomy?.classes} busy={busy} ready={loaded} canInspect={!!input} memory={memory} onMemory={setMemory}
             correcting={correcting} onCorrecting={setCorrecting} onInspect={inspect} onSave={saveCorrection} onCompare={() => goTo('compare')} />
         </div>
       </section>
+
+      <BatchSection scope={scope} memory={memory} busy={!!busy || !loaded} onFinished={() => void refresh()}
+        onOpen={item => { setResult(item); selectInput(null); setCorrecting(false); goTo('inspect') }} />
 
       <StandardsSection corrections={overview?.corrections || []} summary={summary} synced={stats.synced} busy={busy} part={scope.part_family} factory={scope.factory}
         onSummarize={() => void act('reflect', async () => { const reply = await api.reflect(scope); setSummary(reply.summary) })} onRetry={retrySync} onInspect={() => goTo('inspect')} />
@@ -219,6 +242,8 @@ export default function Workspace() {
         onSample={sample => choose({ sample })} onExpected={setExpected} onRun={runComparison}
         onOpen={pair => { setComparison(pair); setOpenedRecord(true); setExpected(pair.expected_verdict || '') }}
         onExport={() => { if (comparison) downloadJson(`speclens-${comparison.id}.json`, { format_version: 1, exported_at: new Date().toISOString(), ...comparison }) }} />
+
+      <DashboardSection data={board} days={days} part={scope.part_family} factory={scope.factory} onDays={setDays} onInspect={() => goTo('inspect')} />
 
       <RecordsSection overview={overview} query={historyQuery} busy={!!busy} onQuery={setHistoryQuery}
         onExport={() => downloadJson('speclens-inspection-records.json', { format_version: 1, exported_at: new Date().toISOString(), scope, ...overview })}
@@ -231,6 +256,11 @@ export default function Workspace() {
       <a href="https://github.com/PDGamerSG/speclens#readme" target="_blank" rel="noreferrer">Setup and source</a>
     </footer>
 
-    {showSettings && <SettingsDialog initial={{ ...scope, spec_text: scope.spec_text || status?.default_spec || '' }} status={status} busy={!!busy} onClose={closeSettings} onSave={saveSettings} />}
+    {showSettings && <SettingsDialog initial={{ ...scope, spec_text: scope.spec_text || status?.default_spec || '' }} status={status} busy={!!busy} onClose={closeSettings} onSave={saveSettings}
+      onDeleted={removed => {
+        setShowSettings(false); setResult(null); setComparison(null); setOpenedRecord(false); setSummary(null); setBoard(null)
+        setNotice(`Deleted ${removed.inspections} inspection${removed.inspections === 1 ? '' : 's'} and ${removed.corrections} correction${removed.corrections === 1 ? '' : 's'}${removed.memory_failed ? '. Some memory could not be removed yet; try again later' : ''}.`)
+        void refresh()
+      }} />}
   </div>
 }

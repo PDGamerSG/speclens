@@ -5,7 +5,10 @@ import asyncio
 import hashlib
 import io
 import json
+import os
+import threading
 import time
+from contextlib import asynccontextmanager
 
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -22,14 +25,35 @@ from .forge.composite import overlay
 from .forge.locate import load_image
 from .forge.spec import DEFAULT_SPEC, taxonomy
 from .inspect.inspector import inspect
+from .jobs.queue import mode as queue_mode
+from .media import content_type
+from .observability import RequestIdMiddleware, setup
 from .meta import ledger
 from .runs import manager
 from .public import PublicWorkspaceMiddleware, owner
 from .workspace import routes as workspace_routes
 from .workspace.routes import router as workspace_router
+from .worker import Worker
 
-app = FastAPI(title="SpecLens", version="1.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    worker = None
+    if queue_mode() == "inline" and os.environ.get("SPECLENS_HOUSEKEEPING", "1") == "1":
+        # Also drain persisted retries and jobs left behind by a stopped API.
+        worker = Worker(workspace_routes.jobs, workspace_routes.service, concurrency=1)
+        threading.Thread(target=worker.serve, daemon=True, name="speclens-housekeeping").start()
+    try:
+        yield
+    finally:
+        if worker is not None:
+            worker.stopping.set()
+
+
+setup("api")
+app = FastAPI(title="SpecLens", version="1.0", lifespan=lifespan)
 app.add_middleware(PublicWorkspaceMiddleware)
+app.add_middleware(RequestIdMiddleware)  # added last, so it runs first and every response gets an ID
 app.include_router(workspace_router)
 
 
@@ -43,6 +67,12 @@ class RunIn(BaseModel):
     part_ids: list[str]
     per_type: int = 4
     stress: bool = True
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz():
+    """Load balancer probe. It reads nothing, so a slow store or a large ledger cannot fail it."""
+    return {"ok": True}
 
 
 @app.get("/api/health")
@@ -202,13 +232,23 @@ async def post_inspect(file: UploadFile = File(...), spec_text: str = Form(""), 
     return out
 
 
+def latest_benchmark() -> dict | None:
+    """The newest live benchmark run: from the database, or the copy committed in docs/results/eval.json."""
+    from . import db
+    with db.engine().connect() as c:
+        payload = c.execute(db.benchmark_runs.select().order_by(db.benchmark_runs.c.created_at.desc()).limit(1)).first()
+    if payload is not None:
+        return payload.payload
+    p = RESULTS / "eval.json"
+    return json.loads(p.read_text()) if p.exists() else None
+
+
 @app.get("/api/eval")
 def get_eval():
-    p = RESULTS / "eval.json"
-    if not p.exists():
-        return {"generated": 0, "real_benchmark": None, "in_context": [], "faint_lift": [], "sam_real": None,
-                "forge_stats": None, "curves": [], "notes": ["eval has not been run yet: python eval/run_eval.py"]}
-    return json.loads(p.read_text())
+    result = latest_benchmark()
+    if result is None:
+        return {"benchmark": None, "notes": ["No benchmark has run yet. Run: python scripts/benchmark.py --yes"]}
+    return {"benchmark": {k: v for k, v in result.items() if k != "rows"}, "notes": result.get("notes", [])}
 
 
 app.mount("/files/fixtures", StaticFiles(directory=FIXTURES, check_dir=False), name="fixtures")
@@ -222,15 +262,14 @@ for directory in ('parts', 'runs', 'inspections'):
 
 @app.get('/files/workspace/{filename}')
 def workspace_image(filename: str, request: Request):
-    if not filename.endswith('.jpg'):
-        raise HTTPException(404, 'Photo not found.')
-    item = workspace_routes.service.store.inspection(filename[:-4])
+    """Stream a visitor's own photo from the media store, so the page never needs another image origin."""
+    item = workspace_routes.media_owner(filename)
     if item is None or item.get('owner_id', '') != owner(request):
         raise HTTPException(404, 'Photo not found.')
-    path = workspace_routes.service.media_root / filename
-    if not path.is_file():
+    data = workspace_routes.service.media.get(filename)
+    if data is None:
         raise HTTPException(404, 'Photo not found.')
-    return FileResponse(path, media_type='image/jpeg', headers={'Cache-Control': 'no-store'})
+    return Response(data, media_type=content_type(filename), headers={'Cache-Control': 'no-store'})
 
 _dist = ROOT / "frontend" / "dist"
 if _dist.exists():
@@ -239,6 +278,10 @@ if _dist.exists():
     @app.get("/favicon.svg")
     def favicon():
         return FileResponse(_dist / "favicon.svg")
+
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return FileResponse(_dist / "manifest.webmanifest", media_type="application/manifest+json")
 
     @app.get("/")
     def spa():

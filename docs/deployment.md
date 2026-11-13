@@ -10,6 +10,27 @@ These existing infrastructure names, key paths, Compose project, and volumes rem
 
 The canonical public hostname is `speclens.pallabdas.me`. Namecheap has one CNAME with host `speclens`, target `373f7f09bde82a9c.vercel-dns-017.com.`, and Automatic TTL. The former A record was removed. Vercel manages the custom-domain certificate. Preserve all unrelated Namecheap records. The backend keeps its static IP and Caddy HTTPS aliases.
 
+## Moving the backend to Render
+
+`render.yaml` describes the target: the API (`speclens-api`), a background worker (`speclens-worker`), a nightly purge (`speclens-purge`), Postgres (`speclens-db`) and Key Value (`speclens-kv`), all in the `singapore` region. Photos go to Cloudflare R2, because Render services have no lasting disk. Vercel keeps serving the page. The Lightsail server stays live until the cut-over below is done and checked.
+
+1. Create an R2 bucket named `speclens-media` and an R2 API token with read and write access to that bucket only. Note the account endpoint, `https://<account id>.r2.cloudflarestorage.com`.
+2. In Render, choose **New > Blueprint**, select this repository, and apply `render.yaml`. Render asks for each `sync: false` secret: `MODEL_API_KEY`, `HINDSIGHT_API_KEY`, `SPECLENS_PROXY_SECRET`, the two R2 keys and `SENTRY_DSN` (leave it empty if there is no Sentry project). Use the same proxy secret that Vercel holds.
+3. In the `speclens-config` environment group, set `R2_ENDPOINT` to the account endpoint.
+4. Wait for the first deploy. `preDeployCommand` runs `python -m app.db upgrade`, so the tables exist before the API starts. Open the service URL Render shows for `speclens-api`, followed by `/healthz`.
+5. Copy the data from Lightsail. Download the server's `var/` folder, then run:
+
+   ```bash
+   DATABASE_URL='<external Postgres URL from Render>' R2_ENDPOINT=... R2_BUCKET=speclens-media \
+   R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... .venv/bin/python scripts/migrate_to_render.py --var path/to/var
+   ```
+
+   The script reads a temporary copy of the SQLite file, skips records the target already has, and can be run again.
+6. In `frontend/vercel.json`, change both rewrite destinations from `https://speclens.13-236-192-155.sslip.io` to that Render service URL, then deploy the frontend.
+7. Inspect a sample on the live site, correct it, and confirm the correction reaches Hindsight. Keep Lightsail running for a week as the rollback: reverting step 6 restores it.
+
+Render deploys only commits whose GitHub checks pass (`autoDeployTrigger: checksPass`). The finals setup costs about $32 a month on the Hobby workspace: two `0.5c-512mb` services at $7, Postgres `0.1c-256mb` at $6 plus $0.30 per GB, and Key Value `256mb` at $10. R2 is free up to 10 GB.
+
 ## Vercel production
 
 The project is `speclens` under `pallab-das-projects-d3f377fd`. Its root directory is `frontend`, with Node 22, framework Vite, build command `npm run build`, and output `dist`. The public Vercel alias is https://speclens-lake.vercel.app.
@@ -86,6 +107,8 @@ The script archives the current working tree, so reviewed changes do not need a 
 The environment file must provide the server's model and Hindsight settings and a deliberate API budget. Keep API keys out of browser variables, source files, shell arguments, and build logs. The Docker build does not receive runtime credentials.
 
 Each source release is extracted under `/opt/chief-skill/releases/`. Docker Compose uses both `compose.yaml` and `compose.public.yaml`, builds the frontend and backend, starts the service with the fixed project name `chief-skill`, and checks `/api/workspace/status`. `/opt/chief-skill/current` points to the latest healthy release. This endpoint confirms server configuration; it does not make a live external model or memory request.
+
+The existing Lightsail deployment supports the finals features using SQLite, local media and inline jobs. The API drains due retries and recovers jobs after a restart without a separate worker. Deploying also installs `speclens-purge.timer`, which runs retention cleanup at 20:30 UTC (02:00 IST), using `RETENTION_DAYS` or its 90-day default. Check it with `sudo systemctl status speclens-purge.timer` and read cleanup results with `sudo journalctl -u speclens-purge.service`. Render remains an optional later migration; keep Vercel's rewrites on Lightsail while it is the active backend.
 
 The public overlay sets `SPECLENS_PUBLIC=1` and `FORWARDED_ALLOW_IPS=*`. Caddy forwards HTTPS request metadata to the app, whose host port stays bound to `127.0.0.1:8770`. Keep that loopback binding when trusting forwarded headers.
 

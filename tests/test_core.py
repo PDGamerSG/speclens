@@ -156,11 +156,15 @@ def test_box_hits_needs_overlap_with_the_defect():
     assert not sev.box_hits(None, m)
 
 
-def test_ledger_survives_a_torn_line(tmp_path, monkeypatch):
+def test_legacy_ledger_import_skips_a_torn_line(tmp_path, monkeypatch):
     from app.meta import ledger
     f = tmp_path / "ledger.jsonl"
     f.write_text('{"model": "m", "cost_usd": 1.5, "run_id": "r"}\non_tokens": 545}\n{"model": "m", "cost_usd": 0.5, "run_id": "x"}\n')
     monkeypatch.setattr(ledger, "LEDGER", f)
+    monkeypatch.setattr(ledger, "TARGET", tmp_path / "ledger.sqlite3")
     assert len(ledger.recent(10)) == 2
     assert ledger.run_cost("r") == 1.5
     assert ledger.by_model()["m"]["calls"] == 2
+    assert ledger.spent() == 2.0
+    ledger._imported.clear()
+    assert ledger.spent() == 2.0, "the legacy file is imported only once"
