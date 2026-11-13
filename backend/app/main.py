@@ -45,6 +45,12 @@ class RunIn(BaseModel):
     stress: bool = True
 
 
+@app.get("/healthz", include_in_schema=False)
+def healthz():
+    """Load balancer probe. It reads nothing, so a slow store or a large ledger cannot fail it."""
+    return {"ok": True}
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True, "demo_mode": DEMO_MODE, "models": list(MODELS.values()), "spent_usd": ledger.spent(), "budget_usd": BUDGET_USD}
