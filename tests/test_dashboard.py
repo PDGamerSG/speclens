@@ -45,3 +45,22 @@ def test_comparison_arms_do_not_inflate_production_assessment_counts(tmp_path, m
     board = client.get('/api/workspace/dashboard').json()
     assert board['totals']['inspections'] == 1
     assert board['excluded_evaluation_assessments'] == 2
+
+
+def test_memory_cited_counts_rationales_that_cite_a_recalled_correction(tmp_path):
+    from app.workspace.dashboard import dashboard
+    from app.workspace.store import now
+    from test_workspace import fixture_store, scope
+    store, s = fixture_store(tmp_path), scope()
+    cid = 'correction-021bdf864a92418abe76c5e026cef585'
+    for n, rationale in enumerate(['Natural texture.', f'White ink, as in {cid}.', 'As in correction-deadbeefdeadbeef.']):
+        # Saved without cited_ids, like rows written before citations were recorded.
+        store.add_inspection({'id': f'insp-{n}', 'scope_id': s.id, 'factory': s.factory, 'part_family': s.part_family,
+                              'spec_text': s.spec_text, 'image_sha256': 'abc', 'filename': 'p.png', 'verdict': 'good',
+                              'type': 'good', 'rationale': rationale, 'image_url': '/x.jpg', 'memory_enabled': True,
+                              'memories': [{'source_id': cid, 'text': 'Reject ink.'}], 'confidence': .8, 'ms': 1,
+                              'cost_usd': .001, 'created_at': now()})
+    totals = dashboard(store, s.id, [], 7)['totals']
+    assert totals['memory_inspections'] == 3
+    assert totals['citation_rate'] == 1 / 3
+    assert totals['unknown_citations'] == 1

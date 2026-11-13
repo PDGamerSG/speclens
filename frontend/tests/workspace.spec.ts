@@ -25,6 +25,8 @@ test('a correction is retained, recalled on a new part, and compared against the
   await page.getByRole('button', { name: 'Inspect part', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Reject part', exact: true })).toBeVisible()
   await expect(page.locator('.recalled-standard')).toContainText('Sharp printed characters')
+  await expect(page.locator('.inspection-meta')).toContainText('1 recalled standard · 1 cited')
+  await expect(page.getByRole('heading', { name: 'Cited in this decision', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Memory comparison', exact: true }).click()
   await page.getByRole('button', { name: 'Run comparison', exact: true }).click()
   await expect(page.locator('.comparison-arm').first()).toContainText('Accept part')

@@ -167,7 +167,7 @@ class Store:
                 owner_id=item.get('owner_id', ''), verdict=item.get('verdict'), defect_type=item.get('type'),
                 confidence=item.get('confidence'), cost_usd=item.get('cost_usd'),
                 latency_ms=round(item['ms']) if isinstance(item.get('ms'), (int, float)) else None,
-                memory_enabled=item.get('memory_enabled'), cited_memories=len(item.get('memories') or []),
+                memory_enabled=item.get('memory_enabled'), cited_memories=len(item.get('cited_ids') or []),
                 spec_revision_id=packed.get('spec_revision_id')))
         return item
 

@@ -12,6 +12,8 @@ export interface Inspection {
   verdict: 'good' | 'defect' | 'uncertain'; defect: boolean; type: string; confidence: number;
   rationale: string; box_px: number[] | null; image_url: string; image_width: number; image_height: number;
   memory_enabled: boolean; memory_status: 'disabled' | 'empty' | 'recalled'; memories: MemoryFact[];
+  // Recorded since citation checks. Results saved before that have none of the three.
+  cited_ids?: string[]; uncited_ids?: string[]; unknown_citations?: string[];
   source_kind?: 'synthetic_sample' | 'upload' | 'unknown'; source_group?: string | null; sample_id?: string | null;
   filename: string; image_sha256: string; ms: number; cost_usd: number; created_at: string; model: string;
   pilot?: { revision_id: string; product_id: string; lot_id: string; station_id: string; physical_part_id: string; capture_id: string; retake_of?: string | null; [key: string]: unknown };
@@ -46,7 +48,7 @@ export interface DashboardData {
   days: number; since: string;
   totals: {
     inspections: number; accepted: number; rejected: number; review: number; reject_rate: number | null; review_rate: number | null;
-    corrections: number; overturned: number; corrected_share: number | null; memory_inspections: number; citation_rate: number | null;
+    corrections: number; overturned: number; corrected_share: number | null; memory_inspections: number; citation_rate: number | null; unknown_citations?: number;
     cost_usd: number; cost_per_inspection: number | null; latency_p50_ms: number | null; latency_p95_ms: number | null;
   };
   daily: { day: string; inspections: number; accepted: number; rejected: number; review: number; cost_usd: number }[];

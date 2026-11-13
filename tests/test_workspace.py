@@ -404,3 +404,35 @@ def test_a_rate_limited_retain_is_left_to_the_outbox():
                                 'verdict': 'defect', 'defect_type': 'print', 'reviewer': 'A', 'inspection_id': 'i-one'})
     assert len(requests) == 1
     assert slept == []
+
+
+def run_with_rationale(tmp_path, rationale):
+    """A memory-on inspection that recalls one synced correction and returns the given rationale."""
+    st = fixture_store(tmp_path)
+    s = scope()
+    add_inspection(st, s)
+    c = st.add_correction('i-one', verdict='defect', defect_type='print', rule_text='Reject white ink.', reviewer='A')
+    st.mark_sync(c['id'], 'synced')
+    _, mm, service = modules()
+    facts = [{'id': 'f1', 'text': 'Reject white ink.', 'type': 'world', 'document_id': c['id']}]
+    memory = mm.HindsightMemory('https://memory.example', 'key', transport=httpx.MockTransport(
+        lambda req: httpx.Response(200, json={'results': facts})))
+    def inspector(img, spec, types, **kw):
+        return {'verdict': 'defect', 'defect': True, 'type': 'print', 'confidence': .9,
+                'rationale': rationale(c['id']), 'box_px': None, 'mask': None, 'ms': 1, 'cost_usd': .001}
+    svc = service.WorkspaceService(st, memory, inspector=inspector, media_root=tmp_path / 'images')
+    return c, svc.run(photo(), 'part.png', s, use_memory=True), st
+
+
+def test_an_inspection_records_which_recalled_correction_its_rationale_cited(tmp_path):
+    c, result, st = run_with_rationale(tmp_path, lambda cid: f'White ink, as in {cid}.')
+    assert result['cited_ids'] == [c['id']]
+    assert result['uncited_ids'] == [] and result['unknown_citations'] == []
+    assert st.inspection(result['id'])['cited_ids'] == [c['id']]
+
+
+def test_an_inspection_reports_a_cited_id_that_was_never_recalled(tmp_path):
+    c, result, _ = run_with_rationale(tmp_path, lambda cid: 'White ink, as in correction-deadbeefdeadbeef.')
+    assert result['cited_ids'] == []
+    assert result['uncited_ids'] == [c['id']]
+    assert result['unknown_citations'] == ['correction-deadbeefdeadbeef']

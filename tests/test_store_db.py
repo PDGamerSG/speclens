@@ -33,7 +33,7 @@ def inspection(s, id=None, created_at='2026-11-07T12:00:00+00:00', verdict='good
             'part_family': s.part_family, 'spec_text': s.spec_text, 'image_sha256': 'abc', 'filename': 'part.png',
             'verdict': verdict, 'type': 'good' if verdict == 'good' else 'print', 'rationale': 'A smooth highlight.',
             'image_url': '/files/workspace/x.jpg', 'memory_enabled': True,
-            'memories': [{'source_id': 'c1', 'text': 'Reject ink.'}], 'confidence': 0.8, 'ms': 1234.4,
+            'memories': [{'source_id': 'c1', 'text': 'Reject ink.'}], 'cited_ids': ['c1'], 'confidence': 0.8, 'ms': 1234.4,
             'cost_usd': 0.0035, 'created_at': created_at}
 
 
