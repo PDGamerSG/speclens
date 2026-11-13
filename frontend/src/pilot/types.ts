@@ -23,6 +23,20 @@ export interface ValidationCase { sample_id: string; physical_part_id: string; l
 export interface Rate { count: number; denominator: number; rate: number | null }
 export interface EvaluationArm { matrix: Record<'good' | 'defect', Record<Prediction, number>>; escaped_defects: Rate; false_rejects: Rate; review: Rate; errors: Rate; decision_coverage: Rate }
 export interface ValidationRun extends RecordBase { name: string; source: string; configuration: Record<string, unknown>; manifest: { cases: ValidationCase[]; aggregation: string; input_order_is_attempt_order: boolean; sha256: string }; results: { counts: { samples: number; physical_parts: number; repeated_views: number; lots: number; sessions: number; clusters: number; truth: { good: number; defect: number } }; baseline: EvaluationArm; with_memory: EvaluationArm; paired: { resolved_improvements: number; resolved_regressions: number; unchanged: number; transitions: Record<Prediction, Record<Prediction, number>> }; uncertainty: { method: string; clusters: number; confidence: number; replicates: number; delta_rates: Record<string, { estimate: number | null; lower: number | null; upper: number | null }> }; limitations: string[] } }
-export type Section = 'products' | 'stations' | 'lots' | 'capture' | 'review' | 'standards' | 'validation' | 'issues' | 'activity' | 'team'
+export type Section = 'overview' | 'products' | 'stations' | 'lots' | 'capture' | 'review' | 'standards' | 'validation' | 'issues' | 'activity' | 'team'
 export type RunAction = (label: string, operation: () => Promise<unknown>, success?: string) => Promise<boolean>
 export interface SectionProps { data: Overview; session: Session; busy: boolean; run: RunAction; navigate: (section: Section) => void }
+export interface Attention { kind: 'quarantine' | 'issue' | 'review' | 'standard' | 'lot'; id: string; section: Section; title: string; detail: string; age_hours: number | null; priority: number; severity?: string }
+type Outcomes = { accept: number; reject: number; hold: number; retake: number; open: number }
+export interface Insights {
+  days: number; generated_at: string;
+  kpis: { captures: number; parts: number; first_pass_yield: Rate; human_reject_rate: Rate; hold_rate: Rate; model_agreement: Rate; model_review_rate: Rate;
+    open_reviews: number; oldest_open_review_hours: number | null; open_lots: number; closed_lots: number; open_issues: number; critical_open_issues: number;
+    candidate_standards: number; approved_standards: number; active_stations: number; products: number };
+  daily: ({ day: string; captures: number } & Outcomes)[];
+  products: ({ product_id: string; code: string; name: string; parts: number; captures: number; first_pass: number; decided: number; open_issues: number; first_pass_yield: Rate } & Outcomes)[];
+  defects: { defect_type: string; label: string; clause: string; flagged: number; confirmed: number }[];
+  issues: { by_severity: Record<string, number>; by_status: Record<string, number> };
+  open_lots: { id: string; reference: string; product: string; captures: number; pending_reviews: number; unresolved_parts: number; ready_to_close: boolean; opened_at: string }[];
+  attention: Attention[];
+}
