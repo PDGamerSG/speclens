@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpecLens factory pilot roadmap</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: transparent; }
+    body { color: var(--foreground); font: 14px/1.5 var(--font-sans, system-ui, sans-serif); }
+    button { font: inherit; color: inherit; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+    .tabs button { cursor: pointer; background: transparent; border: 1px solid var(--border); border-radius: var(--radius, 8px); padding: 7px 12px; }
+    .tabs button[aria-pressed="true"] { color: var(--primary-foreground); background: var(--primary); border-color: var(--primary); }
+    .panel { display: grid; gap: 16px; min-width: 0; }
+    .panel[hidden] { display: none; }
+    p, h2, h3 { margin: 0; }
+    h2 { font-size: 20px; line-height: 1.3; letter-spacing: -.025em; font-weight: 650; }
+    h3 { font-size: 15px; line-height: 1.4; font-weight: 650; }
+    .intro { display: grid; gap: 5px; }
+    .subtle { color: var(--muted-foreground); }
+    .card { padding: 16px; min-width: 0; border-radius: var(--radius, 10px); background: var(--card); border: 1px solid var(--border); }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    .phase { position: relative; display: grid; align-content: start; gap: 6px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius, 8px); background: var(--card); }
+    .phase b { color: var(--chart-1); font: 12px var(--font-mono, monospace); }
+    .phase p { font-size: 12px; color: var(--muted-foreground); }
+    .phase + .phase::before { content: "→"; position: absolute; top: 9px; left: -10px; color: var(--muted-foreground); font-size: 14px; }
+    .chart-wrap { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; }
+    svg { display: block; width: 100%; min-width: 560px; height: 318px; color: var(--muted-foreground); }
+    svg text { font-family: var(--font-sans, system-ui, sans-serif); font-size: 12px; }
+    .label { fill: var(--foreground); }
+    .axis { fill: var(--muted-foreground); font-size: 11px; }
+    .gridline { stroke: var(--border); stroke-width: 1; }
+    .dot1 { fill: var(--chart-1); }
+    .dot2 { fill: var(--chart-2); }
+    .dot3 { fill: var(--chart-3); }
+    .dot4 { fill: var(--chart-4); }
+    .footnote { font-size: 12px; color: var(--muted-foreground); }
+    .callout { border-left: 3px solid var(--chart-1); padding: 0 0 0 12px; display: grid; gap: 4px; }
+    .sections { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .section-card { display: grid; gap: 8px; align-content: start; }
+    .tag { width: fit-content; color: var(--muted-foreground); border: 1px solid var(--border); border-radius: 99px; padding: 2px 8px; font-size: 11px; }
+    .section-card p { font-size: 13px; }
+    .gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: gate; }
+    .gates li { counter-increment: gate; display: grid; grid-template-columns: 28px 1fr; gap: 10px; }
+    .gates li::before { content: counter(gate, decimal-leading-zero); font: 12px/1.8 var(--font-mono, monospace); color: var(--chart-1); }
+    .gates li div { display: grid; gap: 3px; }
+    .gates p { color: var(--muted-foreground); font-size: 13px; }
+    footer { margin-top: 16px; font-size: 12px; color: var(--muted-foreground); }
+    a { color: var(--primary); text-underline-offset: 3px; }
+    @media (max-width: 540px) {
+      .flow { grid-template-columns: 1fr; gap: 10px; }
+      .phase { grid-template-columns: 26px 1fr; gap: 2px 7px; padding: 10px 12px; }
+      .phase p { grid-column: 2; }
+      .phase + .phase::before { content: "↓"; left: 18px; top: -13px; }
+      .sections { grid-template-columns: 1fr; }
+      h2 { font-size: 19px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="tabs" aria-label="Explore the proposed roadmap">
+      <button type="button" aria-pressed="true" aria-controls="sequence" data-panel="sequence">Priorities</button>
+      <button type="button" aria-pressed="false" aria-controls="sections" data-panel="sections">Product sections</button>
+      <button type="button" aria-pressed="false" aria-controls="gates" data-panel="gates">Pilot gates</button>
+    </nav>
+
+    <section class="panel" id="sequence" aria-labelledby="sequence-title">
+      <div class="intro">
+        <h2 id="sequence-title">One part family. One station. A traceable decision.</h2>
+        <p class="subtle">A proposed route from the existing inspection app to a human-supervised factory pilot.</p>
+      </div>
+      <div class="flow" aria-label="Five gated phases; these are not time estimates">
+        <article class="phase"><b>00</b><h3>Agree pilot</h3><p>Owner, visible defects, capture, data permission.</p></article>
+        <article class="phase"><b>01</b><h3>Team &amp; spec</h3><p>Verified people, approved revision, frozen recipe.</p></article>
+        <article class="phase"><b>02</b><h3>Review &amp; lots</h3><p>Human decisions, governed rules, evidence.</p></article>
+        <article class="phase"><b>03</b><h3>Shadow test</h3><p>Unseen parts, measured errors and workload.</p></article>
+        <article class="phase"><b>04</b><h3>Expand</h3><p>One integration or next validated part.</p></article>
+      </div>
+      <div class="card">
+        <h3>Where each capability leads</h3>
+        <div class="chart-wrap" tabindex="0" aria-label="Priority chart; scroll horizontally on small screens">
+          <svg viewBox="0 0 670 318" role="img" aria-labelledby="chart-title chart-desc">
+            <title id="chart-title">Qualitative capability priorities</title>
+            <desc id="chart-desc">Team and approved revisions are foundational. Review, standards and lot evidence complete the operating workflow. The Validation Lab and quality metrics validate the pilot. MES and offline deployment depend on actual customer requirements. These categories are not durations or numeric scores.</desc>
+            <text class="axis" x="265" y="28" text-anchor="middle">Foundation</text>
+            <text class="axis" x="375" y="28" text-anchor="middle">Operate</text>
+            <text class="axis" x="485" y="28" text-anchor="middle">Validate</text>
+            <text class="axis" x="595" y="28" text-anchor="middle">Conditional</text>
+            <path class="gridline" d="M265 40V292 M375 40V292 M485 40V292 M595 40V292"/>
+            <text class="label" x="0" y="65">Named team &amp; roles</text><circle class="dot1" cx="265" cy="61" r="6"/>
+            <text class="label" x="0" y="98">Approved part/spec revision</text><circle class="dot1" cx="265" cy="94" r="6"/>
+            <text class="label" x="0" y="131">Review &amp; human disposition</text><circle class="dot2" cx="375" cy="127" r="6"/>
+            <text class="label" x="0" y="164">Governed standards</text><circle class="dot2" cx="375" cy="160" r="6"/>
+            <text class="label" x="0" y="197">Lot evidence &amp; complete export</text><circle class="dot2" cx="375" cy="193" r="6"/>
+            <text class="label" x="0" y="230">Validation Lab &amp; shadow trial</text><circle class="dot3" cx="485" cy="226" r="6"/>
+            <text class="label" x="0" y="263">Honest quality metrics</text><circle class="dot3" cx="485" cy="259" r="6"/>
+            <text class="label" x="0" y="296">MES / offline / more stations</text><circle class="dot4" cx="595" cy="292" r="6"/>
+          </svg>
+        </div>
+        <p class="footnote">Dependency order, not estimated effort or customer demand. Capture validation and dataset collection start early and continue throughout.</p>
+      </div>
+      <div class="callout"><h3>First build proposed</h3><p>Verified shared team + one owned, approved part/spec revision. Then attach durable review, lot identity and approved standards to that foundation.</p></div>
+    </section>
+
+    <section class="panel" id="sections" aria-labelledby="sections-title" hidden>
+      <div class="intro"><h2 id="sections-title">Four primary destinations for the pilot</h2><p class="subtle">Reuse inspection, batch, history, memory and dashboard components. Add the missing operational workflows.</p></div>
+      <div class="sections">
+        <article class="card section-card"><span class="tag">Extend existing</span><h3>Inspect</h3><p>Approved part and lot context, capture instructions, recoverable submissions, linked retakes.</p><p class="subtle">Operator: capture the right item once and see what happens next.</p></article>
+        <article class="card section-card"><span class="tag">New workflow</span><h3>Review</h3><p>Persistent queue, named owner, evidence, human disposition, hold and handover.</p><p class="subtle">Engineer: resolve a part without automatically teaching a rule.</p></article>
+        <article class="card section-card"><span class="tag">New catalog + existing memory</span><h3>Products &amp; Specs</h3><p>Controlled revisions and capture profiles. Standards Library for proposal, approval, supersession and retirement.</p><p class="subtle">Quality owner: control what later inspections can use.</p></article>
+        <article class="card section-card"><span class="tag">Extend existing</span><h3>Pilot Results</h3><p>Lots &amp; Traceability, complete evidence reports, Quality Insights and an engineer's Validation Lab.</p><p class="subtle">Supervisor: reconstruct decisions and judge the pilot with real denominators.</p></article>
+      </div>
+      <div class="callout"><h3>Settings first, separate modules later</h3><p>Team administration stays in settings. Reports start inside lots; visual defect examples start inside standards. Add connections only for an identified hand-off.</p></div>
+    </section>
+
+    <section class="panel" id="gates" aria-labelledby="gates-title" hidden>
+      <div class="intro"><h2 id="gates-title">Evidence before wider use</h2><p class="subtle">The factory sets numeric limits by defect severity. This research does not establish production accuracy.</p></div>
+      <ol class="gates card">
+        <li><div><h3>Visible, identifiable parts</h3><p>Relevant defects survive real lighting and preprocessing. Physical part, lot, capture and revision are known.</p></div></li>
+        <li><div><h3>Controlled decisions and standards</h3><p>Every pilot result has human confirmation. Block retired rules before new model calls; quarantine calls affected by a withdrawal in progress. Evidence survives retry and job cleanup.</p></div></li>
+        <li><div><h3>Untouched evaluation</h3><p>Freeze baseline and approved memory. Keep physical parts, source derivatives, lots and sessions together; test on unseen parts.</p></div></li>
+        <li><div><h3>Separate errors from workload</h3><p>Report defective parts accepted, good parts rejected, Review coverage, failures, human effort and end-to-end delay separately. Preserve first attempts and retakes.</p></div></li>
+        <li><div><h3>Shadow operation and recovery</h3><p>Compare beside the current process, audit AI Accepts, exercise failures and rollback, and retain the factory's release procedure.</p></div></li>
+      </ol>
+      <div class="callout"><h3>The value hypothesis can fail</h3><p>Correction reuse already exists elsewhere. If held-out parts show no benefit, unacceptable regressions or excess review effort, narrow or revise the SpecLens proposition.</p></div>
+    </section>
+    <footer>Research proposal · 14 Nov 2026 · <a href="00-roadmap.md">Full report and source evidence</a></footer>
+  </main>
+  <script>
+    const buttons = [...document.querySelectorAll('[data-panel]')];
+    buttons.forEach(button => button.addEventListener('click', () => {
+      buttons.forEach(item => {
+        const selected = item === button;
+        item.setAttribute('aria-pressed', String(selected));
+        document.getElementById(item.dataset.panel).hidden = !selected;
+      });
+    }));
+  </script>
+</body>
+</html>

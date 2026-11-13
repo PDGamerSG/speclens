@@ -1,6 +1,6 @@
 # Documentation
 
-Where to find each part of the SpecLens documentation. Everything here describes the repository as it is. Statements cite the file they come from, and anything the repository does not record is marked "Not recorded in the repository".
+Where to find each part of the SpecLens documentation. Product guides describe the repository as it is; research and proposals are labeled separately. Statements cite the file they come from, and anything the repository does not record is marked "Not recorded in the repository".
 
 ## Start here
 
@@ -46,6 +46,14 @@ These record what happened. They do not change as the code changes, so an older 
 | [SpecLens release report](evidence/speclens-release.json) | Raw record of the release checks under the SpecLens name |
 | [Implementation plan](implementation-plan.md) | The original build plan, kept as history. It names Tailwind, which `frontend/package.json` does not list |
 | [Architecture page](architecture.html) | A static page that draws the correction and recall loop |
+
+## Research and proposals
+
+These investigate possible future work. They do not describe implemented features or approved release commitments.
+
+| Document | What it covers |
+| --- | --- |
+| [Factory pilot roadmap](research/2026-11-14-factory-pilot/00-roadmap.md) | Source audit, five-vendor comparison, proposed sections, priorities, pilot validation, and a concrete first build proposal, with a [visual roadmap](research/2026-11-14-factory-pilot/roadmap.html) |
 
 ## Other files
 

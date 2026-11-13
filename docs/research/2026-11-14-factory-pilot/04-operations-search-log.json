@@ -1,0 +1,128 @@
+[
+  {
+    "key": "gs1-traceability",
+    "url": "https://www.gs1.org/standards/traceability",
+    "query_or_purpose": "GS1 global traceability standards and critical tracking events/key data elements",
+    "retrieved_utc": "2026-11-13T18:50:57.804745+00:00",
+    "status": 403,
+    "final_url": "https://www.gs1.org/standards/traceability",
+    "title": "Service unavailable",
+    "saved_text": "var/research/2026-11-14-factory-pilot/gs1-traceability.txt"
+  },
+  {
+    "key": "gs1-global",
+    "url": "https://www.gs1.org/standards/gs1-global-traceability-standard/current-standard",
+    "query_or_purpose": "Traceability standard identification batch lot and event records",
+    "retrieved_utc": "2026-11-13T18:50:57.816638+00:00",
+    "status": 403,
+    "final_url": "https://www.gs1.org/standards/gs1-global-traceability-standard/current-standard",
+    "title": "Service unavailable",
+    "saved_text": "var/research/2026-11-14-factory-pilot/gs1-global.txt"
+  },
+  {
+    "key": "nist-control-charts",
+    "url": "https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc31.htm",
+    "query_or_purpose": "NIST control chart definitions and requirements",
+    "retrieved_utc": "2026-11-13T18:50:57.816800+00:00",
+    "status": 200,
+    "final_url": "https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc31.htm",
+    "title": "6.3.1. What are Control Charts?",
+    "saved_text": "var/research/2026-11-14-factory-pilot/nist-control-charts.txt"
+  },
+  {
+    "key": "opc-machine-vision",
+    "url": "https://reference.opcfoundation.org/MachineVision/v101/docs/4",
+    "query_or_purpose": "OPC UA machine vision information model workflows overview",
+    "retrieved_utc": "2026-11-13T18:50:57.816884+00:00",
+    "status": 200,
+    "final_url": "https://reference.opcfoundation.org/specs/OPC-40100-1/4",
+    "title": "General information on Machine Vision and OPC UA &#x2013; OPC UA for Machine Vision - Part 1: Control, configuration management, recipe management, result management",
+    "saved_text": "var/research/2026-11-14-factory-pilot/opc-machine-vision.txt"
+  },
+  {
+    "key": "iso-9001",
+    "url": "https://www.iso.org/standard/62085.html",
+    "query_or_purpose": "ISO 9001 public overview not full normative standard",
+    "retrieved_utc": "2026-11-13T18:50:57.816954+00:00",
+    "status": 403,
+    "final_url": "https://www.iso.org/standard/62085.html",
+    "title": "Just a moment...",
+    "saved_text": "var/research/2026-11-14-factory-pilot/iso-9001.txt"
+  },
+  {
+    "key": "search-pilot",
+    "url": "https://www.google.com/search?q=manufacturing+visual+inspection+pilot+traceability+human+review+production+quality",
+    "query_or_purpose": "manufacturing visual inspection pilot traceability human review production quality",
+    "retrieved_utc": "2026-11-13T18:50:57.817015+00:00",
+    "status": 200,
+    "final_url": "https://www.google.com/search?q=manufacturing+visual+inspection+pilot+traceability+human+review+production+quality",
+    "title": "Google Search",
+    "saved_text": "var/research/2026-11-14-factory-pilot/search-pilot.txt"
+  },
+  {
+    "key": "opc-use-cases",
+    "url": "https://reference.opcfoundation.org/specs/OPC-40100-1/5",
+    "query_or_purpose": "Machine vision use cases: recipe management jobs results traceability",
+    "retrieved_utc": "2026-11-13T18:52:43.716083+00:00",
+    "status": 200,
+    "final_url": "https://reference.opcfoundation.org/specs/OPC-40100-1/5",
+    "content_type": "text/html; charset=utf-8",
+    "title": "Use cases &#x2013; OPC UA for Machine Vision - Part 1: Control, configuration management, recipe management, result management",
+    "saved_text": "var/research/2026-11-14-factory-pilot/opc-use-cases.txt"
+  },
+  {
+    "key": "opc-model",
+    "url": "https://reference.opcfoundation.org/specs/OPC-40100-1/6",
+    "query_or_purpose": "Information model recipe and result management",
+    "retrieved_utc": "2026-11-13T18:52:43.728318+00:00",
+    "status": 200,
+    "final_url": "https://reference.opcfoundation.org/specs/OPC-40100-1/6",
+    "content_type": "text/html; charset=utf-8",
+    "title": "OPC Machine Vision information model overview &#x2013; OPC UA for Machine Vision - Part 1: Control, configuration management, recipe management, result management",
+    "saved_text": "var/research/2026-11-14-factory-pilot/opc-model.txt"
+  },
+  {
+    "key": "nist-p-chart",
+    "url": "https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc332.htm",
+    "query_or_purpose": "Control chart fraction nonconforming independent observations and denominator",
+    "retrieved_utc": "2026-11-13T18:52:43.728464+00:00",
+    "status": 200,
+    "final_url": "https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc332.htm",
+    "content_type": "text/html; charset=utf-8",
+    "title": "6.3.3.2. Proportions Control Charts",
+    "saved_text": "var/research/2026-11-14-factory-pilot/nist-p-chart.txt"
+  },
+  {
+    "key": "gs1-us-traceability",
+    "url": "https://www.gs1us.org/industries-and-insights/by-topic/supply-chain/traceability",
+    "query_or_purpose": "Alternate GS1 primary traceability overview",
+    "retrieved_utc": "2026-11-13T18:52:43.728543+00:00",
+    "status": 404,
+    "final_url": "https://www.gs1us.org/industries-and-insights/by-topic/supply-chain/traceability",
+    "content_type": "text/html;charset=utf-8",
+    "title": "Page Not Found",
+    "saved_text": "var/research/2026-11-14-factory-pilot/gs1-us-traceability.txt"
+  },
+  {
+    "key": "gs1-gts-reference",
+    "url": "https://ref.gs1.org/standards/gts/",
+    "query_or_purpose": "Alternate GS1 global traceability standard reference",
+    "retrieved_utc": "2026-11-13T18:52:43.728607+00:00",
+    "status": 404,
+    "final_url": "https://ref.gs1.org/standards/gts/",
+    "content_type": "text/html; charset=UTF-8",
+    "title": "Not found (404)",
+    "saved_text": "var/research/2026-11-14-factory-pilot/gs1-gts-reference.txt"
+  },
+  {
+    "key": "search-ddg",
+    "url": "https://html.duckduckgo.com/html/?q=manufacturing+quality+visual+inspection+pilot+traceability+standards",
+    "query_or_purpose": "manufacturing quality visual inspection pilot traceability standards",
+    "retrieved_utc": "2026-11-13T18:52:43.728668+00:00",
+    "status": 202,
+    "final_url": "https://html.duckduckgo.com/html/?q=manufacturing+quality+visual+inspection+pilot+traceability+standards",
+    "content_type": "text/html; charset=UTF-8",
+    "title": "DuckDuckGo",
+    "saved_text": "var/research/2026-11-14-factory-pilot/search-ddg.txt"
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "key": "indurion",
+    "requested_url": "https://robovision.ai/indurion",
+    "query_or_purpose": "Verify closest competing correction-reuse mechanism",
+    "retrieved_utc": "2026-11-13T18:57:46.977193+00:00",
+    "status": 200,
+    "final_url": "https://robovision.ai/indurion",
+    "title": "Indurion | Robovision",
+    "saved_text": "var/research/2026-11-14-factory-pilot/indurion.txt",
+    "supporting_excerpts": [
+      {
+        "searched_text": "Corrections are validated",
+        "found": true,
+        "excerpt": "the agent running on each machine, be it on-premises or air-gapped. Inspection keeps going even when the network drops. Corrections are validated centrally or locally, then reconciled across every connected machine, so a fix made once reaches your whole fleet. Go from prototype to production with Indurion. Your own team can train and adjust models, while every model you build stays yours. Two ways to govern vision AI Choose your perspective and see how Indurion fits into your operation. For OEMs For Producers and Manufacturers Embed Indurion across your machine portfolio under your own brand, without vendor lock-in. 01 White-labelling Your logo, interface text, and documentation appear on every machine you ship. Set the branding once and apply it across your installed base. 02 Sovereignity Run your own vision AI models within a standard workflow. Your datase"
+      },
+      {
+        "searched_text": "immutable",
+        "found": true,
+        "excerpt": "ration Resolve differences between annotators with clear analytics. Establish a single ground truth and lock it into an immutable training dataset. Every deployed recipe remains traceable to the exact data behind it. 4. Model training Create a model from scratch or start with a pretrained model. Tune it against your process thresholds and compare runs side by side to build a production-ready model from the data you already have. 5. Model testing Compare models against the same data or your own operators, then review results class by class. Record which model was validated against which dataset, making model promotion a documented decision. 6. Model optimization Set the level of uncertainty you're willing to accept, and Indurion derives a confidence threshold for each class. Low-confidence samples are flagged for review and feed into your next labeling round."
+      },
+      {
+        "searched_text": "operator",
+        "found": true,
+        "excerpt": "ou leave. 02 Fast time-to-resolution Anything that falls outside your defined quality rules is captured and flagged for operator review. 03 Fleet-wide standards Set one standardized quality benchmark and push validated recipe updates across production lines locally, regionally, or globally. 04 Operational Autonomy Your operators can add new defect classes or product variants themselves through an intuitive, award-winning AI lifecycle, on their own schedule. 05 Offline resilience Production lines continue running locally if connectivity is lost. Industrial vision AI made simple Award-winning design meets industrial simplicity. Built for data scientists and intuitive for line operators, insightful for quality managers and support teams. 1 . Data import Capture visual data from your image sensors and upload it to Indurion. 2. Data annotation Label and annotate "
+      }
+    ]
+  },
+  {
+    "key": "workflow-evals",
+    "requested_url": "https://docs.roboflow.com/workflows/evaluate/workflow-evals",
+    "query_or_purpose": "Verify immutable evaluation snapshots and promotion gates",
+    "retrieved_utc": "2026-11-13T18:57:46.977734+00:00",
+    "status": 200,
+    "final_url": "https://docs.roboflow.com/workflows/evaluate/workflow-evals",
+    "title": "Workflow Evals | Workflows | Roboflow Docs",
+    "saved_text": "var/research/2026-11-14-factory-pilot/workflow-evals.txt",
+    "supporting_excerpts": [
+      {
+        "searched_text": "Deploy Gates",
+        "found": true,
+        "excerpt": "ilures. Overview tab plotting six Workflows by Checks passed against latency, above a heatmap of Checks passed per Case Deploy Gates A deploy gate blocks a Workflow version from going live until it passes an Eval. To set one up, open the Workflow and click the dropdown next to \"Publish\". Under \"Publishing Requirements\", select \"Require an Eval to pass\". Choose an Eval, set the minimum pass rate for each Check (default 100%), and click \"Save Checks\". Click \"Run Checks\" to run the Eval on the latest saved version. When every Check passes, click \"Publish\". In \"Auto-Publish\" mode, each save runs the checks and the version publishes by itself when it passes. Each new version needs its own passing run. If you edit the Eval, versions that passed before must run the checks again. You need permission to manage Workflow deploy gates to set or remove a gate. HTTP API U"
+      },
+      {
+        "searched_text": "ground truth",
+        "found": true,
+        "excerpt": "kflows. About An Eval combines a Dataset of Cases with a Spec that defines what to check. Each Case contains inputs and ground truth: the expected values or annotations. A Check selects an evaluator and its settings, such as how closely predicted boxes must match your annotations. A Run evaluates one or more Workflows against those Cases and Checks. Each Run captures its own inputs, ground truth, Workflow definitions, and evaluation settings. Editing or removing a Case affects future Runs; it does not change the results of existing Runs. Checks come in two kinds: an \"Output check\" compares a Workflow output with ground truth, and a \"Latency budget\" sets a time limit per Case. Thresholds for ratio metrics (ex: precision, recall, F1, mAP) are decimals from 0 to 1, so enter 0.8 for 80%. Classification checks compare the top or predicted_classes output with the "
+      },
+      {
+        "searched_text": "editing",
+        "found": true,
+        "excerpt": " those Cases and Checks. Each Run captures its own inputs, ground truth, Workflow definitions, and evaluation settings. Editing or removing a Case affects future Runs; it does not change the results of existing Runs. Checks come in two kinds: an \"Output check\" compares a Workflow output with ground truth, and a \"Latency budget\" sets a time limit per Case. Thresholds for ratio metrics (ex: precision, recall, F1, mAP) are decimals from 0 to 1, so enter 0.8 for 80%. Classification checks compare the top or predicted_classes output with the expected classes, by exact match or F1. You can import ground truth from a Dataset test set. The import uses the current annotations on the original images, not the preprocessed or augmented images of a Dataset Version. It supports boxes, classification, and segmentation. Keypoint datasets import images only. Imported labels "
+      }
+    ]
+  }
+]
