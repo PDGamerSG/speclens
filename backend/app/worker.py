@@ -1,7 +1,7 @@
 """Background worker: `python -m app.worker`.
 
 Claims queued jobs and runs them, WORKER_CONCURRENCY at a time (default 4; each job mostly waits on the model).
-Every minute it returns stale jobs to the queue. On SIGTERM it stops
+Every minute it returns stale jobs to the queue and retries memory syncs that are due. On SIGTERM it stops
 claiming and lets running jobs finish, which fits inside Render's shutdown grace period.
 """
 from __future__ import annotations
@@ -29,6 +29,9 @@ class Worker:
     def housekeeping(self) -> None:
         if requeued := self.jobs.recover_stale():
             log.warning('Returned %d stale jobs to the queue', requeued)
+        outcome = self.service.drain_outbox()
+        if any(outcome.values()):
+            log.info('Memory outbox: %d synced, %d still pending', outcome['synced'], outcome['pending'])
 
     def run_one(self) -> bool:
         """Claim and run one job in this thread. Returns False when the queue was empty."""

@@ -5,7 +5,11 @@ import asyncio
 import hashlib
 import io
 import json
+import logging
+import os
+import threading
 import time
+from contextlib import asynccontextmanager
 
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -22,6 +26,7 @@ from .forge.composite import overlay
 from .forge.locate import load_image
 from .forge.spec import DEFAULT_SPEC, taxonomy
 from .inspect.inspector import inspect
+from .jobs.queue import mode as queue_mode
 from .media import content_type
 from .meta import ledger
 from .runs import manager
@@ -29,7 +34,26 @@ from .public import PublicWorkspaceMiddleware, owner
 from .workspace import routes as workspace_routes
 from .workspace.routes import router as workspace_router
 
-app = FastAPI(title="SpecLens", version="1.0")
+def _housekeeping(stop: threading.Event) -> None:
+    """Without a separate worker, the API itself retries due memory syncs and recovers stale jobs each minute."""
+    while not stop.wait(60):
+        try:
+            workspace_routes.jobs.recover_stale()
+            workspace_routes.service.drain_outbox()
+        except Exception:
+            logging.getLogger("speclens").exception("Housekeeping failed")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    stop = threading.Event()
+    if queue_mode() == "inline" and os.environ.get("SPECLENS_HOUSEKEEPING", "1") == "1":
+        threading.Thread(target=_housekeeping, args=(stop,), daemon=True, name="speclens-housekeeping").start()
+    yield
+    stop.set()
+
+
+app = FastAPI(title="SpecLens", version="1.0", lifespan=lifespan)
 app.add_middleware(PublicWorkspaceMiddleware)
 app.include_router(workspace_router)
 

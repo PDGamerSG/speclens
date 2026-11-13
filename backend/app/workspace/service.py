@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import uuid
 from pathlib import Path
 
@@ -12,6 +13,15 @@ from ..inspect.inspector import inspect
 from ..media import LocalMedia, MediaStore
 from .memory import HindsightMemory, MemoryUnavailable
 from .store import Scope, Store, now
+
+
+log = logging.getLogger('speclens.memory')
+ALERT_AFTER = 5
+
+
+def sync_backoff(attempts: int) -> float:
+    """Seconds before the next memory sync attempt: 1 minute, doubling, at most 6 hours."""
+    return min(60 * 2 ** max(attempts - 1, 0), 6 * 3600)
 
 
 def jpeg(image: Image.Image, quality: int = 94) -> bytes:
@@ -75,8 +85,19 @@ class WorkspaceService:
         try:
             self.memory.retain(scope, c)
         except MemoryUnavailable as exc:
-            return self.store.mark_sync(id, 'pending', str(exc))
+            return self.store.mark_sync(id, 'pending', str(exc), retry_in=sync_backoff(self.store.sync_attempts(id)))
         return self.store.mark_sync(id, 'synced')
+
+    def drain_outbox(self, limit: int = 20) -> dict:
+        """Retry memory syncs that are due. The worker calls this every minute, so no correction waits on a click."""
+        outcome = {'synced': 0, 'pending': 0}
+        for id in self.store.due_corrections(limit):
+            result = self.sync_correction(id)
+            outcome['synced' if result['sync_status'] == 'synced' else 'pending'] += 1
+            if result['sync_status'] != 'synced' and self.store.sync_attempts(id) >= ALERT_AFTER:
+                log.error('Correction %s has failed to reach Hindsight %d times: %s',
+                          id, self.store.sync_attempts(id), result.get('sync_error'))
+        return outcome
 
     def compare(self, data: bytes, filename: str, scope: Scope, *, expected_verdict: str | None = None,
                 source_kind: str = 'upload', source_group: str | None = None, sample_id: str | None = None) -> dict:
