@@ -14,11 +14,13 @@ from PIL import Image, ImageOps
 from ..inspect.inspector import inspect
 from ..media import LocalMedia, MediaStore
 from .memory import HindsightMemory, MemoryUnavailable
-from .store import Scope, Store, now
+from .spec import parse_spec
+from .store import Scope, Store, now, spec_revision_id
 
 
 log = logging.getLogger('speclens.memory')
 ALERT_AFTER = 5
+TAXONOMY_TTL = 60  # seconds; a worker sees a newly saved model reading within a minute
 
 
 def sync_backoff(attempts: int) -> float:
@@ -41,6 +43,7 @@ class WorkspaceService:
         self.memory = memory
         self.inspector = inspector or inspect
         self.media = media or LocalMedia(Path(media_root))
+        self._taxonomies: dict[str, tuple[float, dict]] = {}
 
     def run(self, data: bytes, filename: str, scope: Scope, *, use_memory: bool, source_kind: str = 'upload',
             source_group: str | None = None, sample_id: str | None = None) -> dict:
@@ -57,8 +60,8 @@ class WorkspaceService:
         # Hash canonical pixels before resizing; this does not detect near-duplicates.
         image_hash = hashlib.sha256(f'RGB:{image.width}x{image.height}:'.encode() + image.tobytes()).hexdigest()
         image.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
-        result = self.inspector(image, scope.spec_text, ['hole', 'crack', 'cut', 'print'],
-                                memory_context=memories, with_mask=False)
+        classes = [c['defect_type'] for c in self.taxonomy(scope.spec_text)['classes']]
+        result = self.inspector(image, scope.spec_text, classes, memory_context=memories, with_mask=False)
         result.pop('mask', None)
         id = f'insp-{uuid.uuid4().hex[:16]}'
         self.media.put(f'{id}.jpg', jpeg(image), 'image/jpeg')
@@ -72,6 +75,25 @@ class WorkspaceService:
                 'memories': memories, 'bank_id': scope.bank_id if use_memory else None,
                 'created_at': now(), 'model': 'muse-spark-1.3'}
         return self.store.add_inspection(item)
+
+    def taxonomy(self, spec_text: str) -> dict:
+        """Reject classes for a specification: the model's reading if one was saved, else the rule-based one."""
+        sid = spec_revision_id(spec_text)
+        cached = self._taxonomies.get(sid)
+        if cached is None or time.monotonic() - cached[0] > TAXONOMY_TTL:
+            cached = (time.monotonic(), self.store.taxonomy(sid) or parse_spec(spec_text))
+            self._taxonomies[sid] = cached
+        return cached[1]
+
+    def save_taxonomy(self, spec_text: str, taxonomy: dict) -> dict:
+        sid = self.store.save_taxonomy(spec_text, taxonomy)
+        self._taxonomies[sid] = (time.monotonic(), taxonomy)
+        return taxonomy
+
+    def correction_classes(self, inspection: dict) -> set[str]:
+        """Classes a correction of this inspection may use: the spec's classes, plus the class the model chose."""
+        allowed = {c['defect_type'] for c in self.taxonomy(inspection['spec_text'])['classes']}
+        return allowed | ({inspection['type']} - {'good'})
 
     def correct(self, inspection_id: str, **values) -> dict:
         correction = self.store.add_correction(inspection_id, **values)

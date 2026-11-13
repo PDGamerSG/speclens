@@ -25,9 +25,12 @@ export interface Comparison {
   reuse_reason?: 'reused_image' | 'shared_source_photo' | 'not_used_for_correction';
   changed: boolean; held_out: boolean; expected_verdict: 'good' | 'defect' | null; note: string;
 }
+export interface SpecClass { defect_type: string; label: string; clause: string; description: string; limit_mm: number | null }
+export interface Taxonomy { part_name: string; part_width_mm: number | null; classes: SpecClass[]; source: 'rules' | 'model' | 'fallback' }
 export interface Overview {
   scope_id: string; bank_id: string; inspections: Inspection[]; corrections: Correction[]; comparisons: Comparison[];
-  stats: { inspections: number; corrections: number; synced: number; pending: number };
+  stats: { inspections: number; corrections: number; synced: number; pending: number; comparisons?: number };
+  taxonomy?: Taxonomy; has_more?: boolean; next_before?: string | null;
 }
 export type Section = 'inspect' | 'standards' | 'compare' | 'history';
 export type PartInput = { sample: Sample; file?: never } | { file: File; sample?: never };

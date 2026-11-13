@@ -206,7 +206,7 @@ export default function Workspace() {
               e.target.value = ''
             }} />
           </div>
-          <Ticket result={result} correction={correction} busy={busy} ready={loaded} canInspect={!!input} memory={memory} onMemory={setMemory}
+          <Ticket result={result} correction={correction} classes={overview?.taxonomy?.classes} busy={busy} ready={loaded} canInspect={!!input} memory={memory} onMemory={setMemory}
             correcting={correcting} onCorrecting={setCorrecting} onInspect={inspect} onSave={saveCorrection} onCompare={() => goTo('compare')} />
         </div>
       </section>

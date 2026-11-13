@@ -24,6 +24,7 @@ LEGACY_COOKIE = 'chief_skill_workspace'
 MAX_BODY = 9 * 1024 * 1024
 GENERATED_DOCS = {'/docs', '/docs/oauth2-redirect', '/redoc', '/openapi.json'}
 COMPARE = {'/api/workspace/compare', '/api/workspace/jobs/compare'}  # Two vision calls, so each counts twice.
+FREE_POSTS = {'/api/workspace/specs/parse'}  # rules only, no model call
 limiter: dict[str, deque] = defaultdict(deque)
 _lock = threading.Lock()
 _tokens = re.compile(r'^[a-f0-9]{64}$')
@@ -164,7 +165,7 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
                     if value.strip()
                 }):
             response = JSONResponse({'detail': 'Open this workspace directly to make changes.'}, status_code=403)
-        elif request.method == 'POST' and not (allowed := _allowed(visitor, request, path)):
+        elif request.method == 'POST' and path not in FREE_POSTS and not (allowed := _allowed(visitor, request, path)):
             if allowed is None:
                 response = JSONResponse({'detail': 'The request limiter is unavailable. Try again shortly.'}, status_code=503)
             else:

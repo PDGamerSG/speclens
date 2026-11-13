@@ -1,4 +1,4 @@
-import type { Comparison, Correction, Inspection, MemoryFact, Overview, PartInput, Sample, ScopeSettings, Status } from './types'
+import type { Comparison, Correction, Inspection, MemoryFact, Overview, PartInput, Sample, ScopeSettings, Status, Taxonomy } from './types'
 
 const BASE = '/api/workspace'
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -37,6 +37,14 @@ export const workspaceApi = {
   sync: (id: string) => request<Correction>(`/corrections/${encodeURIComponent(id)}/sync`, json({})),
   recall: (scope: ScopeSettings) => request<{ memories: MemoryFact[]; bank_id: string }>('/recall', json(scope)),
   reflect: (scope: ScopeSettings) => request<{ summary: string; bank_id: string }>('/reflect', json(scope)),
+  parseSpec: (spec_text: string) => request<Taxonomy>('/specs/parse', json({ spec_text })),
+  extractSpec: (source: { file: File } | { text: string }, useModel: boolean) => {
+    const form = new FormData()
+    if ('file' in source) form.append('file', source.file, source.file.name)
+    else form.append('spec_text', source.text)
+    form.append('use_model', String(useModel))
+    return request<{ spec_text: string; taxonomy: Taxonomy }>('/specs/extract', { method: 'POST', body: form })
+  },
   compare: (input: PartInput, scope: ScopeSettings, expected: string) => {
     const form = photoForm(input, scope)
     form.append('expected_verdict', expected)

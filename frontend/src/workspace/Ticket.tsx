@@ -4,7 +4,7 @@ import { decision, shortId } from './api'
 import { Chief, type Mood } from './Chief'
 import { CorrectionForm } from './CorrectionForm'
 import { Rolling } from './marks'
-import type { Correction, Inspection } from './types'
+import type { Correction, Inspection, SpecClass } from './types'
 
 export type CorrectionValue = { verdict: 'good' | 'defect'; defect_type: string; rule_text: string; reviewer: string }
 
@@ -16,8 +16,8 @@ function verdictLine(item: Inspection) {
   return item.part_visible === false ? 'The part is not clear in this photo' : 'Needs a closer human review'
 }
 
-export function Ticket({ result, correction, busy, ready, canInspect, memory, onMemory, correcting, onCorrecting, onInspect, onSave, onCompare }: {
-  result: Inspection | null; correction?: Correction; busy: string | null; ready: boolean; canInspect: boolean; memory: boolean;
+export function Ticket({ result, correction, classes, busy, ready, canInspect, memory, onMemory, correcting, onCorrecting, onInspect, onSave, onCompare }: {
+  result: Inspection | null; correction?: Correction; classes?: SpecClass[]; busy: string | null; ready: boolean; canInspect: boolean; memory: boolean;
   onMemory: (value: boolean) => void; correcting: boolean; onCorrecting: (value: boolean) => void;
   onInspect: () => void; onSave: (value: CorrectionValue) => Promise<void>; onCompare: () => void;
 }) {
@@ -90,7 +90,7 @@ export function Ticket({ result, correction, busy, ready, canInspect, memory, on
         </ol>
       </div>}
 
-      {correcting && result && <CorrectionForm key={result.id} inspection={result} onSave={onSave} onClose={() => onCorrecting(false)} busy={busy === 'correct'} />}
+      {correcting && result && <CorrectionForm key={result.id} inspection={result} classes={classes} onSave={onSave} onClose={() => onCorrecting(false)} busy={busy === 'correct'} />}
       {!correcting && <div className="decision-actions">
         <button className="button primary full-width large-button" onClick={onInspect} disabled={!!busy || !ready || !canInspect}>
           {inspecting ? <LoaderCircle className="spin" size={17} /> : <ScanLine size={17} />}

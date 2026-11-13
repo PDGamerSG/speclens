@@ -17,6 +17,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from ..config import API_KEY, BUDGET_USD, FIXTURES, VAR
 from ..forge.spec import DEFAULT_SPEC
+from ..forge.spec import taxonomy as taxonomy_model
 from ..jobs.queue import JobQueue
 from ..jobs.queue import mode as queue_mode
 from ..jobs.runner import failure, make_runner
@@ -25,6 +26,7 @@ from ..observability import request_id
 from ..meta import ledger
 from ..public import owner
 from .memory import HindsightMemory
+from .spec import from_model, pdf_text
 from .service import WorkspaceService
 from .store import Scope, Store, now
 
@@ -172,6 +174,7 @@ def overview(request: Request, factory: str = DEFAULT_FACTORY, part_family: str 
     corrections = store.corrections(scope.id, with_spec=False)
     comparisons = store.comparisons(scope.id, limit=50, with_spec=False)
     return {'scope_id': scope.id, 'bank_id': scope.bank_id, 'spec_revision_id': scope.spec_revision_id,
+            'taxonomy': service.taxonomy(scope.spec_text),
             'inspections': inspections, 'corrections': corrections, 'comparisons': comparisons,
             'has_more': has_more, 'next_before': inspections[-1]['created_at'] if has_more else None,
             'stats': {'inspections': store.count_inspections(scope.id), 'corrections': len(corrections),
@@ -195,7 +198,7 @@ async def inspect_part(request: Request, file: UploadFile | None = File(None), s
 class CorrectionIn(BaseModel):
     inspection_id: str = Field(min_length=1, max_length=80)
     verdict: Literal['good', 'defect']
-    defect_type: Literal['good', 'hole', 'crack', 'cut', 'print']
+    defect_type: str = Field(min_length=1, max_length=24, pattern=r'^[a-z0-9_]+$')
     rule_text: str = Field(min_length=10, max_length=2000)
     reviewer: str = Field(default='Quality engineer', min_length=1, max_length=80)
 
@@ -220,6 +223,8 @@ def correct(body: CorrectionIn, request: Request):
     item = service.store.inspection(body.inspection_id)
     if item is None or item.get('owner_id', '') != owner(request):
         raise HTTPException(404, 'Inspection not found.')
+    if body.defect_type != 'good' and body.defect_type not in service.correction_classes(item):
+        raise HTTPException(422, 'Choose a defect class from this specification.')
     try:
         return service.correct(**body.model_dump())
     except KeyError:
@@ -351,3 +356,47 @@ class DeleteIn(BaseModel):
 def delete_data(body: DeleteIn, request: Request):
     """Delete this visitor's records, photos and Hindsight banks. The body must say DELETE, so it is never an accident."""
     return service.delete_owner(owner(request))
+
+
+class SpecIn(BaseModel):
+    spec_text: str = Field(min_length=1, max_length=12000)
+
+
+@router.post('/specs/parse')
+def parse_specification(body: SpecIn):
+    """Reject classes, clauses, limits and part width read by rules. No model call, so it is free to repeat."""
+    return service.taxonomy(body.spec_text)
+
+
+MAX_SPEC_FILE = 4 * 1024 * 1024
+
+
+@router.post('/specs/extract')
+async def extract_specification(file: UploadFile | None = File(None), spec_text: str = Form(''),
+                                use_model: bool = Form(False)):
+    """Read a specification from a PDF or text file, or from text. With use_model, the vision model reads the
+    classes and the result is saved for every later inspection under this specification."""
+    if file is not None:
+        data = await file.read(MAX_SPEC_FILE + 1)
+        if len(data) > MAX_SPEC_FILE:
+            raise HTTPException(413, 'Choose a specification file smaller than 4 MB.')
+        if data[:5] == b'%PDF-':
+            try:
+                spec_text = await asyncio.to_thread(pdf_text, data)
+            except Exception:
+                raise HTTPException(400, 'This PDF could not be read. Paste the specification text instead.') from None
+        else:
+            try:
+                spec_text = data.decode('utf-8')
+            except UnicodeDecodeError:
+                raise HTTPException(400, 'Upload a PDF or a UTF-8 text file.') from None
+    spec_text = spec_text.strip()
+    if not spec_text:
+        raise HTTPException(422, 'The specification is empty. A scanned PDF needs its text pasted in.')
+    if len(spec_text) > 12000:
+        raise HTTPException(422, f'The specification has {len(spec_text):,} characters. The limit is 12,000.')
+    if use_model:
+        require_model()
+        reading = await asyncio.to_thread(run_operation, taxonomy_model, spec_text)
+        return {'spec_text': spec_text, 'taxonomy': service.save_taxonomy(spec_text, from_model(reading))}
+    return {'spec_text': spec_text, 'taxonomy': service.taxonomy(spec_text)}
