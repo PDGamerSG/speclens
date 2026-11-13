@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sse_starlette.sse import EventSourceResponse
@@ -25,7 +25,7 @@ from ..meta import ledger
 from ..public import owner
 from .memory import HindsightMemory
 from .service import WorkspaceService
-from .store import Scope, Store
+from .store import Scope, Store, now
 
 router = APIRouter(prefix='/api/workspace', tags=['SpecLens'])
 DEFAULT_FACTORY = 'Bangalore Foods'
@@ -331,3 +331,22 @@ async def job_events(id: str, request: Request):
             await asyncio.sleep(0.5)
 
     return EventSourceResponse(stream(), ping=15)
+
+
+@router.get('/export')
+def export_data(request: Request):
+    """Every record this visitor stored, as one JSON download."""
+    records = service.store.export_owner(owner(request))
+    body = json.dumps({'format_version': 1, 'exported_at': now(), **records}, ensure_ascii=False)
+    return Response(body, media_type='application/json',
+                    headers={'Content-Disposition': 'attachment; filename="speclens-workspace-export.json"'})
+
+
+class DeleteIn(BaseModel):
+    confirm: Literal['DELETE']
+
+
+@router.delete('/data')
+def delete_data(body: DeleteIn, request: Request):
+    """Delete this visitor's records, photos and Hindsight banks. The body must say DELETE, so it is never an accident."""
+    return service.delete_owner(owner(request))

@@ -49,6 +49,25 @@ class HindsightMemory:
                 message = 'Hindsight could not complete this request. Check the memory connection and retry.'
             raise MemoryUnavailable(message) from None
 
+    def _delete(self, path: str) -> None:
+        """DELETE a bank or document. Something already gone counts as deleted."""
+        if not self.configured:
+            raise MemoryUnavailable('Connect Hindsight in the server settings to delete memory.')
+        headers = {'Authorization': f'Bearer {self.api_key}'} if self.api_key else {}
+        try:
+            with httpx.Client(timeout=httpx.Timeout(60, connect=8), headers=headers, transport=self.transport) as client:
+                response = client.delete(f'{self.base_url}/v1/default/banks/{path}')
+            if response.status_code != 404:
+                response.raise_for_status()
+        except httpx.HTTPError:
+            raise MemoryUnavailable('Hindsight could not delete this memory. Retry shortly.') from None
+
+    def forget(self, bank_id: str, document_id: str) -> None:
+        self._delete(f'{bank_id}/documents/{document_id}')
+
+    def drop_bank(self, bank_id: str) -> None:
+        self._delete(bank_id)
+
     def retain(self, scope: Scope, correction: dict) -> dict:
         text = (f'Quality engineer correction for {scope.part_family} at {scope.factory}.\n'
                 f'Correction ID: {correction["id"]}. Source inspection: {correction["inspection_id"]}.\n'

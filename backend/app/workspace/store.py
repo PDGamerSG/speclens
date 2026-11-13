@@ -258,3 +258,45 @@ class Store:
         with self.engine.connect() as c:
             return c.execute(sa.select(sa.func.count()).select_from(comparisons_table)
                              .where(comparisons_table.c.scope_id == scope_id)).scalar_one()
+
+    # Retention, export and deletion ------------------------------------------------------------------------
+
+    def export_owner(self, owner_id: str) -> dict:
+        """Every record that belongs to one owner, with its specification text."""
+        out = {}
+        for name, table in (('inspections', inspections_table), ('corrections', corrections_table),
+                            ('comparisons', comparisons_table)):
+            query = sa.select(table.c.payload).where(table.c.owner_id == owner_id).order_by(table.c.created_at)
+            with self.engine.connect() as c:
+                out[name] = [self._unpack(p) for p in c.execute(query).scalars()]
+        return out
+
+    def _delete_where(self, inspection_filter, correction_filter, comparison_filter, job_filter) -> dict:
+        """Delete matching records in one transaction. Returns what callers must also remove elsewhere."""
+        i, k, m, j = inspections_table, corrections_table, comparisons_table, db.jobs
+        with self.engine.begin() as c:
+            inspection_ids = list(c.execute(sa.select(i.c.id).where(inspection_filter)).scalars())
+            removed_corrections = c.execute(sa.select(k.c.id, k.c.scope_id, k.c.sync_status).where(
+                sa.or_(correction_filter, k.c.inspection_id.in_(inspection_ids)))).all()
+            scope_ids = set(c.execute(sa.select(i.c.scope_id).where(i.c.id.in_(inspection_ids))).scalars())
+            uploads = [p.get('upload') for p in c.execute(sa.select(j.c.payload).where(job_filter)).scalars()]
+            c.execute(k.delete().where(k.c.id.in_([r.id for r in removed_corrections])))
+            comparisons = c.execute(m.delete().where(comparison_filter)).rowcount
+            c.execute(i.delete().where(i.c.id.in_(inspection_ids)))
+            jobs = c.execute(j.delete().where(job_filter)).rowcount
+        media = [f'{id}{suffix}' for id in inspection_ids for suffix in ('.jpg', '_overlay.jpg', '_mask.png')]
+        media += [f'{r.id}_crop.jpg' for r in removed_corrections]
+        media += [u for u in uploads if u]
+        return {'inspections': len(inspection_ids), 'corrections': len(removed_corrections), 'comparisons': comparisons,
+                'jobs': jobs, 'media': media, 'scope_ids': sorted(scope_ids | {r.scope_id for r in removed_corrections}),
+                'memories': [(f'speclens-{r.scope_id}', r.id) for r in removed_corrections if r.sync_status == 'synced']}
+
+    def delete_owner(self, owner_id: str) -> dict:
+        return self._delete_where(inspections_table.c.owner_id == owner_id, corrections_table.c.owner_id == owner_id,
+                                  comparisons_table.c.owner_id == owner_id, db.jobs.c.owner_id == owner_id)
+
+    def purge_before(self, cutoff: str, jobs_before: float) -> dict:
+        """Records created before an ISO timestamp, and finished or abandoned jobs older than an epoch time."""
+        return self._delete_where(inspections_table.c.created_at < cutoff, corrections_table.c.created_at < cutoff,
+                                  comparisons_table.c.created_at < cutoff,
+                                  sa.and_(db.jobs.c.updated_at < jobs_before, db.jobs.c.status.in_(('done', 'failed'))))

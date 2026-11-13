@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import time
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -119,3 +121,36 @@ class WorkspaceService:
                   'held_out': not reused_image and not shared_source, 'reuse_reason': reuse_reason,
                   'note': 'One paired inspection. Model outputs can vary; this is not an accuracy benchmark.'}
         return self.store.add_comparison(result)
+
+    # Retention and deletion --------------------------------------------------------------------------------
+
+    def _clean_up(self, removed: dict, *, drop_banks: bool) -> dict:
+        """Remove the media and Hindsight memory of deleted records. Failures are counted, not hidden."""
+        failed_media = 0
+        for key in removed['media']:
+            try:
+                self.media.delete(key)
+            except Exception:
+                failed_media += 1
+                log.exception('Could not delete media %s', key)
+        failed_memory = 0
+        if self.memory.configured:
+            targets = ([(f'speclens-{s}', None) for s in removed['scope_ids']] if drop_banks else removed['memories'])
+            for bank, document in targets:
+                try:
+                    self.memory.drop_bank(bank) if document is None else self.memory.forget(bank, document)
+                except MemoryUnavailable:
+                    failed_memory += 1
+                    log.error('Could not delete Hindsight memory %s %s', bank, document or '')
+        summary = {k: removed[k] for k in ('inspections', 'corrections', 'comparisons', 'jobs')}
+        return {**summary, 'media_files': len(removed['media']) - failed_media, 'media_failed': failed_media,
+                'memory_failed': failed_memory}
+
+    def delete_owner(self, owner_id: str) -> dict:
+        """Everything one visitor stored: records, photos and their Hindsight banks."""
+        return self._clean_up(self.store.delete_owner(owner_id), drop_banks=True)
+
+    def purge(self, retention_days: int, job_days: int = 7) -> dict:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+        removed = self.store.purge_before(cutoff, time.time() - job_days * 86400)
+        return self._clean_up(removed, drop_banks=False)
