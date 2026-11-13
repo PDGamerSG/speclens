@@ -22,6 +22,7 @@ from .forge.composite import overlay
 from .forge.locate import load_image
 from .forge.spec import DEFAULT_SPEC, taxonomy
 from .inspect.inspector import inspect
+from .media import content_type
 from .meta import ledger
 from .runs import manager
 from .public import PublicWorkspaceMiddleware, owner
@@ -228,15 +229,14 @@ for directory in ('parts', 'runs', 'inspections'):
 
 @app.get('/files/workspace/{filename}')
 def workspace_image(filename: str, request: Request):
-    if not filename.endswith('.jpg'):
-        raise HTTPException(404, 'Photo not found.')
-    item = workspace_routes.service.store.inspection(filename[:-4])
+    """Stream a visitor's own photo from the media store, so the page never needs another image origin."""
+    item = workspace_routes.media_owner(filename)
     if item is None or item.get('owner_id', '') != owner(request):
         raise HTTPException(404, 'Photo not found.')
-    path = workspace_routes.service.media_root / filename
-    if not path.is_file():
+    data = workspace_routes.service.media.get(filename)
+    if data is None:
         raise HTTPException(404, 'Photo not found.')
-    return FileResponse(path, media_type='image/jpeg', headers={'Cache-Control': 'no-store'})
+    return Response(data, media_type=content_type(filename), headers={'Cache-Control': 'no-store'})
 
 _dist = ROOT / "frontend" / "dist"
 if _dist.exists():

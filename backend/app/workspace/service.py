@@ -9,17 +9,26 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 from ..inspect.inspector import inspect
+from ..media import LocalMedia, MediaStore
 from .memory import HindsightMemory, MemoryUnavailable
 from .store import Scope, Store, now
 
 
+def jpeg(image: Image.Image, quality: int = 94) -> bytes:
+    out = io.BytesIO()
+    image.save(out, 'JPEG', quality=quality)
+    return out.getvalue()
+
+
 class WorkspaceService:
-    def __init__(self, store: Store, memory: HindsightMemory, *, inspector=None, media_root: Path):
+    def __init__(self, store: Store, memory: HindsightMemory, *, inspector=None, media_root: Path | None = None,
+                 media: MediaStore | None = None):
+        if media is None and media_root is None:
+            raise ValueError('Give the service a media store or a local media folder.')
         self.store = store
         self.memory = memory
         self.inspector = inspector or inspect
-        self.media_root = Path(media_root)
-        self.media_root.mkdir(parents=True, exist_ok=True)
+        self.media = media or LocalMedia(Path(media_root))
 
     def run(self, data: bytes, filename: str, scope: Scope, *, use_memory: bool, source_kind: str = 'upload',
             source_group: str | None = None, sample_id: str | None = None) -> dict:
@@ -40,7 +49,7 @@ class WorkspaceService:
                                 memory_context=memories, with_mask=False)
         result.pop('mask', None)
         id = f'insp-{uuid.uuid4().hex[:16]}'
-        image.save(self.media_root / f'{id}.jpg', 'JPEG', quality=94)
+        self.media.put(f'{id}.jpg', jpeg(image), 'image/jpeg')
         item = {**result, 'id': id, 'scope_id': scope.id, 'factory': scope.factory,
                 'owner_id': scope.owner_id,
                 'part_family': scope.part_family, 'spec_text': scope.spec_text,

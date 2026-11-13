@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import io
 import os
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..config import API_KEY, BUDGET_USD, FIXTURES, VAR
 from ..forge.spec import DEFAULT_SPEC
+from ..media import media_from_env
 from ..meta import ledger
 from ..meta.client import MetaAPIError
 from ..public import owner
@@ -28,8 +30,8 @@ MAX_UPLOAD = 8 * 1024 * 1024
 memory_url = os.environ.get('HINDSIGHT_BASE_URL', '').strip()
 if not memory_url and os.environ.get('HINDSIGHT_API_KEY'):
     memory_url = 'https://api.hindsight.vectorize.io'
-service = WorkspaceService(Store(),
-    HindsightMemory(memory_url, os.environ.get('HINDSIGHT_API_KEY', '')), media_root=VAR / 'workspace')
+service = WorkspaceService(Store(), HindsightMemory(memory_url, os.environ.get('HINDSIGHT_API_KEY', '')),
+                           media=media_from_env(VAR / 'workspace'))
 
 SAMPLES = [
     {'id': 'natural-shell', 'name': 'Natural shell', 'detail': 'Good part · generated sample',
@@ -45,6 +47,19 @@ SAMPLES = [
     {'id': 'second-natural', 'name': 'Natural texture', 'detail': 'Good part · generated sample',
      'path': 'parts/hazelnut_gen_02.jpg', 'source_group': 'generated-hazelnut-02', 'expected_verdict': 'good'},
 ]
+
+
+_INSPECTION_MEDIA = re.compile(r'^(insp-[A-Za-z0-9]{1,40})(?:\.jpg|_overlay\.jpg|_mask\.png)$')
+_CORRECTION_MEDIA = re.compile(r'^(correction-[A-Za-z0-9]{1,40})_crop\.jpg$')
+
+
+def media_owner(filename: str) -> dict | None:
+    """The record a media file belongs to, so the photo route can check its owner. Unknown names match nothing."""
+    if match := _INSPECTION_MEDIA.fullmatch(filename):
+        return service.store.inspection(match.group(1))
+    if match := _CORRECTION_MEDIA.fullmatch(filename):
+        return service.store.correction(match.group(1))
+    return None
 
 
 def make_scope(factory: str, part_family: str, spec_text: str, owner_id: str = '') -> Scope:
