@@ -3,7 +3,7 @@ uvicorn[standard]==0.54.0
 python-multipart==0.0.33
 sse-starlette==3.6.0
 httpx==0.28.1
-openai==3.43.0
+openai==3.49.0
 meta-sam-parser==0.1.0
 numpy==2.5.4
 opencv-python-headless==5.0.0.93
