@@ -23,7 +23,7 @@ COOKIE = 'speclens_workspace'
 LEGACY_COOKIE = 'chief_skill_workspace'
 MAX_BODY = 9 * 1024 * 1024
 GENERATED_DOCS = {'/docs', '/docs/oauth2-redirect', '/redoc', '/openapi.json'}
-COMPARE = '/api/workspace/compare'  # Two vision calls, so it counts twice.
+COMPARE = {'/api/workspace/compare', '/api/workspace/jobs/compare'}  # Two vision calls, so each counts twice.
 limiter: dict[str, deque] = defaultdict(deque)
 _lock = threading.Lock()
 _tokens = re.compile(r'^[a-f0-9]{64}$')
@@ -120,7 +120,7 @@ def allow_call(visitor: str, address: str, cost: int = 1) -> bool:
 def _allowed(visitor: str, request: Request, path: str) -> bool | None:
     """True or False from the limiter, or None when the shared limiter cannot be reached, so writes stop safely."""
     try:
-        return allow_call(visitor, client_address(request), 2 if path == COMPARE else 1)
+        return allow_call(visitor, client_address(request), 2 if path in COMPARE else 1)
     except LimiterUnavailable:
         return None
 

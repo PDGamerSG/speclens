@@ -3,23 +3,27 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import os
 import re
+import uuid
 from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
-from openai import APIError
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator, model_validator
+from sse_starlette.sse import EventSourceResponse
 
 from ..config import API_KEY, BUDGET_USD, FIXTURES, VAR
 from ..forge.spec import DEFAULT_SPEC
+from ..jobs.queue import JobQueue
+from ..jobs.queue import mode as queue_mode
+from ..jobs.runner import failure, make_runner
 from ..media import media_from_env
 from ..meta import ledger
-from ..meta.client import MetaAPIError
 from ..public import owner
-from .memory import HindsightMemory, MemoryUnavailable
+from .memory import HindsightMemory
 from .service import WorkspaceService
 from .store import Scope, Store
 
@@ -107,12 +111,38 @@ def require_model():
 def run_operation(function, *args, **kwargs):
     try:
         return function(*args, **kwargs)
-    except MemoryUnavailable as e:
-        raise HTTPException(503, str(e)) from None
-    except ledger.BudgetExceeded as e:
-        raise HTTPException(402, str(e)) from None
-    except (APIError, MetaAPIError):
-        raise HTTPException(502, 'The vision model could not complete this inspection. Check the model connection and try again.') from None
+    except Exception as error:
+        mapped = failure(error)
+        if mapped is None:
+            raise
+        raise HTTPException(mapped.status_code, mapped.detail) from None
+
+
+jobs = JobQueue(lambda: service.store.engine, make_runner(lambda: service))
+WAIT_SECONDS = 110  # under the 120 s Vercel waits for an origin's first byte
+
+
+def enqueue(kind: str, data: bytes, name: str, scope: Scope, source: dict, batch_id: str | None = None, **options) -> dict:
+    """Store the photo where any worker can read it, then queue the job."""
+    id = f'job-{uuid.uuid4().hex[:20]}'
+    upload = f'uploads/{id}'
+    service.media.put(upload, data, 'application/octet-stream')
+    payload = {'upload': upload, 'filename': name, 'source': source, **options,
+               'scope': {'factory': scope.factory, 'part_family': scope.part_family,
+                         'spec_text': scope.spec_text, 'owner_id': scope.owner_id}}
+    return jobs.submit(kind, payload, scope.owner_id, batch_id=batch_id, id=id)
+
+
+async def finished(job: dict) -> dict:
+    """Wait for a queued job and answer like the synchronous route always has."""
+    done = await jobs.wait(job['id'], WAIT_SECONDS)
+    if done is None:
+        raise HTTPException(404, 'Job not found.')
+    if done['status'] == 'done':
+        return done['result']
+    if done['status'] == 'failed':
+        raise HTTPException(done['error']['status_code'], done['error']['detail'])
+    raise HTTPException(504, f'The inspection is still running. Check job {job["id"]} for the result.')
 
 
 @router.get('/status')
@@ -156,6 +186,8 @@ async def inspect_part(request: Request, file: UploadFile | None = File(None), s
     data, name, source = await read_input(file, sample_id)
     require_model()
     scope = make_scope(factory, part_family, spec_text, owner(request))
+    if queue_mode() == 'external':
+        return await finished(await asyncio.to_thread(enqueue, 'inspect', data, name, scope, source, use_memory=memory_enabled))
     return await asyncio.to_thread(run_operation, service.run, data, name, scope, use_memory=memory_enabled, **source)
 
 
@@ -234,5 +266,68 @@ async def compare(request: Request, file: UploadFile | None = File(None), sample
                   spec_text: str = Form(''), expected_verdict: Literal['good', 'defect', ''] = Form('')):
     data, name, source = await read_input(file, sample_id)
     require_model()
-    return await asyncio.to_thread(run_operation, service.compare, data, name,
-        make_scope(factory, part_family, spec_text, owner(request)), expected_verdict=expected_verdict or None, **source)
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    if queue_mode() == 'external':
+        return await finished(await asyncio.to_thread(enqueue, 'compare', data, name, scope, source,
+                                                      expected_verdict=expected_verdict or None))
+    return await asyncio.to_thread(run_operation, service.compare, data, name, scope,
+                                   expected_verdict=expected_verdict or None, **source)
+
+
+def own_job(id: str, request: Request) -> dict:
+    job = jobs.get(id)
+    if job is None or job['owner_id'] != owner(request):
+        raise HTTPException(404, 'Job not found.')
+    return job
+
+
+@router.post('/jobs/inspect', status_code=202)
+async def queue_inspection(request: Request, file: UploadFile | None = File(None), sample_id: str = Form(''),
+                           factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
+                           spec_text: str = Form(''), memory_enabled: bool = Form(True)):
+    """Queue one inspection and return at once. Read the result from the job or its event stream."""
+    data, name, source = await read_input(file, sample_id)
+    require_model()
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    job = await asyncio.to_thread(enqueue, 'inspect', data, name, scope, source, use_memory=memory_enabled)
+    return JobQueue.public(job)
+
+
+@router.post('/jobs/compare', status_code=202)
+async def queue_comparison(request: Request, file: UploadFile | None = File(None), sample_id: str = Form(''),
+                           factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
+                           spec_text: str = Form(''), expected_verdict: Literal['good', 'defect', ''] = Form('')):
+    data, name, source = await read_input(file, sample_id)
+    require_model()
+    scope = make_scope(factory, part_family, spec_text, owner(request))
+    job = await asyncio.to_thread(enqueue, 'compare', data, name, scope, source, expected_verdict=expected_verdict or None)
+    return JobQueue.public(job)
+
+
+@router.get('/jobs/{id}')
+def get_job(id: str, request: Request):
+    return JobQueue.public(own_job(id, request))
+
+
+@router.get('/jobs/{id}/events')
+async def job_events(id: str, request: Request):
+    """Server-sent events: one 'status' per change, then 'done' or 'failed'. A 15 s ping keeps proxies open."""
+    await asyncio.to_thread(own_job, id, request)
+
+    async def stream():
+        last = None
+        while True:
+            job = await asyncio.to_thread(jobs.get, id)
+            if job is None:
+                return
+            if job['status'] != last:
+                last = job['status']
+                if last in ('done', 'failed'):
+                    yield {'event': last, 'data': json.dumps(JobQueue.public(job))}
+                    return
+                yield {'event': 'status', 'data': json.dumps({'id': id, 'status': last, 'attempts': job['attempts']})}
+            if await request.is_disconnected():
+                return
+            await asyncio.sleep(0.5)
+
+    return EventSourceResponse(stream(), ping=15)
