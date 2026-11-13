@@ -6,6 +6,7 @@ services:
     env_file: .env
     environment:
       SPECLENS_VAR: /app/var
+      SPECLENS_COMMIT: ${SPECLENS_COMMIT:-}
     volumes:
       - speclens-data:/app/var
     restart: unless-stopped

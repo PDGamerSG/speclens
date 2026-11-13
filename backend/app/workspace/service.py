@@ -15,9 +15,10 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from ..forge.composite import overlay
-from ..inspect.inspector import inspect
+from ..inspect.inspector import PROMPT_VERSION, inspect
 from ..inspect.measure import measure
 from ..media import LocalMedia, MediaStore
+from .citations import citations
 from .memory import HindsightMemory, MemoryUnavailable
 from .spec import parse_spec
 from .store import Scope, Store, now, spec_revision_id
@@ -107,11 +108,12 @@ class WorkspaceService:
                 'memory_enabled': use_memory, 'memory_status': ('recalled' if memories else 'empty') if use_memory else 'disabled',
                 'memories': memories, 'reference_crops': used, 'bank_id': scope.bank_id if use_memory else None,
                 'created_at': now(), 'model': 'muse-spark-1.3'}
+        item.update(citations(result.get('rationale'), memories))
         if context:
             withdrawn = validate_snapshot(self.store, scope, context, memory=use_memory)
             item['pilot'] = {**context, 'owner_id': scope.owner_id, 'quarantined': bool(withdrawn),
                              'withdrawn_sources': withdrawn, 'snapshot_checked_at': now(),
-                             'model_configuration': {'model': item['model'], 'prompt_version': 'inspector-2026-11-14',
+                             'model_configuration': {'model': item['model'], 'prompt_version': PROMPT_VERSION,
                                                      'max_image_side_px': 768, 'masks_enabled': self.masks}}
         elif policy:
             withdrawn = validate_snapshot(self.store, scope, policy, memory=use_memory)

@@ -24,7 +24,7 @@ from .export.coco import export_run
 from .forge.composite import overlay
 from .forge.locate import load_image
 from .forge.spec import DEFAULT_SPEC, taxonomy
-from .inspect.inspector import inspect
+from .inspect.inspector import PROMPT_SHA256, PROMPT_VERSION, inspect
 from .jobs.queue import mode as queue_mode
 from .media import content_type
 from .observability import RequestIdMiddleware, setup
@@ -83,7 +83,10 @@ def healthz():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "demo_mode": DEMO_MODE, "models": list(MODELS.values()), "spent_usd": ledger.spent(), "budget_usd": BUDGET_USD}
+    return {"ok": True, "demo_mode": DEMO_MODE, "models": list(MODELS.values()), "spent_usd": ledger.spent(), "budget_usd": BUDGET_USD,
+            "prompt_version": PROMPT_VERSION, "prompt_sha256": PROMPT_SHA256,
+            # The deploy script sets SPECLENS_COMMIT; Render sets RENDER_GIT_COMMIT.
+            "commit": os.environ.get("SPECLENS_COMMIT") or os.environ.get("RENDER_GIT_COMMIT", "")}
 
 
 @app.get("/api/ledger")

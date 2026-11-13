@@ -98,7 +98,7 @@ These call the real services and cost money. Run them by hand, and do not expect
 | Check | Vision calls | What it proves | Writes to |
 | --- | --- | --- | --- |
 | `scripts/system_check.py` | 4 | Status, baseline inspection, retain, cited recall, reflect, comparison, durable records, in a new workspace (`scripts/system_check.py:48-88`) | `var/checks/` |
-| `scripts/evaluate_memory.py` | 9 | A small memory test on four synthetic cases from two held-aside source photos (`scripts/evaluate_memory.py:1-6`) | `var/evaluations/` |
+| `scripts/evaluate_memory.py` | 9, or 1 + 8 per pass with `--repeats` | A small memory test on four synthetic cases from two held-aside source photos, with the commit, prompt hash and models that produced it. It refuses a server in demo mode (`scripts/evaluate_memory.py:1-16`) | `var/evaluations/` |
 | `frontend/scripts/live-smoke.mjs` | 5 at most (`frontend/scripts/live-smoke.mjs:23`) | The real page in a browser against the live site | `var/checks/live-smoke-<run>/` |
 | `frontend/scripts/record-demo.mjs` | 4 | Records the narrated demo video (`frontend/scripts/record-demo.mjs:12`) | `var/submission/` |
 

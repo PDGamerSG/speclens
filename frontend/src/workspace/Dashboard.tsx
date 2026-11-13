@@ -42,7 +42,7 @@ export function DashboardSection({ data, days, part, factory, onDays, onInspect,
         <div><dt>Reject rate</dt><dd className="reject">{percent(t.reject_rate)}</dd></div>
         <div><dt>Sent to review</dt><dd className="review">{percent(t.review_rate)}</dd></div>
         <div><dt title="Inspections an engineer corrected. A lower share means the model agrees with your engineers more often.">Corrected by engineers</dt><dd>{percent(t.corrected_share)}</dd></div>
-        <div><dt title="Memory-on inspections that cited at least one recalled standard.">Memory cited</dt><dd>{percent(t.citation_rate)}</dd></div>
+        <div><dt title="Memory-on inspections whose rationale cited a recalled correction ID">Memory cited</dt><dd>{percent(t.citation_rate)}{!!t.unknown_citations && <small className="dash-warning"> {t.unknown_citations} citation{t.unknown_citations === 1 ? '' : 's'} not in recall</small>}</dd></div>
         <div><dt>Cost per inspection</dt><dd>{t.cost_per_inspection === null ? '–' : `$${t.cost_per_inspection.toFixed(4)}`}</dd></div>
         <div><dt>Median time</dt><dd>{t.latency_p50_ms === null ? '–' : `${(t.latency_p50_ms / 1000).toFixed(1)}s`}</dd></div>
       </dl>

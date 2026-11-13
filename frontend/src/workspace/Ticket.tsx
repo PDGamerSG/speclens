@@ -4,7 +4,7 @@ import { decision, shortId } from './api'
 import { Chief, type Mood } from './Chief'
 import { CorrectionForm } from './CorrectionForm'
 import { Rolling } from './marks'
-import type { Correction, Inspection, SpecClass } from './types'
+import type { Correction, Inspection, MemoryFact, SpecClass } from './types'
 
 export type CorrectionValue = { verdict: 'good' | 'defect'; defect_type: string; rule_text: string; reviewer: string }
 
@@ -16,6 +16,13 @@ function verdictLine(item: Inspection) {
   return item.part_visible === false ? 'The part is not clear in this photo' : 'Needs a closer human review'
 }
 
+function RecalledStandard({ fact }: { fact: MemoryFact }) {
+  return <div className="recalled-standard">
+    <p className="handwritten">{fact.rule_text || fact.text}</p>
+    <span>Correction {shortId(fact.source_id)} by {fact.reviewer || 'Quality engineer'}</span>
+  </div>
+}
+
 export function Ticket({ result, correction, classes, busy, ready, canInspect, memory, onMemory, correcting, onCorrecting, onInspect, onSave, onCompare }: {
   result: Inspection | null; correction?: Correction; classes?: SpecClass[]; busy: string | null; ready: boolean; canInspect: boolean; memory: boolean;
   onMemory: (value: boolean) => void; correcting: boolean; onCorrecting: (value: boolean) => void;
@@ -25,6 +32,10 @@ export function Ticket({ result, correction, classes, busy, ready, canInspect, m
   const inspecting = busy === 'inspect'
   const mood: Mood = inspecting ? 'looking' : result?.verdict === 'good' ? 'accept' : result?.verdict === 'defect' ? 'reject' : result ? 'review' : 'idle'
   const recalled = result ? Array.from(new Map(result.memories.map(fact => [fact.source_id, fact])).values()) : []
+  // Results saved before citation checks have no cited_ids; they keep a single recalled list.
+  const cited = result?.cited_ids ? recalled.filter(fact => result.cited_ids!.includes(fact.source_id)) : null
+  const uncited = cited ? recalled.filter(fact => !cited.includes(fact)) : recalled
+  const unknown = result?.unknown_citations || []
   const confidence = result ? Math.round(Math.max(0, Math.min(1, result.confidence)) * 100) : 0
   const cachedShare = result?.prompt_tokens ? Math.round((result.cached_tokens || 0) / result.prompt_tokens * 100) : null
 
@@ -73,16 +84,18 @@ export function Ticket({ result, correction, classes, busy, ready, canInspect, m
         {result.part_visible === false && <p className="ticket-hint">Use a sharp, top-down photo of one part, or record the decision yourself below.</p>}
         <div className="inspection-meta">
           <span>{(result.ms / 1000).toFixed(1)}s</span>
-          <span>{result.memory_enabled ? `${recalled.length} recalled standard${recalled.length === 1 ? '' : 's'}` : 'Memory off'}</span>
+          <span>{result.memory_enabled ? `${recalled.length} recalled standard${recalled.length === 1 ? '' : 's'}${cited ? ` · ${cited.length} cited` : ''}` : 'Memory off'}</span>
           {!!result.reference_crops?.length && <span title="Defect crops saved with corrections, shown to the model next to this photo.">{result.reference_crops.length} reference crop{result.reference_crops.length === 1 ? '' : 's'}</span>}
           {cachedShare !== null && <span title="Share of this request’s input tokens served from the Model API prompt cache.">{cachedShare}% of prompt from cache</span>}
         </div>
-        {recalled.length > 0 && <div className="recalled-list">
-          <h4>Standards applied</h4>
-          {recalled.map(fact => <div className="recalled-standard" key={fact.source_id}>
-            <p className="handwritten">{fact.rule_text || fact.text}</p>
-            <span>Correction {shortId(fact.source_id)} by {fact.reviewer || 'Quality engineer'}</span>
-          </div>)}
+        {unknown.length > 0 && <p className="ticket-hint citation-warning" role="status">The rationale cites an ID that was not recalled: {unknown.join(', ')}. Check this decision.</p>}
+        {cited && cited.length > 0 && <div className="recalled-list">
+          <h4>Cited in this decision</h4>
+          {cited.map(fact => <RecalledStandard key={fact.source_id} fact={fact} />)}
+        </div>}
+        {uncited.length > 0 && <div className={`recalled-list${cited ? ' not-cited' : ''}`}>
+          <h4>{cited ? 'Recalled, not cited' : 'Standards recalled'}</h4>
+          {uncited.map(fact => <RecalledStandard key={fact.source_id} fact={fact} />)}
         </div>}
         {result.memory_status === 'empty' && <p className="ticket-hint">No standards apply yet. Correct a decision to teach the first one.</p>}
         {correction

@@ -47,6 +47,11 @@ def system_prompt(spec_text: str) -> str:
             "\n\nSPECIFICATION:\n" + spec_text)
 
 
+# Bump PROMPT_VERSION whenever system_prompt changes. PROMPT_SHA256 changes on its own, so a report can tell.
+PROMPT_VERSION = "inspector-2026-11-14"
+PROMPT_SHA256 = hashlib.sha256(system_prompt("").encode()).hexdigest()[:16]
+
+
 def memory_block(memory_context: list[dict]) -> str:
     """Sorted and deduplicated, so the same recalled standards always produce the same bytes."""
     records = {(m["source_id"], m.get("rule_text", m["text"]), m["text"]) for m in memory_context}
