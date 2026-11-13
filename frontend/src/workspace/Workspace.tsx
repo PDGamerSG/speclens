@@ -1,6 +1,7 @@
-import { BarChart3, BookOpen, CheckCircle2, ChevronDown, History, RefreshCw, ScanLine, Settings2, ArrowLeftRight, Upload, X, XCircle } from 'lucide-react'
+import { BarChart3, BookOpen, Camera, CheckCircle2, ChevronDown, History, RefreshCw, ScanLine, Settings2, ArrowLeftRight, Upload, X, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { workspaceApi as api } from './api'
+import { BatchSection } from './Batch'
 import { Chief } from './Chief'
 import { DashboardSection } from './Dashboard'
 import { downloadJson } from './download'
@@ -57,6 +58,7 @@ export default function Workspace() {
   const [board, setBoard] = useState<DashboardData | null>(null)
   const [days, setDays] = useState(30)
   const upload = useRef<HTMLInputElement>(null)
+  const camera = useRef<HTMLInputElement>(null)
   const currentInput = useRef<PartInput | null>(null)
   const objectUrl = useRef<string | null>(null)
 
@@ -206,6 +208,9 @@ export default function Workspace() {
               <button className={'rail-tile rail-upload' + (input?.file ? ' selected' : '')} onClick={() => upload.current?.click()} title="JPG, PNG or WebP, up to 8 MB" disabled={!!busy}>
                 <span className="rail-photo">{input?.file && preview ? <img src={preview} alt="" /> : <Upload size={20} />}</span><span>Upload part</span>
               </button>
+              <button className="rail-tile rail-camera" onClick={() => camera.current?.click()} title="Use the phone camera, top-down, one part in frame" disabled={!!busy}>
+                <span className="rail-photo"><Camera size={20} /></span><span>Take photo</span>
+              </button>
               {samples.map(sample => <button key={sample.id} className={'rail-tile' + (input?.sample?.id === sample.id ? ' selected' : '')} onClick={() => choose({ sample })} disabled={!!busy}>
                 <span className="rail-photo"><img src={sample.image_url} alt="" /></span><span>{sample.name}</span>
               </button>)}
@@ -215,11 +220,19 @@ export default function Workspace() {
               if (file) takeFile(file)
               e.target.value = ''
             }} />
+            <input ref={camera} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Take a part photo" onChange={e => {
+              const file = e.target.files?.[0]
+              if (file) takeFile(file)
+              e.target.value = ''
+            }} />
           </div>
           <Ticket result={result} correction={correction} classes={overview?.taxonomy?.classes} busy={busy} ready={loaded} canInspect={!!input} memory={memory} onMemory={setMemory}
             correcting={correcting} onCorrecting={setCorrecting} onInspect={inspect} onSave={saveCorrection} onCompare={() => goTo('compare')} />
         </div>
       </section>
+
+      <BatchSection scope={scope} memory={memory} busy={!!busy || !loaded} onFinished={() => void refresh()}
+        onOpen={item => { setResult(item); selectInput(null); setCorrecting(false); goTo('inspect') }} />
 
       <StandardsSection corrections={overview?.corrections || []} summary={summary} synced={stats.synced} busy={busy} part={scope.part_family} factory={scope.factory}
         onSummarize={() => void act('reflect', async () => { const reply = await api.reflect(scope); setSummary(reply.summary) })} onRetry={retrySync} onInspect={() => goTo('inspect')} />
@@ -243,6 +256,11 @@ export default function Workspace() {
       <a href="https://github.com/PDGamerSG/speclens#readme" target="_blank" rel="noreferrer">Setup and source</a>
     </footer>
 
-    {showSettings && <SettingsDialog initial={{ ...scope, spec_text: scope.spec_text || status?.default_spec || '' }} status={status} busy={!!busy} onClose={closeSettings} onSave={saveSettings} />}
+    {showSettings && <SettingsDialog initial={{ ...scope, spec_text: scope.spec_text || status?.default_spec || '' }} status={status} busy={!!busy} onClose={closeSettings} onSave={saveSettings}
+      onDeleted={removed => {
+        setShowSettings(false); setResult(null); setComparison(null); setOpenedRecord(false); setSummary(null); setBoard(null)
+        setNotice(`Deleted ${removed.inspections} inspection${removed.inspections === 1 ? '' : 's'} and ${removed.corrections} correction${removed.corrections === 1 ? '' : 's'}${removed.memory_failed ? '. Some memory could not be removed yet; try again later' : ''}.`)
+        void refresh()
+      }} />}
   </div>
 }

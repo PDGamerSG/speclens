@@ -9,9 +9,12 @@ const SOURCE: Record<Taxonomy['source'], string> = {
   fallback: 'No numbered reject clauses found, so every defect uses one class. Add clauses such as "4.1 Hole: ..." under a REJECT heading, or read it with the model.',
 }
 
-export function SettingsDialog({ initial, status, busy, onClose, onSave }: {
+export function SettingsDialog({ initial, status, busy, onClose, onSave, onDeleted }: {
   initial: ScopeSettings; status: Status | null; busy: boolean; onClose: () => void; onSave: (next: ScopeSettings) => void;
+  onDeleted: (removed: { inspections: number; corrections: number; memory_failed: number }) => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [draft, setDraft] = useState(initial)
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null)
   const [specBusy, setSpecBusy] = useState<'file' | 'model' | null>(null)
@@ -103,6 +106,23 @@ export function SettingsDialog({ initial, status, busy, onClose, onSave }: {
           <div><span>Prompt cache</span><strong>{cache?.prompt_tokens ? `${Math.round(cache.hit_rate * 100)}% of input reused, $${cache.saved_usd.toFixed(4)} saved` : 'No calls yet'}</strong></div>
           <p>Vision usage counts against the server budget. Hindsight usage is billed separately.</p>
           <p>Credentials stay on the server and never reach this browser.</p>
+        </div>
+        <div className="data-controls">
+          <h3>Your data</h3>
+          <p>Download every record you have stored, or delete your records, photos and memory banks. Deleting cannot be undone.</p>
+          <div className="spec-tools">
+            <a className="button secondary compact" href={api.exportUrl} download>Export all records</a>
+            <button type="button" className={'button compact ' + (confirmDelete ? 'danger' : 'secondary')} disabled={busy || deleting}
+              onClick={async () => {
+                if (!confirmDelete) { setConfirmDelete(true); return }
+                setDeleting(true); setSpecError(null)
+                try { onDeleted(await api.deleteData()) }
+                catch (e) { setSpecError(e instanceof Error ? e.message : 'Your data could not be deleted.'); setConfirmDelete(false) }
+                finally { setDeleting(false) }
+              }}>
+              {deleting ? 'Deleting…' : confirmDelete ? 'Click again to delete everything' : 'Delete my data'}
+            </button>
+          </div>
         </div>
         <button type="submit" className="button primary full-width" disabled={busy}>Save workspace</button>
       </form>

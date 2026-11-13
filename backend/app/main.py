@@ -283,6 +283,10 @@ if _dist.exists():
     def favicon():
         return FileResponse(_dist / "favicon.svg")
 
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return FileResponse(_dist / "manifest.webmanifest", media_type="application/manifest+json")
+
     @app.get("/")
     def spa():
         # index.html must never be cached: it points at the current hashed bundle

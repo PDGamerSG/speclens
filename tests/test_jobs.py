@@ -141,7 +141,7 @@ def test_queued_inspection_returns_at_once_and_streams_its_result(tmp_path, monk
     queued = client.post('/api/workspace/jobs/inspect', data={'sample_id': 'white-print', 'memory_enabled': 'false'})
     assert queued.status_code == 202
     job = queued.json()
-    assert set(job) == {'id', 'kind', 'batch_id', 'status', 'result', 'error', 'attempts', 'created_at'}
+    assert set(job) == {'id', 'kind', 'batch_id', 'status', 'result', 'error', 'attempts', 'created_at', 'filename'}
     deadline = time.time() + 5
     while (current := client.get(f'/api/workspace/jobs/{job["id"]}').json())['status'] != 'done':
         assert time.time() < deadline

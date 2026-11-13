@@ -52,3 +52,8 @@ export interface DashboardData {
   corrections_weekly: { week: string; corrections: number }[];
   cache: { prompt_tokens: number; cached_tokens: number; hit_rate: number; saved_usd: number };
 }
+export interface BatchJob {
+  id: string; kind: string; batch_id: string | null; status: 'queued' | 'running' | 'done' | 'failed';
+  result: Inspection | null; error: { status_code: number; detail: string } | null; attempts: number; created_at: string; filename: string;
+}
+export interface Batch { batch_id: string; counts: Record<'queued' | 'running' | 'done' | 'failed', number>; finished: boolean; jobs: BatchJob[] }

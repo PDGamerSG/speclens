@@ -291,13 +291,20 @@ def own_job(id: str, request: Request) -> dict:
 @router.post('/jobs/inspect', status_code=202)
 async def queue_inspection(request: Request, file: UploadFile | None = File(None), sample_id: str = Form(''),
                            factory: str = Form(DEFAULT_FACTORY), part_family: str = Form(DEFAULT_PART),
-                           spec_text: str = Form(''), memory_enabled: bool = Form(True)):
-    """Queue one inspection and return at once. Read the result from the job or its event stream."""
+                           spec_text: str = Form(''), memory_enabled: bool = Form(True),
+                           batch_id: str = Form('', pattern=r'^(batch-[a-f0-9]{8,32})?$')):
+    """Queue one inspection and return at once. Read the result from the job or its event stream.
+
+    A batch is several of these requests sharing a batch_id, one photo each, so every request stays under the
+    upload limit and counts once against the hourly limit."""
     data, name, source = await read_input(file, sample_id)
     require_model()
     scope = make_scope(factory, part_family, spec_text, owner(request))
-    job = await asyncio.to_thread(enqueue, 'inspect', data, name, scope, source, use_memory=memory_enabled)
-    return JobQueue.public(job)
+    if batch_id and len(await asyncio.to_thread(jobs.batch, batch_id)) >= MAX_BATCH:
+        raise HTTPException(413, f'A batch holds at most {MAX_BATCH} photos. Start another batch for the rest.')
+    job = await asyncio.to_thread(enqueue, 'inspect', data, name, scope, source, batch_id=batch_id or None,
+                                  use_memory=memory_enabled)
+    return {**JobQueue.public(job), 'filename': name}
 
 
 @router.post('/jobs/compare', status_code=202)
@@ -309,6 +316,20 @@ async def queue_comparison(request: Request, file: UploadFile | None = File(None
     scope = make_scope(factory, part_family, spec_text, owner(request))
     job = await asyncio.to_thread(enqueue, 'compare', data, name, scope, source, expected_verdict=expected_verdict or None)
     return JobQueue.public(job)
+
+
+MAX_BATCH = 50
+
+
+@router.get('/batches/{batch_id}')
+def get_batch(batch_id: str, request: Request):
+    """Every job in one of this visitor's batches, with its result once finished."""
+    items = [j for j in jobs.batch(batch_id) if j['owner_id'] == owner(request)]
+    if not items:
+        raise HTTPException(404, 'Batch not found.')
+    counts = {status: sum(j['status'] == status for j in items) for status in ('queued', 'running', 'done', 'failed')}
+    return {'batch_id': batch_id, 'counts': counts, 'finished': counts['queued'] + counts['running'] == 0,
+            'jobs': [{**JobQueue.public(j), 'filename': j['payload'].get('filename')} for j in items]}
 
 
 @router.get('/jobs/{id}')

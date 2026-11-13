@@ -1,4 +1,4 @@
-import type { Comparison, Correction, DashboardData, Inspection, MemoryFact, Overview, PartInput, Sample, ScopeSettings, Status, Taxonomy } from './types'
+import type { Batch, BatchJob, Comparison, Correction, DashboardData, Inspection, MemoryFact, Overview, PartInput, Sample, ScopeSettings, Status, Taxonomy } from './types'
 
 const BASE = '/api/workspace'
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -37,6 +37,16 @@ export const workspaceApi = {
   sync: (id: string) => request<Correction>(`/corrections/${encodeURIComponent(id)}/sync`, json({})),
   recall: (scope: ScopeSettings) => request<{ memories: MemoryFact[]; bank_id: string }>('/recall', json(scope)),
   reflect: (scope: ScopeSettings) => request<{ summary: string; bank_id: string }>('/reflect', json(scope)),
+  queueInspection: (file: File, scope: ScopeSettings, memory: boolean, batchId: string) => {
+    const form = photoForm({ file }, scope)
+    form.append('memory_enabled', String(memory))
+    form.append('batch_id', batchId)
+    return request<BatchJob>('/jobs/inspect', { method: 'POST', body: form })
+  },
+  batch: (batchId: string) => request<Batch>(`/batches/${encodeURIComponent(batchId)}`),
+  exportUrl: `${BASE}/export`,
+  deleteData: () => request<{ inspections: number; corrections: number; memory_failed: number }>('/data', {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE' }) }),
   dashboard: (scope: ScopeSettings, days: number) => request<DashboardData>('/dashboard?' + new URLSearchParams({ ...scope, days: String(days) })),
   parseSpec: (spec_text: string) => request<Taxonomy>('/specs/parse', json({ spec_text })),
   extractSpec: (source: { file: File } | { text: string }, useModel: boolean) => {
