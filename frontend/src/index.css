@@ -458,3 +458,10 @@ td { padding: 9px 14px; border-bottom: 1px solid var(--frost); vertical-align: m
 .data-controls p { font-size: 13px; color: var(--ink-soft); }
 .data-controls a.button { text-decoration: none; color: inherit; }
 .button.danger { background: var(--reject); color: #fff; }
+
+/* Factory sits apart from the page's own sections: it opens a separate signed-in workspace. */
+.factory-entry { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 14px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--stage); color: #fff; font-weight: 700; font-size: 14px; }
+.factory-entry:hover:not(:disabled) { background: #000; }
+.factory-entry svg { color: var(--marker); }
+.jump-link { font-size: 13.5px; }
+@media (max-width: 560px) { .factory-entry span { display: none; } .factory-entry { padding: 0 10px; } }

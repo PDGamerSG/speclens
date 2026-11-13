@@ -1,4 +1,4 @@
-import { Factory, BarChart3, BookOpen, Camera, CheckCircle2, ChevronDown, History, RefreshCw, ScanLine, Settings2, ArrowLeftRight, Upload, X, XCircle } from 'lucide-react'
+import { Factory, BarChart3, BookOpen, Camera, CheckCircle2, ChevronDown, RefreshCw, ScanLine, Settings2, Upload, X, XCircle } from 'lucide-react'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { PilotError, pilotApi } from '../pilot/api'
 import { SIGNED_OUT, type Session } from '../pilot/types'
@@ -18,13 +18,14 @@ import type { Comparison, DashboardData, Inspection, Overview, PartInput, Sample
 
 const DEFAULT_SCOPE: ScopeSettings = { factory: 'Bangalore Foods', part_family: 'Whole hazelnut', spec_text: '' }
 const EMPTY_STATS = { inspections: 0, corrections: 0, synced: 0, pending: 0 }
-const NAV: { id: Section; label: string; short: string; icon: typeof ScanLine }[] = [
-  { id: 'inspect', label: 'Inspection desk', short: 'Inspect', icon: ScanLine },
-  { id: 'standards', label: 'Quality memory', short: 'Memory', icon: BookOpen },
-  { id: 'compare', label: 'Memory comparison', short: 'Compare', icon: ArrowLeftRight },
-  { id: 'dashboard', label: 'Quality dashboard', short: 'Trends', icon: BarChart3 },
-  { id: 'history', label: 'Inspection history', short: 'History', icon: History },
+// Three destinations, each covering the sections that follow it on the page. Compare and history are reached
+// from links inside their group, so the bar stays short on a phone.
+const NAV: { id: Section; label: string; short: string; icon: typeof ScanLine; sections: string[] }[] = [
+  { id: 'inspect', label: 'Inspection desk', short: 'Inspect', icon: ScanLine, sections: ['inspect', 'batch'] },
+  { id: 'standards', label: 'Quality memory', short: 'Memory', icon: BookOpen, sections: ['standards', 'compare'] },
+  { id: 'dashboard', label: 'Insights', short: 'Insights', icon: BarChart3, sections: ['dashboard', 'history'] },
 ]
+const GROUP_OF: Record<string, Section> = Object.fromEntries(NAV.flatMap(item => item.sections.map(section => [section, item.id])))
 
 function storedScope(): ScopeSettings {
   try {
@@ -104,17 +105,17 @@ function DemoWorkspace({ onFactory }: { onFactory: () => void }) {
   }, [notice])
   useEffect(() => {
     const watcher = new IntersectionObserver(entries => {
-      for (const entry of entries) if (entry.isIntersecting) setActive(entry.target.id as Section)
+      for (const entry of entries) if (entry.isIntersecting && GROUP_OF[entry.target.id]) setActive(GROUP_OF[entry.target.id])
     }, { rootMargin: '-35% 0px -60% 0px' })
-    for (const item of NAV) { const section = document.getElementById(item.id); if (section) watcher.observe(section) }
+    for (const id of Object.keys(GROUP_OF)) { const section = document.getElementById(id); if (section) watcher.observe(section) }
     // The last section can be too short to reach the observer band, so the end of the page selects it.
-    const atEnd = () => { if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) setActive('history') }
+    const atEnd = () => { if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) setActive('dashboard') }
     window.addEventListener('scroll', atEnd, { passive: true })
     return () => { watcher.disconnect(); window.removeEventListener('scroll', atEnd) }
   }, [])
 
   const goTo = (id: Section) => {
-    setActive(id)
+    setActive(GROUP_OF[id] || id)
     document.getElementById(id)?.scrollIntoView({ block: 'start' })
   }
   const choose = (part: PartInput) => {
@@ -175,9 +176,9 @@ function DemoWorkspace({ onFactory }: { onFactory: () => void }) {
         {NAV.map(item => <button key={item.id} aria-label={item.label} aria-current={active === item.id ? 'true' : undefined} className={'nav-item' + (active === item.id ? ' active' : '')} onClick={() => goTo(item.id)}>
           <item.icon size={17} strokeWidth={1.8} /><span>{item.short}</span>
         </button>)}
-        <button className="nav-item demo-factory-entry" aria-label="Factory workspace" disabled={!!busy} onClick={onFactory}><Factory size={17} strokeWidth={1.8} /><span>Factory</span></button>
       </nav>
       <div className="topbar-right">
+        <button className="factory-entry" aria-label="Factory workspace" disabled={!!busy} onClick={onFactory}><Factory size={16} strokeWidth={1.8} /><span>Factory</span></button>
         <button className="workspace-switch" disabled={!!busy} onClick={openSettings}><span><strong>{scope.factory}</strong><small>{scope.part_family}</small></span><ChevronDown size={14} /></button>
         <button className="icon-button settings-shortcut" aria-label="Workspace settings" disabled={!!busy} onClick={openSettings}><Settings2 size={18} /></button>
       </div>
@@ -238,7 +239,7 @@ function DemoWorkspace({ onFactory }: { onFactory: () => void }) {
       <BatchSection scope={scope} memory={memory} busy={!!busy || !loaded} onFinished={() => void refresh()}
         onOpen={item => { setResult(item); selectInput(null); setCorrecting(false); goTo('inspect') }} />
 
-      <StandardsSection corrections={overview?.corrections || []} summary={summary} synced={stats.synced} busy={busy} part={scope.part_family} factory={scope.factory}
+      <StandardsSection onCompare={() => goTo('compare')} corrections={overview?.corrections || []} summary={summary} synced={stats.synced} busy={busy} part={scope.part_family} factory={scope.factory}
         onSummarize={() => void act('reflect', async () => { const reply = await api.reflect(scope); setSummary(reply.summary) })} onRetry={retrySync} onInspect={() => goTo('inspect')} />
 
       <CompareSection comparison={comparison} history={overview?.comparisons || []} samples={samples} selectedSample={openedRecord ? '' : input?.sample?.id || ''}
@@ -247,7 +248,7 @@ function DemoWorkspace({ onFactory }: { onFactory: () => void }) {
         onOpen={pair => { setComparison(pair); setOpenedRecord(true); setExpected(pair.expected_verdict || '') }}
         onExport={() => { if (comparison) downloadJson(`speclens-${comparison.id}.json`, { format_version: 1, exported_at: new Date().toISOString(), ...comparison }) }} />
 
-      <DashboardSection data={board} days={days} part={scope.part_family} factory={scope.factory} onDays={setDays} onInspect={() => goTo('inspect')} />
+      <DashboardSection onHistory={() => goTo('history')} data={board} days={days} part={scope.part_family} factory={scope.factory} onDays={setDays} onInspect={() => goTo('inspect')} />
 
       <RecordsSection overview={overview} query={historyQuery} busy={!!busy} onQuery={setHistoryQuery}
         onLoadMore={() => void act('history', async () => {

@@ -93,11 +93,19 @@ test('model, memory and limit failures appear as a message and keep the part rea
 
 test('the page stays one page: every section is reachable from the inspection desk', async ({ page }) => {
   await open(page, 'one page')
-  for (const [button, section] of [['Quality memory', '#standards'], ['Memory comparison', '#compare'], ['Inspection history', '#history'], ['Inspection desk', '#inspect']] as const) {
+  await expect(page.locator('.main-nav .nav-item')).toHaveCount(3)
+  for (const [button, section] of [['Quality memory', '#standards'], ['Insights', '#dashboard'], ['Inspection desk', '#inspect']] as const) {
     const link = page.getByRole('button', { name: button, exact: true })
     await link.click()
     await expect(page.locator(section)).toBeInViewport()
     await expect(link).toHaveAttribute('aria-current', 'true')
+    await settled(page)
+  }
+  // Compare and history are one link away from their group, not separate items in the bar.
+  for (const [button, section, group] of [['Memory comparison', '#compare', 'Quality memory'], ['Inspection history', '#history', 'Insights']] as const) {
+    await page.getByRole('button', { name: button, exact: true }).click()
+    await expect(page.locator(section)).toBeInViewport()
+    await expect(page.getByRole('button', { name: group, exact: true })).toHaveAttribute('aria-current', 'true')
     await settled(page)
   }
   await expect(page.locator('.scan-canvas')).toHaveCount(1)
