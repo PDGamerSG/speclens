@@ -6,6 +6,8 @@ This is an inspection evidence workspace. People remain responsible for physical
 
 ## Create or join a team
 
+For a shared sample workspace, use the credentials displayed below **Sign in**: username `demo.speclens`, password `SpecLensDemo2026!`. This public account has engineer access to the dedicated **SpecLens Demo Factory**, with an example approved revision, capture station and open lot. Everyone using these credentials shares its records; use sample data only. The published login is provisioned on the hosted site, separate from private teams. Local installations need their own accounts.
+
 Choose **Create a team** to register a new isolated workspace. Supply a display name, team name, globally unique username and password. Usernames are case-insensitive, use 3–64 letters, digits, dots, underscores or hyphens, and are not verified email addresses. Passwords use 12–256 characters. The creator becomes the first admin.
 
 To add a colleague, an admin opens **Team**, chooses a role and creates an invitation. Copy the token while it is displayed and share it privately with the intended person. It is shown once, expires after 48 hours and can create one new member. The recipient chooses **Join with invitation** and registers a new username/password. There is no email delivery or invitation-link verification service.

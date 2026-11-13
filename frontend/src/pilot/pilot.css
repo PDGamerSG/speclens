@@ -161,6 +161,13 @@
 .pilot-auth-tabs button { font-size: 11px; font-weight: 600; min-height: 34px; padding: 5px 9px; border: 1px solid transparent; border-radius: 7px; background: transparent; }
 .pilot-auth-tabs button.selected { background: #fff; border-color: var(--rule); color: var(--reject); }
 .pilot-auth .alert { font-size: 12px; }
+.pilot-demo-login { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.pilot-demo-login h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.pilot-demo-login dl { display: grid; gap: 8px; margin: 0; }
+.pilot-demo-login dl > div { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.pilot-demo-login dt { color: var(--ink-soft); font-size: 12px; }
+.pilot-demo-login dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.pilot-demo-login code { user-select: text; }
 @media (max-width: 1180px) {
   .pilot-shell { grid-template-columns: 195px minmax(0, 1fr); }
   .pilot-sidebar { padding-inline: 10px; }

@@ -40,6 +40,11 @@ export function Auth({ onSession, onExit, initialError }: { onSession: (session:
             <Submit busy={busy}>{mode === 'login' ? 'Sign in to workspace' : mode === 'register' ? 'Create team workspace' : 'Join team workspace'}</Submit>
           </fieldset>
         </form>
+        {mode === 'login' && <aside className="pilot-demo-login" aria-label="Demo login credentials">
+          <h3>Try the factory demo</h3>
+          <dl><div><dt>Username</dt><dd><code>demo.speclens</code></dd></div><div><dt>Password</dt><dd><code>SpecLensDemo2026!</code></dd></div></dl>
+          <p className="pilot-help">Shared demo workspace with engineer access. Use sample data only.</p>
+        </aside>}
         <p className="pilot-help"><LockKeyhole size={14} />Named local accounts. Your team’s records stay separate from the public demo.</p>
       </section>
     </main>
