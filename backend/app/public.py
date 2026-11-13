@@ -154,7 +154,7 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
         # Records and JSON exports contain an identifier, never the bearer cookie.
         request.state.workspace_owner = hashlib.sha256(visitor.encode()).hexdigest()
         path = request.url.path
-        if ((path.startswith('/api/') and not path.startswith('/api/workspace/') and path != '/api/health')
+        if ((path.startswith('/api/') and not path.startswith('/api/workspace/') and path not in {'/api/health', '/api/eval'})
                 or path in GENERATED_DOCS
                 or (path.startswith('/files/') and not path.startswith(('/files/fixtures/', '/files/workspace/')))):
             response = JSONResponse({'detail': 'Not found.'}, status_code=404)

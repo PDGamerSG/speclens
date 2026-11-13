@@ -107,7 +107,7 @@ def test_demo_mode_api_routes():
     assert any(p["id"].startswith("sample-hazelnut_gen") for p in parts)
     assert c.get("/api/runs/does-not-exist").status_code == 404
     ev = c.get("/api/eval").json()
-    assert "curves" in ev
+    assert "benchmark" in ev and "notes" in ev
 
 
 def _finished_run(monkeypatch):

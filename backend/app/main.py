@@ -236,13 +236,23 @@ async def post_inspect(file: UploadFile = File(...), spec_text: str = Form(""), 
     return out
 
 
+def latest_benchmark() -> dict | None:
+    """The newest live benchmark run: from the database, or the copy committed in docs/results/eval.json."""
+    from . import db
+    with db.engine().connect() as c:
+        payload = c.execute(db.benchmark_runs.select().order_by(db.benchmark_runs.c.created_at.desc()).limit(1)).first()
+    if payload is not None:
+        return payload.payload
+    p = RESULTS / "eval.json"
+    return json.loads(p.read_text()) if p.exists() else None
+
+
 @app.get("/api/eval")
 def get_eval():
-    p = RESULTS / "eval.json"
-    if not p.exists():
-        return {"generated": 0, "real_benchmark": None, "in_context": [], "faint_lift": [], "sam_real": None,
-                "forge_stats": None, "curves": [], "notes": ["eval has not been run yet: python eval/run_eval.py"]}
-    return json.loads(p.read_text())
+    result = latest_benchmark()
+    if result is None:
+        return {"benchmark": None, "notes": ["No benchmark has run yet. Run: python scripts/benchmark.py --yes"]}
+    return {"benchmark": {k: v for k, v in result.items() if k != "rows"}, "notes": result.get("notes", [])}
 
 
 app.mount("/files/fixtures", StaticFiles(directory=FIXTURES, check_dir=False), name="fixtures")
