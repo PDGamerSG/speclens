@@ -1,8 +1,15 @@
 """Small live memory ablation on two held-aside synthetic source photos.
 
-Runs nine billable vision calls. The labels come from controlled image edits,
-not model judgments. Four cases from two source photos are not four independent
-production observations. Results are recorded without requiring an improvement.
+Runs 1 + 8 x repeats billable vision calls (nine for one pass), plus a SAM mask
+for each claimed defect when SPECLENS_MASKS=1. The correction is taught once;
+each repeat runs the four paired comparisons again. The labels come from
+controlled image edits, not model judgments. Four cases from two source photos
+are not four independent production observations, and repeats of the same
+image measure how stable the model is, not new parts. Results are recorded
+without requiring an improvement.
+
+A run stops if the teaching correction is not recalled in a comparison. Such a
+run is invalid: rerun it, and never drop a valid run because of its result.
 
 The report records which script commit, server commit, prompt and models produced
 it. A server in demo mode replays recorded results, so the script refuses it.
@@ -62,18 +69,52 @@ def summarize(rows):
     return output
 
 
+def summarize_repeats(rows):
+    """Per-pass summaries, their spread, and how often each case got the same verdict across passes."""
+    passes = sorted({r.get('repeat', 1) for r in rows})
+    per_pass = [summarize([r for r in rows if r.get('repeat', 1) == p]) for p in passes]
+    out = {'passes': len(passes), 'per_pass': per_pass}
+    for arm in ('baseline', 'with_memory'):
+        correct = [s[arm]['correct'] for s in per_pass]
+        out[arm] = {'correct_min': min(correct), 'correct_max': max(correct), 'correct_total': sum(correct),
+                    'decisions_total': sum(s[arm]['total'] for s in per_pass),
+                    'false_alarms_total': sum(s[arm]['false_alarms'] for s in per_pass),
+                    'controls_total': sum(s[arm]['controls'] for s in per_pass),
+                    'missed_defects_total': sum(s[arm]['missed_defects'] for s in per_pass),
+                    'defects_total': sum(s[arm]['defects'] for s in per_pass)}
+    # Share of passes that gave a case its most common verdict: 1.0 means every pass agreed.
+    agreement = {}
+    for case in sorted({r['id'] for r in rows}):
+        agreement[case] = {}
+        for arm in ('baseline', 'with_memory'):
+            verdicts = [r['comparison'][arm]['verdict'] for r in rows if r['id'] == case]
+            agreement[case][arm] = max(verdicts.count(v) for v in set(verdicts)) / len(verdicts)
+    out['agreement'] = agreement
+    return out
+
+
+def positive(text):
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError('must be at least 1')
+    return value
+
+
 def main(argv=None, transport=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--base', default='http://localhost:8770')
     ap.add_argument('--out', type=Path, default=ROOT / 'var/evaluations')
+    ap.add_argument('--repeats', type=positive, default=1, help='Passes over the four cases. The correction is taught once; each pass adds 8 vision calls.')
     args = ap.parse_args(argv)
     id = uuid.uuid4().hex[:10]
     scope = {'factory': f'SpecLens memory evaluation {id}', 'part_family': 'Whole hazelnut', 'spec_text': ''}
     report = {'id': id, 'created_at': datetime.now(timezone.utc).isoformat(), 'scope': scope, 'rows': [],
               'training_source_group': 'generated-hazelnut-01', 'test_source_groups': ['generated-hazelnut-02', 'generated-hazelnut-03'],
-              'limits': 'Four synthetic cases from two source photos, one pass, one part family. Paired calls are stochastic. This is a regression probe, not a production accuracy benchmark.',
+              'limits': (f"Four synthetic cases from two source photos, {'one pass' if args.repeats == 1 else f'{args.repeats} passes'}, "
+                         'one part family. Paired calls are stochastic. This is a regression probe, not a production accuracy benchmark. '
+                         'A run stops if the teaching correction is not recalled; such a run is invalid and is rerun, never dropped for its result.'),
               'provenance': {'script_commit': git('rev-parse', 'HEAD'), 'script_dirty': bool(git('status', '--porcelain')),
-                             'base_url': args.base}}
+                             'base_url': args.base, 'repeats': args.repeats}}
     try:
         with httpx.Client(base_url=args.base.rstrip('/'), timeout=httpx.Timeout(240, connect=8), transport=transport) as client:
             health = client.get('/api/health')
@@ -96,17 +137,20 @@ def main(argv=None, transport=None):
             if correction['sync_status'] != 'synced':
                 raise RuntimeError('The correction was not synced; no memory comparison was evaluated.')
             report.update({'teaching_inspection': first, 'correction': correction})
-            for item in cases():
-                if item['source_group'] == report['training_source_group']:
-                    raise RuntimeError('A teaching source entered the evaluation set.')
-                print(f"Comparing {item['id']} (label={item['expected_verdict']})…", flush=True)
-                comparison = call('/compare', data={**scope, 'expected_verdict': item['expected_verdict']},
-                                  files={'file': (item['id'] + '.png', item['data'], 'image/png')})
-                if not any(f['source_id'] == correction['id'] for f in comparison['with_memory']['memories']):
-                    raise RuntimeError('The teaching correction was not recalled; this is not a valid memory ablation.')
-                report['rows'].append({k: v for k, v in item.items() if k != 'data'} | {'comparison': comparison})
-                print(f"  off={comparison['baseline']['verdict']}, on={comparison['with_memory']['verdict']}", flush=True)
-        report['summary'] = summarize(report['rows'])
+            evaluation_cases = cases()
+            for repeat in range(1, args.repeats + 1):
+                for item in evaluation_cases:
+                    if item['source_group'] == report['training_source_group']:
+                        raise RuntimeError('A teaching source entered the evaluation set.')
+                    print(f"Pass {repeat}/{args.repeats}: comparing {item['id']} (label={item['expected_verdict']})…", flush=True)
+                    comparison = call('/compare', data={**scope, 'expected_verdict': item['expected_verdict']},
+                                      files={'file': (item['id'] + '.png', item['data'], 'image/png')})
+                    if not any(f['source_id'] == correction['id'] for f in comparison['with_memory']['memories']):
+                        raise RuntimeError('The teaching correction was not recalled; this is not a valid memory ablation.')
+                    row = {k: v for k, v in item.items() if k != 'data'} | {'comparison': comparison}
+                    report['rows'].append(row if args.repeats == 1 else row | {'repeat': repeat})
+                    print(f"  off={comparison['baseline']['verdict']}, on={comparison['with_memory']['verdict']}", flush=True)
+        report['summary'] = summarize(report['rows']) if args.repeats == 1 else summarize_repeats(report['rows'])
         report['passed'] = True
         print(json.dumps(report['summary'], indent=2), flush=True)
     except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:

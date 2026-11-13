@@ -77,3 +77,49 @@ def test_the_report_records_which_code_prompt_and_models_produced_it(tmp_path):
     assert provenance['base_url'] == 'http://speclens.test'
     assert provenance['server'] == {'models': ['muse-spark-1.3'], 'prompt_version': 'inspector-test',
                                     'prompt_sha256': '0123456789abcdef', 'commit': 'server-commit'}
+
+
+def row(case, repeat, baseline, with_memory, expected='defect'):
+    return {'id': case, 'repeat': repeat, 'expected_verdict': expected,
+            'comparison': {'baseline': {'verdict': baseline}, 'with_memory': {'verdict': with_memory}}}
+
+
+def test_repeated_passes_report_their_spread_and_totals():
+    rows = [row('a', 1, 'good', 'defect'), row('b', 1, 'good', 'good', 'good'),
+            row('a', 2, 'defect', 'defect'), row('b', 2, 'good', 'defect', 'good')]
+    summary = evaluation().summarize_repeats(rows)
+    assert summary['passes'] == 2 and len(summary['per_pass']) == 2
+    assert summary['baseline'] == {'correct_min': 1, 'correct_max': 2, 'correct_total': 3, 'decisions_total': 4,
+                                    'false_alarms_total': 0, 'controls_total': 2,
+                                    'missed_defects_total': 1, 'defects_total': 2}
+    assert (summary['with_memory']['correct_min'], summary['with_memory']['correct_max']) == (1, 2)
+    assert summary['with_memory']['false_alarms_total'] == 1
+
+
+def test_agreement_shows_how_often_a_case_got_the_same_verdict():
+    rows = [row('a', 1, 'good', 'defect'), row('a', 2, 'defect', 'defect')]
+    assert evaluation().summarize_repeats(rows)['agreement'] == {'a': {'baseline': 0.5, 'with_memory': 1.0}}
+
+
+def test_one_pass_keeps_the_published_report_shape(tmp_path):
+    transport, _ = fake_server()
+    assert evaluation().main(['--base', 'http://speclens.test', '--out', str(tmp_path)], transport=transport) == 0
+    report = read_report(tmp_path)
+    assert len(report['rows']) == 4
+    assert all('repeat' not in r for r in report['rows'])
+    assert set(report['summary']) == {'baseline', 'with_memory'}
+    assert report['summary']['with_memory']['total'] == 4
+    assert report['provenance']['repeats'] == 1
+
+
+def test_repeats_teach_once_and_rerun_every_comparison(tmp_path):
+    transport, paths = fake_server()
+    assert evaluation().main(['--base', 'http://speclens.test', '--out', str(tmp_path), '--repeats', '2'],
+                             transport=transport) == 0
+    report = read_report(tmp_path)
+    assert [p for _, p in paths].count('/api/workspace/corrections') == 1
+    assert [p for _, p in paths].count('/api/workspace/compare') == 8
+    assert sorted({r['repeat'] for r in report['rows']}) == [1, 2]
+    assert report['summary']['passes'] == 2
+    assert report['summary']['with_memory']['decisions_total'] == 8
+    assert '2 passes' in report['limits']
