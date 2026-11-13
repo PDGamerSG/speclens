@@ -1,0 +1,82 @@
+{
+  "verified_at": "2026-11-13T19:46:14.342843+00:00",
+  "implementation_commit": "d4744a96bc5e9b40072466a75717b0b07aec17a0",
+  "site": "https://speclens.pallabdas.me",
+  "backend": {
+    "origin": "https://speclens.13-236-192-155.sslip.io",
+    "release": "20261113T194141Z-67483",
+    "migration": "0003",
+    "sqlite_integrity": "ok",
+    "foreign_key_violations": 0,
+    "existing_counts_after": {
+      "inspections": 55,
+      "corrections": 10,
+      "comparisons": 10,
+      "model_calls": 62
+    }
+  },
+  "backup": {
+    "id": "20261113T193721Z-factory",
+    "sha256": "4d9a5cc0535b87e023580e9894df8a97c79b5fab533f66d55ac95893ba3c3e3d",
+    "off_server_checksum_verified": true,
+    "rollback_image": "speclens-rollback:20261113T193721Z",
+    "migration_rehearsal": {
+      "from": "0002",
+      "to": "0003",
+      "existing_counts_unchanged": {
+        "inspections": 55,
+        "corrections": 10,
+        "comparisons": 10,
+        "alembic_version": 1,
+        "spec_revisions": 1,
+        "jobs": 0,
+        "model_calls": 62,
+        "budget": 1,
+        "benchmark_runs": 0
+      },
+      "integrity": "ok",
+      "foreign_key_violations": 0
+    }
+  },
+  "automated_checks": {
+    "backend_passed": 292,
+    "browser_passed": 37,
+    "production_build": "passed",
+    "lint": "passed",
+    "external_providers": "simulated",
+    "ci_run": "https://github.com/PDGamerSG/speclens/actions/runs/43494832665"
+  },
+  "frontend": {
+    "vercel_status": "success",
+    "deployment": "https://vercel.com/pallab-das-projects-d3f377fd/speclens/BgGtrxDoPw8A5TwpUaCPfYdsK7TN",
+    "main_asset": "/assets/index-DRLMyujg.js",
+    "main_asset_sha256": "9d6cfe51845062d9f43083838591fe019235678fb72fd10da45cfa8cc8052775",
+    "factory_asset": "/assets/FactoryWorkspace-CBjFx4JD.js",
+    "factory_asset_sha256": "51c7f841dec4c5b2936cac3844b6eb13ef5237d8844c92d4ba48015aec1ec85b",
+    "matches_verified_local_build": true
+  },
+  "live_api": {
+    "status": "passed",
+    "signed_out_session": 200,
+    "protected_overview_without_session": 401,
+    "secure_http_only_same_site_session": true,
+    "verified_operations": [
+      "registration and secure HttpOnly session cookie",
+      "approved specification, station and lot",
+      "issue closure",
+      "imported validation",
+      "lot JSON/CSV exports",
+      "viewer invitation/read-only permission",
+      "member deactivation and session revocation",
+      "lot closure",
+      "logout/login/logout"
+    ],
+    "temporary_accounts_and_records_removed": true,
+    "new_inference_calls": 0
+  },
+  "limits": [
+    "Production API checks used temporary non-inference records; capture/review provider behavior was verified with simulated providers locally.",
+    "Imported validation outputs are unverified inputs, not a live accuracy study.",
+    "No real-factory accuracy, calibration or regulatory-compliance claim is established."
+  ]
+}

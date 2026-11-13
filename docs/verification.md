@@ -4,7 +4,7 @@
 
 The factory workspace implementation passed **292 Python tests**, **37 browser scenarios**, the production build, and clean lint on 14 November 2026. Provider responses were simulated; these checks do not measure factory detection accuracy. The full browser suite covers both the public demo and authenticated factory workflows, including role isolation, controlled capture, retakes, independent review/teaching, issues, validation, exports, expired-session recovery and concurrent-edit conflicts.
 
-Backend regressions cover additive migration, scoped ownership, approval/retirement, frozen capture identity, evidence races, memory outbox eligibility, revoked job streams, terminal worker recovery and complete part-resolution reports. A private restored copy of the production backup migrated from `0002` to `0003` with every existing table count unchanged, SQLite integrity `ok`, and no foreign-key violations. Live release checks are recorded separately below after deployment.
+Backend regressions cover additive migration, scoped ownership, approval/retirement, frozen capture identity, evidence races, memory outbox eligibility, revoked job streams, terminal worker recovery and complete part-resolution reports. A private restored copy of the production backup migrated from `0002` to `0003` with every existing table count unchanged, SQLite integrity `ok`, and no foreign-key violations.
 
 The earlier one-page release passed **88 Python tests** and **24 browser scenarios**. Two backend regressions verified that the renamed browser cookie preserves existing visitor records and recovers a valid legacy session when the new cookie is invalid.
 
@@ -15,6 +15,10 @@ The browser suite covers valid uploads, correction and history exports, image zo
 The macOS setup script completed successfully. The Docker image built on Linux ARM64 and served its UI, status, and sample images. Direct requests for the SQLite database and ledger returned 404. A missing model key produced the expected 503 setup response.
 
 ## Public deployment
+
+The factory workspace implementation `d4744a9` is deployed at [SpecLens](https://speclens.pallabdas.me), with backend release `20261113T194141Z-67483` on migration `0003`. The [sanitized release evidence](evidence/factory-workspace-release.json) records the off-server backup/checksum, migration rehearsal, preserved counts, frontend asset hashes and live API checks. All 55 preexisting inspections, 10 corrections and 10 comparisons remained; the model-call count stayed at 62.
+
+Production checks used temporary accounts/records to verify Secure/HttpOnly session cookies, registration/login/logout, approved recipe/station/lot setup, nonconformance closure, imported validation, complete JSON/CSV lot exports, viewer permissions and membership/session revocation. Temporary operational and authentication data was removed afterward. These checks requested no inference. Capture/review and model/memory failure workflows passed against simulated providers in the automated suites; this release makes no new live-provider or factory-accuracy claim. The custom-domain JavaScript and factory module match the verified local production build byte for byte.
 
 The one-page release passed all 11 steps of `frontend/scripts/live-smoke.mjs` against the public site on November 7, 2026, with real Meta vision and Hindsight calls. The run covered inspection, a synced correction, a recalled citation on a different part, the Hindsight summary, an upload, a comparison, export, reload, phone layout, and a second browser that could not read the first browser's records. A separate public upload of a diagram returned **Review part** with the reason shown, and the page logged no console errors or failed requests.
 
