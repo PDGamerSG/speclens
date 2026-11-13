@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 from openai import APIError
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -28,7 +28,7 @@ MAX_UPLOAD = 8 * 1024 * 1024
 memory_url = os.environ.get('HINDSIGHT_BASE_URL', '').strip()
 if not memory_url and os.environ.get('HINDSIGHT_API_KEY'):
     memory_url = 'https://api.hindsight.vectorize.io'
-service = WorkspaceService(Store(VAR / 'speclens.sqlite3'),
+service = WorkspaceService(Store(),
     HindsightMemory(memory_url, os.environ.get('HINDSIGHT_API_KEY', '')), media_root=VAR / 'workspace')
 
 SAMPLES = [
@@ -115,16 +115,21 @@ def samples():
 
 
 @router.get('/overview')
-def overview(request: Request, factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, spec_text: str = ''):
+def overview(request: Request, factory: str = DEFAULT_FACTORY, part_family: str = DEFAULT_PART, spec_text: str = '',
+             limit: int = Query(100, ge=1, le=500), before: str = Query('', max_length=40)):
+    """One page of history, newest first. Records leave out the specification text, which the caller already has."""
     scope = make_scope(factory, part_family, spec_text, owner(request))
-    inspections = service.store.inspections(scope.id)
-    corrections = service.store.corrections(scope.id)
-    comparisons = service.store.comparisons(scope.id)
-    with service.store.connection() as db:
-        total = db.execute('SELECT COUNT(*) FROM inspections WHERE scope_id=?', (scope.id,)).fetchone()[0]
-    return {'scope_id': scope.id, 'bank_id': scope.bank_id, 'inspections': inspections,
-            'corrections': corrections, 'comparisons': comparisons,
-            'stats': {'inspections': total, 'corrections': len(corrections),
+    store = service.store
+    inspections = store.inspections(scope.id, limit=limit + 1, before=before or None, with_spec=False)
+    has_more = len(inspections) > limit
+    inspections = inspections[:limit]
+    corrections = store.corrections(scope.id, with_spec=False)
+    comparisons = store.comparisons(scope.id, limit=50, with_spec=False)
+    return {'scope_id': scope.id, 'bank_id': scope.bank_id, 'spec_revision_id': scope.spec_revision_id,
+            'inspections': inspections, 'corrections': corrections, 'comparisons': comparisons,
+            'has_more': has_more, 'next_before': inspections[-1]['created_at'] if has_more else None,
+            'stats': {'inspections': store.count_inspections(scope.id), 'corrections': len(corrections),
+                      'comparisons': store.count_comparisons(scope.id),
                       'synced': sum(c['sync_status'] == 'synced' for c in corrections),
                       'pending': sum(c['sync_status'] != 'synced' for c in corrections)}}
 
