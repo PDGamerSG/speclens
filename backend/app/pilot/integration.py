@@ -21,7 +21,8 @@ def optional(store: PilotStore, owner_id: str, id: str, kind: str) -> dict | Non
 
 
 def eligible_sources(store, scope: Scope, snapshot: dict | None = None) -> dict:
-    corrections = {c['id']: c for c in store.corrections(scope.id) if c['sync_status'] == 'synced'}
+    corrections = {c['id']: c for c in store.corrections(scope.id)
+                   if c['sync_status'] == 'synced' and not c.get('demo_seed')}
     if not scope.owner_id.startswith('team-'):
         return corrections
     catalog = PilotStore(store.engine)
@@ -134,6 +135,8 @@ def complete_capture(store, inspection: dict) -> None:
                       reason='', assignee=None, quarantined=bool(context.get('quarantined')),
                       queue_reason='Recipe withdrawn during analysis' if context.get('quarantined') else
                           'Model requested review' if inspection['verdict'] == 'uncertain' else 'Pilot confirmation')
+        if inspection.get('demo_seed'):
+            fields['demo_seed'] = inspection['demo_seed']
         try:
             pilot.create(team, 'review', fields, actor=context['actor'], id=review_id)
         except HTTPException as error:
@@ -181,6 +184,8 @@ def propose_standard(store, inspection: dict, correction: dict) -> dict:
         'reviewer': correction['reviewer'], 'image_url': inspection['image_url'],
         'crop_url': correction.get('crop_url'), 'approver': None,
     }
+    if correction.get('demo_seed'):
+        fields['demo_seed'] = correction['demo_seed']
     try:
         return pilot.create(inspection['owner_id'], 'standard', fields,
                             actor=correction.get('actor') or context['actor'], id=id)
@@ -191,6 +196,8 @@ def propose_standard(store, inspection: dict, correction: dict) -> dict:
 
 
 def correction_approved(store, correction: dict) -> bool:
+    if correction.get('demo_seed'):
+        return False
     if not correction.get('owner_id', '').startswith('team-'):
         return True
     return any(s.get('correction_id') == correction['id'] and s.get('status') == 'approved'

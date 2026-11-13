@@ -7,6 +7,7 @@ export interface Status {
 export interface Sample { id: string; name: string; detail: string; image_url: string; expected_verdict: 'good' | 'defect' }
 export interface MemoryFact { id: string; text: string; source_id: string; type: string; reviewer?: string; rule_text?: string; source_inspection_id?: string }
 export interface Inspection {
+  demo_seed?: string;
   id: string; scope_id: string; factory: string; part_family: string; spec_text: string;
   verdict: 'good' | 'defect' | 'uncertain'; defect: boolean; type: string; confidence: number;
   rationale: string; box_px: number[] | null; image_url: string; image_width: number; image_height: number;
@@ -24,7 +25,7 @@ export interface Measurement {
 export interface Correction {
   id: string; inspection_id: string; scope_id: string; rule_text: string; reviewer: string;
   original_verdict: string; original_type: string; original_rationale: string; image_url: string;
-  verdict: 'good' | 'defect'; defect_type: string; created_at: string; sync_status: 'pending' | 'synced'; sync_error: string | null;
+  verdict: 'good' | 'defect'; defect_type: string; created_at: string; sync_status: 'pending' | 'synced' | 'demo'; sync_error: string | null;
   crop_url?: string;
 }
 export interface Comparison {

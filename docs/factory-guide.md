@@ -6,7 +6,13 @@ This is an inspection evidence workspace. People remain responsible for physical
 
 ## Create or join a team
 
-For a shared sample workspace, use the credentials displayed below **Sign in**: username `demo.speclens`, password `SpecLensDemo2026!`. This public account has engineer access to the dedicated **SpecLens Demo Factory**, with an example approved revision, capture station and open lot. Everyone using these credentials shares its records; use sample data only. The published login is provisioned on the hosted site, separate from private teams. Local installations need their own accounts.
+For a shared sample workspace, use the credentials displayed below **Sign in**: username `demo.speclens`, password `SpecLensDemo2026!`. This public account has engineer access to the dedicated **SpecLens Demo Factory**. Everyone using these credentials shares its records; use sample data only. The published login is provisioned on the hosted site, separate from private teams. Local installations need their own accounts.
+
+The populated demo adds six example product lines: hazelnuts, blister packs, moulded caps, machined washers, printed labels and sensor boards. It includes 18 specification revisions, 12 stations, 18 lots, 180 physical parts with 186 capture/review records (including six linked retakes), 24 standards, 18 quality issues and four validation runs. The earlier introductory product and lot remain available. Counts can grow as visitors use the shared workspace.
+
+Seeded images are labeled synthetic diagrams and decisions are staged. They make no model calls and record no measured model confidence, latency or cost. Example standards, including later proposals made from seeded images, are excluded from quality-memory synchronization and recall even when their lifecycle status is approved. Validation examples use staged matched predictions for 240 parts and 12 repeated views per run; they demonstrate the evaluation UI, not observed factory accuracy.
+
+An operator can populate an already provisioned demo account with `python scripts/seed_factory_demo.py --team-id TEAM_ID`. This previews the dataset; add `--apply` to write it after backing up the runtime data. The command checks the exact team name, public username and active engineer membership, and refuses other targets. It creates no accounts, changes no passwords and does not auto-run at startup. Stable IDs preserve existing records and visitor edits on subsequent runs. On the deployed container, use `sudo docker exec chief-skill-speclens-1 python scripts/seed_factory_demo.py --team-id TEAM_ID --apply` with the actual demo team ID.
 
 Choose **Create a team** to register a new isolated workspace. Supply a display name, team name, globally unique username and password. Usernames are case-insensitive, use 3–64 letters, digits, dots, underscores or hyphens, and are not verified email addresses. Passwords use 12–256 characters. The creator becomes the first admin.
 

@@ -3,7 +3,7 @@ import type { Inspection, Taxonomy } from '../workspace/types'
 export type Role = 'admin' | 'engineer' | 'operator' | 'viewer'
 export interface Session { authenticated: boolean; user: { id: string; username: string; name: string } | null; team: { id: string; name: string } | null; role: Role | null }
 export const SIGNED_OUT: Session = { authenticated: false, user: null, team: null, role: null }
-export interface RecordBase { id: string; kind: string; owner_id: string; version: number; created_at: string; updated_at: string }
+export interface RecordBase { id: string; kind: string; owner_id: string; version: number; created_at: string; updated_at: string; demo_seed?: string }
 export interface Actor { id: string; name: string; username: string; role: Role }
 export interface Product extends RecordBase { code: string; name: string; factory: string; description?: string }
 export interface Revision extends RecordBase { product_id: string; label: string; spec_text: string; capture_instructions: string; taxonomy: Taxonomy; status: 'draft' | 'approved' | 'retired'; approver?: Actor | null }

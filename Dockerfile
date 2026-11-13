@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 li
 COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend/ backend/
+COPY scripts/seed_factory_demo.py scripts/seed_factory_demo.py
 COPY fixtures/ fixtures/
 COPY --from=frontend /build/frontend/dist/ frontend/dist/
 RUN useradd --uid 10001 --create-home speclens && mkdir -p /app/var && chown -R speclens:speclens /app/var

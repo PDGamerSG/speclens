@@ -42,6 +42,7 @@ export function Auth({ onSession, onExit, initialError }: { onSession: (session:
         </form>
         {mode === 'login' && <aside className="pilot-demo-login" aria-label="Demo login credentials">
           <h3>Try the factory demo</h3>
+          <p className="pilot-help">Explore sample products, lot histories, inspection images, human reviews, standards, quality issues and validation results.</p>
           <dl><div><dt>Username</dt><dd><code>demo.speclens</code></dd></div><div><dt>Password</dt><dd><code>SpecLensDemo2026!</code></dd></div></dl>
           <p className="pilot-help">Shared demo workspace with engineer access. Use sample data only.</p>
         </aside>}

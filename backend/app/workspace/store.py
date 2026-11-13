@@ -221,12 +221,16 @@ class Store:
                 'image_sha256': original['image_sha256'], 'verdict': verdict, 'defect_type': defect_type,
                 'rule_text': rule_text.strip(), 'reviewer': reviewer.strip(), 'created_at': now(),
                 'sync_status': 'pending', 'sync_error': None, **extra}
+        # Staged fixtures (including later corrections of them) never teach live memory.
+        if original.get('demo_seed'):
+            item.update(demo_seed=original['demo_seed'], sync_status='demo', sync_error=None)
         try:
             with self.engine.begin() as c:
                 c.execute(corrections_table.insert().values(
                     id=item['id'], inspection_id=inspection_id, scope_id=item['scope_id'],
                     created_at=item['created_at'], payload=self._pack(c, item), owner_id=item['owner_id'],
-                    verdict=verdict, defect_type=defect_type, sync_status='pending', next_sync_at=time.time()))
+                    verdict=verdict, defect_type=defect_type, sync_status=item['sync_status'],
+                    next_sync_at=None if item.get('demo_seed') else time.time()))
         except sa.exc.IntegrityError:
             raise ValueError('This inspection already has a correction. Inspect another part to add a new rule.') from None
         return item
@@ -272,7 +276,8 @@ class Store:
     def due_corrections(self, limit: int = 20, approved_only: bool = False) -> list[str]:
         """Pending corrections whose next memory sync attempt is due: the outbox the worker drains."""
         table = corrections_table
-        query = sa.select(table.c.id).where(table.c.sync_status != 'synced', table.c.next_sync_at <= time.time())
+        query = sa.select(table.c.id).where(table.c.sync_status.not_in(['synced', 'demo']),
+                                          table.c.next_sync_at <= time.time())
         if approved_only:
             from ..pilot.tables import records
             approved = sa.select(records.c.payload['correction_id'].as_string()).where(

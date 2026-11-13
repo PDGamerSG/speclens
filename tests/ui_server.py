@@ -15,6 +15,10 @@ import uvicorn
 from app.main import app
 from app.workspace import routes
 from app.workspace.memory import HindsightMemory
+from app.pilot import tables
+from app.pilot.auth import password_hash
+from app.pilot.demo_seed import seed_demo
+from app.pilot.store import now
 
 facts = {}
 
@@ -46,4 +50,13 @@ def vision(image, spec_text, types, **kwargs):
 routes.API_KEY = 'e2e-configured'
 routes.service.inspector = vision
 routes.service.memory = HindsightMemory('https://memory.example', 'e2e-key', transport=httpx.MockTransport(respond))
+
+# Exercise the real populated workspace, authentication and media routes offline.
+with routes.service.store.engine.begin() as connection:
+    connection.execute(tables.teams.insert().values(id='team-e2e-demo', name='SpecLens Demo Factory', created_at=now()))
+    connection.execute(tables.users.insert().values(id='user-e2e-demo', username='demo.speclens',
+        name='Demo Quality Engineer', password_hash=password_hash('SpecLensDemo2026!'), created_at=now()))
+    connection.execute(tables.memberships.insert().values(id='member-e2e-demo', team_id='team-e2e-demo',
+        user_id='user-e2e-demo', role='engineer', active=True, created_at=now()))
+seed_demo(routes.service.store, routes.service.media, team_id='team-e2e-demo', apply=True)
 uvicorn.run(app, host='127.0.0.1', port=int(os.environ.get('E2E_PORT', '8771')), log_level='warning')
