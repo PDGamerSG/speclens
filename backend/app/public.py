@@ -48,7 +48,60 @@ def client_address(request: Request) -> str:
     return str(ipaddress.ip_network(f'{address}/64', strict=False)) if address.version == 6 else str(address)
 
 
+class LimiterUnavailable(RuntimeError):
+    pass
+
+
+class RedisLimiter:
+    """Fixed hourly windows in Render Key Value, shared by every API instance.
+
+    INCRBY is atomic. If either counter passes its limit, the increments are undone and the call is refused.
+    A window can admit up to twice the limit across its boundary, which is acceptable for abuse control.
+    """
+
+    def __init__(self, url: str, client=None):
+        if client is None:
+            import redis
+            client = redis.Redis.from_url(url, socket_timeout=2, socket_connect_timeout=2)
+        self.client = client
+
+    def allow(self, counters: list[tuple[str, int]], cost: int) -> bool:
+        window = int(time.time() // WINDOW)
+        names = [f'speclens:limit:{key}:{window}' for key, _ in counters]
+        try:
+            pipe = self.client.pipeline()
+            for name in names:
+                pipe.incrby(name, cost)
+                pipe.expire(name, WINDOW * 2)
+            counts = pipe.execute()[0::2]
+            if all(count <= limit for count, (_, limit) in zip(counts, counters)):
+                return True
+            pipe = self.client.pipeline()
+            for name in names:
+                pipe.decrby(name, cost)
+            pipe.execute()
+            return False
+        except Exception as error:
+            raise LimiterUnavailable('The request limiter is unavailable. Try again shortly.') from error
+
+
+_redis: RedisLimiter | None = None
+
+
+def shared_limiter() -> RedisLimiter | None:
+    global _redis
+    url = os.environ.get('REDIS_URL', '').strip()
+    if not url:
+        return None
+    if _redis is None:
+        _redis = RedisLimiter(url)
+    return _redis
+
+
 def allow_call(visitor: str, address: str, cost: int = 1) -> bool:
+    counters = [(f'visitor:{visitor}', CALL_LIMIT), (f'ip:{address}', CALL_LIMIT * 4)]
+    if (shared := shared_limiter()) is not None:
+        return shared.allow(counters, cost)
     current = time.monotonic()
     with _lock:
         for key in list(limiter):
@@ -56,12 +109,20 @@ def allow_call(visitor: str, address: str, cost: int = 1) -> bool:
                 limiter[key].popleft()
             if not limiter[key]:
                 del limiter[key]
-        for key, limit in ((f'visitor:{visitor}', CALL_LIMIT), (f'ip:{address}', CALL_LIMIT * 4)):
+        for key, limit in counters:
             if len(limiter[key]) + cost > limit:
                 return False
         limiter[f'visitor:{visitor}'].extend([current] * cost)
         limiter[f'ip:{address}'].extend([current] * cost)
         return True
+
+
+def _allowed(visitor: str, request: Request, path: str) -> bool | None:
+    """True or False from the limiter, or None when the shared limiter cannot be reached, so writes stop safely."""
+    try:
+        return allow_call(visitor, client_address(request), 2 if path == COMPARE else 1)
+    except LimiterUnavailable:
+        return None
 
 
 class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
@@ -103,9 +164,12 @@ class PublicWorkspaceMiddleware(BaseHTTPMiddleware):
                     if value.strip()
                 }):
             response = JSONResponse({'detail': 'Open this workspace directly to make changes.'}, status_code=403)
-        elif request.method == 'POST' and not allow_call(visitor, client_address(request), 2 if path == COMPARE else 1):
-            response = JSONResponse({'detail': 'This public workspace has reached its hourly request limit. Please try again later.'},
-                                    status_code=429, headers={'Retry-After': str(WINDOW)})
+        elif request.method == 'POST' and not (allowed := _allowed(visitor, request, path)):
+            if allowed is None:
+                response = JSONResponse({'detail': 'The request limiter is unavailable. Try again shortly.'}, status_code=503)
+            else:
+                response = JSONResponse({'detail': 'This public workspace has reached its hourly request limit. Please try again later.'},
+                                        status_code=429, headers={'Retry-After': str(WINDOW)})
         elif request.headers.get('content-length', '').isdigit() and int(request.headers['content-length']) > MAX_BODY:
             response = JSONResponse({'detail': 'Choose an image smaller than 8 MB.'}, status_code=413)
         else:
