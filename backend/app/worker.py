@@ -13,6 +13,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+from .observability import request_id, setup
+
 log = logging.getLogger('speclens.worker')
 IDLE_SLEEP = 0.5
 HOUSEKEEPING_EVERY = 60
@@ -67,16 +69,18 @@ class Worker:
         log.info('Worker stopped')
 
     def _run(self, job: dict) -> None:
+        token = request_id.set(job['payload'].get('request_id') or job['id'])
         try:
             started = time.monotonic()
             finished = self.jobs.run_claimed(job)
             log.info('Job %s (%s) %s in %.1fs', job['id'], job['kind'], finished['status'], time.monotonic() - started)
         finally:
+            request_id.reset(token)
             self.slots.release()
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
+    setup('worker')
     from .workspace.routes import jobs, service
     worker = Worker(jobs, service, concurrency=int(os.environ.get('WORKER_CONCURRENCY', '4')))
     signal.signal(signal.SIGTERM, lambda *_: worker.stopping.set())

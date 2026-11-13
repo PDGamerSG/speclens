@@ -28,6 +28,7 @@ from .forge.spec import DEFAULT_SPEC, taxonomy
 from .inspect.inspector import inspect
 from .jobs.queue import mode as queue_mode
 from .media import content_type
+from .observability import RequestIdMiddleware, setup
 from .meta import ledger
 from .runs import manager
 from .public import PublicWorkspaceMiddleware, owner
@@ -53,8 +54,10 @@ async def lifespan(_app: FastAPI):
     stop.set()
 
 
+setup("api")
 app = FastAPI(title="SpecLens", version="1.0", lifespan=lifespan)
 app.add_middleware(PublicWorkspaceMiddleware)
+app.add_middleware(RequestIdMiddleware)  # added last, so it runs first and every response gets an ID
 app.include_router(workspace_router)
 
 

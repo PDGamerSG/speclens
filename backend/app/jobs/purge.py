@@ -12,7 +12,8 @@ import sys
 
 
 def main() -> int:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
+    from ..observability import setup
+    setup('purge')
     days = int(os.environ.get('RETENTION_DAYS', '90'))
     if days < 1:
         sys.exit('RETENTION_DAYS must be at least 1.')

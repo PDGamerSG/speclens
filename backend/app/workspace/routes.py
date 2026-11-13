@@ -21,6 +21,7 @@ from ..jobs.queue import JobQueue
 from ..jobs.queue import mode as queue_mode
 from ..jobs.runner import failure, make_runner
 from ..media import media_from_env
+from ..observability import request_id
 from ..meta import ledger
 from ..public import owner
 from .memory import HindsightMemory
@@ -127,7 +128,7 @@ def enqueue(kind: str, data: bytes, name: str, scope: Scope, source: dict, batch
     id = f'job-{uuid.uuid4().hex[:20]}'
     upload = f'uploads/{id}'
     service.media.put(upload, data, 'application/octet-stream')
-    payload = {'upload': upload, 'filename': name, 'source': source, **options,
+    payload = {'upload': upload, 'filename': name, 'source': source, 'request_id': request_id.get(), **options,
                'scope': {'factory': scope.factory, 'part_family': scope.part_family,
                          'spec_text': scope.spec_text, 'owner_id': scope.owner_id}}
     return jobs.submit(kind, payload, scope.owner_id, batch_id=batch_id, id=id)
