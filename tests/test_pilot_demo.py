@@ -161,3 +161,26 @@ def test_interrupted_seed_recovers_incomplete_records_without_overwriting_review
     assert len([i for i in pilot.list('team-demo', 'nonconformance') if i['status'] == 'closed']) == 6
     if interruption != 'inspection':
         assert pilot.get('team-demo', edited['id']) == edited
+
+
+def test_the_seeded_month_spreads_over_four_weeks_and_feeds_the_overview(tmp_path):
+    from collections import Counter
+    from app.pilot.demo_seed import seed_demo
+    from app.pilot.insights import insights
+    store = Store(tmp_path / 'db.sqlite')
+    pilot = PilotStore(store.engine)
+    demo_team(store)
+    result = seed_demo(store, LocalMedia(tmp_path / 'media'), team_id='team-demo', apply=True)
+    assert result['retimed'] > 400
+    days = Counter(c['created_at'][:10] for c in pilot.list('team-demo', 'capture'))
+    assert len(days) >= 15, 'captures land on many days, not one'
+    assert seed_demo(store, LocalMedia(tmp_path / 'media'), team_id='team-demo', apply=True)['retimed'] == 0
+    view = insights(pilot, store, 'team-demo', days=30)
+    assert view['kpis']['captures'] == 186
+    assert sum(d['captures'] for d in view['daily']) == 186
+    assert sum(1 for d in view['daily'] if d['captures']) >= 15
+    assert {row['code'] for row in view['products']} >= {'DEMO-HZ02', 'DEMO-PC01'}
+    assert view['kpis']['first_pass_yield']['denominator'] > 0
+    assert view['defects'] and view['defects'][0]['flagged'] >= view['defects'][0]['confirmed']
+    assert any(item['kind'] == 'issue' for item in view['attention'])
+    assert view['kpis']['open_reviews'] > 0

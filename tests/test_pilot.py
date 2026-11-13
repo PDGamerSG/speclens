@@ -645,3 +645,19 @@ def test_immutable_events_and_validation_manifests(pilot):
         with pytest.raises(HTTPException) as error:
             pilot.store.update(owner, item['id'], item['version'], {'name': 'Altered'})
         assert error.value.status_code == 409
+
+
+def test_factory_insights_need_a_session_and_stay_inside_the_team(pilot):
+    assert pilot.client.get(BASE + '/insights').status_code == 401
+    setup_lot(pilot)
+    view = pilot.client.get(BASE + '/insights', params={'days': 7})
+    assert view.status_code == 200, view.text
+    body = view.json()
+    assert body['kpis']['open_lots'] == 1 and body['kpis']['products'] == 1
+    assert len(body['daily']) == 8
+    assert [row['code'] for row in body['products']] == ['P1']
+    assert body['attention'] == [], 'an empty open lot is not ready to close'
+    other = TestClient(pilot.app)
+    register(other, username='ravi', team='Factory B')
+    assert other.get(BASE + '/insights').json()['kpis']['products'] == 0
+    assert pilot.client.get(BASE + '/insights', params={'days': 0}).status_code == 422

@@ -8,10 +8,13 @@ from __future__ import annotations
 import hashlib
 import io
 import random
+import re
+from datetime import datetime, timedelta, timezone
 
 from PIL import Image
 import sqlalchemy as sa
 
+from .. import db
 from ..workspace.store import Scope
 from . import tables
 from .demo_images import sample_image
@@ -21,6 +24,8 @@ from .store import PilotStore, now
 from .validation import ValidationImport, evaluate_validation
 
 SEED = 'factory-demo-v1'
+TIMELINE = 'four-weeks-v1'
+SPAN_DAYS = 27
 PREFIX = 'demo-v1-'
 DEMO_TEAM = 'SpecLens Demo Factory'
 COUNTS = {'product': 6, 'revision': 18, 'station': 12, 'lot': 18, 'capture': 186,
@@ -232,8 +237,13 @@ def _validation(index):
             'labels': 'Staged truth and predictions; not independently adjudicated.'})
 
 
-def seed_demo(store, media, *, team_id: str, apply: bool = False) -> dict:
-    """Preview by default. Caller must explicitly opt into the additive write."""
+def seed_demo(store, media, *, team_id: str, apply: bool = False, retime_existing: bool = False) -> dict:
+    """Preview by default. Caller must explicitly opt into the additive write.
+
+    New records are spread over the past four weeks. retime_existing also moves seeded records written by an
+    earlier run, including any visitor edits to them, so it is an explicit operator choice.
+    """
+    run_started = now()
     actor = _identity(store, team_id)
     pilot = PilotStore(store.engine)
     # Fail closed before writing if our operator namespace is already in use.
@@ -306,5 +316,100 @@ def seed_demo(store, media, *, team_id: str, apply: bool = False) -> dict:
         if optional(pilot, team_id, id, 'validation') is None:
             result = evaluate_validation(_validation(index))
             _ensure(pilot, team_id, actor, 'validation', id, {**result, 'created_by': actor})
-    return {'applied': True, 'sample_records': dict(COUNTS),
+    retimed = _timeline(store, team_id, since=None if retime_existing else run_started)
+    return {'applied': True, 'sample_records': dict(COUNTS), 'retimed': retimed,
             'totals': {kind: len(pilot.list(team_id, kind)) for kind in COUNTS}}
+
+
+def _stamp(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat()
+
+
+def _timeline(store, team: str, anchor: datetime | None = None, since: str | None = None) -> int:
+    """Spread the seeded records over the past four weeks, once, so trends read like a working month.
+
+    Lots open in turn: completed lots first, then lots under review, then the active shift. Captures follow
+    their lot at 35-minute intervals, reviews close 90 minutes later, issues open six hours into the lot.
+    Records already moved, any record outside this seed and, when `since` is given, any record written before
+    `since` are left as they are.
+    """
+    anchor = (anchor or datetime.now(timezone.utc)).replace(minute=0, second=0, microsecond=0)
+    start = anchor - timedelta(days=SPAN_DAYS)
+    records = tables.records
+    with store.engine.begin() as c:
+        query = sa.select(records.c.id, records.c.kind, records.c.payload).where(records.c.owner_id == team)
+        if since is not None:
+            query = query.where(records.c.created_at >= since)
+        rows = {r.id: r for r in c.execute(query)}
+        if not any(r.id.startswith(PREFIX) and (r.payload or {}).get('demo_timeline') != TIMELINE for r in rows.values()):
+            return 0
+        opened, slots, times = {}, {}, {}
+        for p_index, recipe in enumerate(PRODUCTS):
+            base = PREFIX + recipe['key']
+            for offset, suffix in enumerate(('-product', '-revision-retired', '-revision-approved', '-revision-draft',
+                                             '-station-1', '-station-2')):
+                times[base + suffix] = (start - timedelta(days=3) + timedelta(hours=p_index * 2 + offset), None)
+            times[base + '-revision-draft'] = (anchor - timedelta(days=2, hours=p_index), None)
+            for stage in (1, 2, 3):
+                slot = (stage - 1) * len(PRODUCTS) + p_index
+                when = start + timedelta(hours=slot * SPAN_DAYS * 24 / (3 * len(PRODUCTS)) + 7)
+                opened[base + f'-lot-{stage:02d}'] = when
+                slots[base + f'-lot-{stage:02d}'] = slot
+                times[base + f'-lot-{stage:02d}'] = (when, None)
+                times[base + f'-issue-{stage:02d}'] = (when + timedelta(hours=6), when + timedelta(days=1, hours=2))
+        captured = {}
+        for id, row in rows.items():
+            if row.kind != 'capture' or not id.startswith(PREFIX):
+                continue
+            match = re.search(r'-(\d{3})(-retake)?$', id)
+            lot_id = (row.payload or {}).get('lot_id')
+            lot = opened.get(lot_id)
+            if match and lot:
+                # Lines run at different paces, so a lot's parts land over a few hours to a day and a half.
+                pace = 40 + 37 * (slots[lot_id] % 5)
+                when = lot + timedelta(minutes=pace * int(match.group(1))) + (timedelta(hours=3) if match.group(2) else timedelta())
+                times[id] = (when, when + timedelta(minutes=2))
+                if (row.payload or {}).get('inspection_id'):
+                    captured[row.payload['inspection_id']] = when
+        for index in range(4):
+            times[PREFIX + f'validation-{index}'] = (anchor - timedelta(days=(4 - index) * 5, hours=3), None)
+        for id, row in rows.items():
+            inspection = (row.payload or {}).get('inspection_id')
+            if row.kind == 'review' and inspection in captured:
+                closed = (row.payload or {}).get('status') == 'closed'
+                times[id] = (captured[inspection], captured[inspection] + timedelta(minutes=90 if closed else 1))
+            elif row.kind == 'standard' and inspection in captured:
+                times[id] = (captured[inspection] + timedelta(days=1), captured[inspection] + timedelta(days=1, hours=4))
+        moved = 0
+        for id, (created, updated) in times.items():
+            row = rows.get(id)
+            if row is None or (row.payload or {}).get('demo_timeline') == TIMELINE:
+                continue
+            payload = {**row.payload, 'demo_timeline': TIMELINE}
+            changed = _stamp(updated or created)
+            for key in ('closed_at',):
+                if payload.get(key):
+                    payload[key] = changed
+            if isinstance(payload.get('history'), list):
+                payload['history'] = [{**entry, 'at': changed} if isinstance(entry, dict) and 'at' in entry else entry
+                                      for entry in payload['history']]
+            c.execute(records.update().where(records.c.owner_id == team, records.c.id == id).values(
+                created_at=_stamp(created), updated_at=changed, payload=payload))
+            moved += 1
+        # Events sit just after the record they describe.
+        for id, row in rows.items():
+            target = (row.payload or {}).get('target_id')
+            if row.kind == 'event' and target in times and (row.payload or {}).get('demo_timeline') != TIMELINE:
+                created, updated = times[target]
+                when = _stamp((updated or created) + timedelta(seconds=30))
+                c.execute(records.update().where(records.c.owner_id == team, records.c.id == id).values(
+                    created_at=when, updated_at=when, payload={**row.payload, 'demo_timeline': TIMELINE}))
+                moved += 1
+        # The inspection rows behind seeded captures share the capture time.
+        inspections = db.inspections
+        for inspection_id, when in captured.items():
+            payload = c.execute(sa.select(inspections.c.payload).where(inspections.c.id == inspection_id)).scalar()
+            if payload is not None and payload.get('demo_seed') == SEED:
+                c.execute(inspections.update().where(inspections.c.id == inspection_id).values(
+                    created_at=_stamp(when), payload={**payload, 'created_at': _stamp(when)}))
+    return moved
