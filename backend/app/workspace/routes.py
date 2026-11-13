@@ -377,7 +377,10 @@ class DeleteIn(BaseModel):
 @router.delete('/data')
 def delete_data(body: DeleteIn, request: Request):
     """Delete this visitor's records, photos and Hindsight banks. The body must say DELETE, so it is never an accident."""
-    return service.delete_owner(owner(request))
+    try:
+        return run_operation(service.delete_owner, owner(request))
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from None
 
 
 class SpecIn(BaseModel):

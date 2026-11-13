@@ -131,12 +131,13 @@ def backfill():
             memory_enabled=item.get('memory_enabled'), cited_memories=len(item.get('memories') or []),
             spec_revision_id=item.get('spec_revision_id')))
 
-    rows = table('corrections', 'owner_id', 'verdict', 'defect_type', 'sync_status')
+    rows = table('corrections', 'owner_id', 'verdict', 'defect_type', 'sync_status', 'next_sync_at')
     for id, payload in connection.execute(sa.select(rows.c.id, rows.c.payload)).all():
         item = strip(payload)
         connection.execute(rows.update().where(rows.c.id == id).values(
             payload=item, owner_id=item.get('owner_id', ''), verdict=item.get('verdict'),
-            defect_type=item.get('defect_type'), sync_status=item.get('sync_status', 'pending')))
+            defect_type=item.get('defect_type'), sync_status=item.get('sync_status', 'pending'),
+            next_sync_at=None if item.get('sync_status') == 'synced' else 0))
 
     rows = table('comparisons', 'owner_id')
     for id, payload in connection.execute(sa.select(rows.c.id, rows.c.payload)).all():

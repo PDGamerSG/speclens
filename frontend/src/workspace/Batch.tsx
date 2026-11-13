@@ -34,13 +34,19 @@ export function BatchSection({ scope, memory, busy, onOpen, onFinished }: {
 
   useEffect(() => {
     if (!batch || batch.finished) return
-    const timer = setTimeout(() => {
-      api.batch(batch.batch_id).then(next => {
+    const lifecycle = new AbortController()
+    const poll = async () => {
+      try {
+        const next = await api.batch(batch.batch_id)
+        if (lifecycle.signal.aborted) return
         setBatch(next)
         if (next.finished) finished.current()
-      }).catch(() => { /* The next poll retries. */ })
-    }, 1500)
-    return () => clearTimeout(timer)
+      } catch {
+        if (!lifecycle.signal.aborted) timer.current = setTimeout(() => void poll(), 1500)
+      }
+    }
+    const timer = { current: setTimeout(() => void poll(), 1500) }
+    return () => { lifecycle.abort(); clearTimeout(timer.current) }
   }, [batch])
 
   const choose = (list: FileList | null) => {

@@ -1,5 +1,7 @@
 """Visitors can export and delete their data, and old records are purged with their photos and memory."""
 import json
+import threading
+import time
 
 import httpx
 
@@ -75,3 +77,47 @@ def test_purge_removes_only_records_past_retention_and_forgets_their_memory(tmp_
     assert routes.service.store.inspection(recent['id']) is not None
     assert routes.service.media.get(f'{old["id"]}.jpg') is None
     assert ('DELETE', f'/v1/default/banks/speclens-{old["scope_id"]}/documents/{old_correction["id"]}') in calls
+
+
+def test_deletion_can_retry_a_failed_memory_cleanup(tmp_path, monkeypatch):
+    first, _, routes = public_clients(tmp_path, monkeypatch)
+    routes.service.memory = recording_memory([])
+    item, _ = teach(first)
+    routes.service.memory = HindsightMemory('https://memory.example', 'key', transport=httpx.MockTransport(
+        lambda request: httpx.Response(503, json={'detail': 'Temporary memory outage'})))
+    failed = first.request('DELETE', '/api/workspace/data', json={'confirm': 'DELETE'})
+    assert failed.status_code == 503
+    assert first.get('/api/workspace/overview').json()['stats']['inspections'] == 1
+    calls = []
+    routes.service.memory = recording_memory(calls)
+    retried = first.request('DELETE', '/api/workspace/data', json={'confirm': 'DELETE'})
+    assert retried.status_code == 200
+    assert retried.json()['memory_failed'] == 0
+    assert ('DELETE', f'/v1/default/banks/speclens-{item["scope_id"]}') in calls
+    assert first.get('/api/workspace/overview').json()['stats']['inspections'] == 0
+
+
+def test_data_cannot_be_deleted_while_a_batch_job_is_running(tmp_path, monkeypatch):
+    first, _, routes = public_clients(tmp_path, monkeypatch)
+    entered, release = threading.Event(), threading.Event()
+    inspector = routes.service.inspector
+
+    def slow_inspector(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return inspector(*args, **kwargs)
+
+    routes.service.inspector = slow_inspector
+    queued = first.post('/api/workspace/jobs/inspect', data={'sample_id': 'white-print', 'memory_enabled': 'false'})
+    assert queued.status_code == 202
+    job_id = queued.json()['id']
+    assert entered.wait(3)
+    try:
+        deleted = first.request('DELETE', '/api/workspace/data', json={'confirm': 'DELETE'})
+        assert deleted.status_code == 409
+        assert first.get(f'/api/workspace/jobs/{job_id}').status_code == 200
+    finally:
+        release.set()
+        deadline = time.monotonic() + 3
+        while (job := routes.jobs.get(job_id)) and job['status'] == 'running' and time.monotonic() < deadline:
+            time.sleep(0.02)

@@ -108,6 +108,8 @@ The environment file must provide the server's model and Hindsight settings and 
 
 Each source release is extracted under `/opt/chief-skill/releases/`. Docker Compose uses both `compose.yaml` and `compose.public.yaml`, builds the frontend and backend, starts the service with the fixed project name `chief-skill`, and checks `/api/workspace/status`. `/opt/chief-skill/current` points to the latest healthy release. This endpoint confirms server configuration; it does not make a live external model or memory request.
 
+The existing Lightsail deployment supports the finals features using SQLite, local media and inline jobs. The API drains due retries and recovers jobs after a restart without a separate worker. Deploying also installs `speclens-purge.timer`, which runs retention cleanup at 20:30 UTC (02:00 IST), using `RETENTION_DAYS` or its 90-day default. Check it with `sudo systemctl status speclens-purge.timer` and read cleanup results with `sudo journalctl -u speclens-purge.service`. Render remains an optional later migration; keep Vercel's rewrites on Lightsail while it is the active backend.
+
 The public overlay sets `SPECLENS_PUBLIC=1` and `FORWARDED_ALLOW_IPS=*`. Caddy forwards HTTPS request metadata to the app, whose host port stays bound to `127.0.0.1:8770`. Keep that loopback binding when trusting forwarded headers.
 
 `SPECLENS_PUBLIC` takes precedence over the legacy `CHIEF_SKILL_PUBLIC` fallback. New deployments should use the current setting.

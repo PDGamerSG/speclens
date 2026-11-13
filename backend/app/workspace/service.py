@@ -225,7 +225,7 @@ class WorkspaceService:
 
     # Retention and deletion --------------------------------------------------------------------------------
 
-    def _clean_up(self, removed: dict, *, drop_banks: bool) -> dict:
+    def _clean_up(self, removed: dict, *, drop_banks: bool, delete_memory: bool = True) -> dict:
         """Remove the media and Hindsight memory of deleted records. Failures are counted, not hidden."""
         failed_media = 0
         for key in removed['media']:
@@ -235,7 +235,7 @@ class WorkspaceService:
                 failed_media += 1
                 log.exception('Could not delete media %s', key)
         failed_memory = 0
-        if self.memory.configured:
+        if self.memory.configured and delete_memory:
             targets = ([(f'speclens-{s}', None) for s in removed['scope_ids']] if drop_banks else removed['memories'])
             for bank, document in targets:
                 try:
@@ -249,7 +249,15 @@ class WorkspaceService:
 
     def delete_owner(self, owner_id: str) -> dict:
         """Everything one visitor stored: records, photos and their Hindsight banks."""
-        return self._clean_up(self.store.delete_owner(owner_id), drop_banks=True)
+        if self.store.has_active_jobs(owner_id):
+            raise ValueError('Wait for your queued and running inspections to finish before deleting your data.')
+        records = self.store.export_owner(owner_id)
+        scopes = {item['scope_id'] for items in records.values() for item in items}
+        # Keep local records and their bank IDs until remote deletion succeeds, so a failed request is retryable.
+        if self.memory.configured:
+            for scope_id in sorted(scopes):
+                self.memory.drop_bank(f'speclens-{scope_id}')
+        return self._clean_up(self.store.delete_owner(owner_id), drop_banks=True, delete_memory=False)
 
     def purge(self, retention_days: int, job_days: int = 7) -> dict:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()

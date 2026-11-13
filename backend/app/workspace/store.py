@@ -271,10 +271,19 @@ class Store:
                 out[name] = [self._unpack(p) for p in c.execute(query).scalars()]
         return out
 
-    def _delete_where(self, inspection_filter, correction_filter, comparison_filter, job_filter) -> dict:
+    def has_active_jobs(self, owner_id: str) -> bool:
+        with self.engine.connect() as c:
+            return c.execute(sa.select(db.jobs.c.id).where(
+                db.jobs.c.owner_id == owner_id, db.jobs.c.status.in_(('queued', 'running'))).limit(1)).first() is not None
+
+    def _delete_where(self, inspection_filter, correction_filter, comparison_filter, job_filter,
+                      *, require_idle: bool = False) -> dict:
         """Delete matching records in one transaction. Returns what callers must also remove elsewhere."""
         i, k, m, j = inspections_table, corrections_table, comparisons_table, db.jobs
         with self.engine.begin() as c:
+            if require_idle and c.execute(sa.select(j.c.id).where(
+                    job_filter, j.c.status.in_(('queued', 'running'))).limit(1)).first() is not None:
+                raise ValueError('Wait for your queued and running inspections to finish before deleting your data.')
             inspection_ids = list(c.execute(sa.select(i.c.id).where(inspection_filter)).scalars())
             removed_corrections = c.execute(sa.select(k.c.id, k.c.scope_id, k.c.sync_status).where(
                 sa.or_(correction_filter, k.c.inspection_id.in_(inspection_ids)))).all()
@@ -293,7 +302,8 @@ class Store:
 
     def delete_owner(self, owner_id: str) -> dict:
         return self._delete_where(inspections_table.c.owner_id == owner_id, corrections_table.c.owner_id == owner_id,
-                                  comparisons_table.c.owner_id == owner_id, db.jobs.c.owner_id == owner_id)
+                                  comparisons_table.c.owner_id == owner_id, db.jobs.c.owner_id == owner_id,
+                                  require_idle=True)
 
     def purge_before(self, cutoff: str, jobs_before: float) -> dict:
         """Records created before an ISO timestamp, and finished or abandoned jobs older than an epoch time."""

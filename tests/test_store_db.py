@@ -95,7 +95,8 @@ def test_comparisons_keep_both_arms_and_their_specification(store):
     assert 'spec_text' not in store.comparisons(s.id, with_spec=False)[0]['baseline']
 
 
-def test_a_database_from_the_first_release_is_migrated_in_place(tmp_path):
+@pytest.mark.parametrize('sync_status', ['synced', 'pending'])
+def test_a_database_from_the_first_release_is_migrated_in_place(tmp_path, sync_status):
     path = tmp_path / 'legacy.sqlite3'
     s = scope()
     old = inspection(s, id='insp-legacy')
@@ -111,7 +112,7 @@ def test_a_database_from_the_first_release_is_migrated_in_place(tmp_path):
     legacy.execute('INSERT INTO inspections VALUES (?, ?, ?, ?)', (old['id'], s.id, old['created_at'], json.dumps(old)))
     correction = {'id': 'correction-legacy', 'inspection_id': old['id'], 'scope_id': s.id, 'owner_id': 'owner-a',
                   'spec_text': s.spec_text, 'factory': s.factory, 'part_family': s.part_family, 'verdict': 'defect',
-                  'defect_type': 'print', 'sync_status': 'synced', 'created_at': old['created_at']}
+                  'defect_type': 'print', 'sync_status': sync_status, 'created_at': old['created_at']}
     legacy.execute('INSERT INTO corrections VALUES (?, ?, ?, ?, ?)',
                    (correction['id'], old['id'], s.id, old['created_at'], json.dumps(correction)))
     legacy.commit()
@@ -120,7 +121,7 @@ def test_a_database_from_the_first_release_is_migrated_in_place(tmp_path):
     store = Store(path)
     assert store.inspection('insp-legacy')['spec_text'] == s.spec_text
     assert store.correction('correction-legacy')['spec_text'] == s.spec_text
-    assert 'correction-legacy' not in store.due_corrections()
+    assert ('correction-legacy' in store.due_corrections()) == (sync_status == 'pending')
     with store.engine.connect() as c:
         row = c.execute(sa.select(db.inspections.c.owner_id, db.inspections.c.verdict)
                         .where(db.inspections.c.id == 'insp-legacy')).one()

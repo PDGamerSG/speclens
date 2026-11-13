@@ -62,3 +62,30 @@ test('populated history scrolls inside its table on a narrow screen', async ({ p
   expect(await table.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
   await expect(page.getByRole('button', { name: /^Open inspection / })).toBeInViewport()
 })
+
+test('batch progress resumes after a temporary status request failure', async ({ page }) => {
+  let reads = 0
+  await page.route('**/api/workspace/batches/*', async route => {
+    reads += 1
+    if (reads === 3) {
+      await route.fulfill({ status: 503, json: { detail: 'Temporary status outage' } })
+      return
+    }
+    const response = await route.fetch()
+    if (reads <= 2) {
+      const batch = await response.json()
+      await route.fulfill({ response, json: { ...batch, finished: false,
+        counts: { queued: 0, running: batch.jobs.length, done: 0, failed: 0 },
+        jobs: batch.jobs.map((job: object) => ({ ...job, status: 'running', result: null })) } })
+      return
+    }
+    await route.fulfill({ response })
+  })
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: 'Inspect part', exact: true })).toBeEnabled()
+  await page.getByRole('heading', { name: 'Batch inspection', exact: true }).scrollIntoViewIfNeeded()
+  await page.getByLabel('Batch photos', { exact: true }).setInputFiles('../fixtures/parts/hazelnut_gen_01.jpg')
+  await page.getByRole('button', { name: 'Inspect 1 photo', exact: true }).click()
+  await expect(page.locator('#batch tbody tr')).toContainText('Done', { timeout: 10_000 })
+  await expect(page.getByRole('button', { name: 'Export CSV', exact: true })).toBeEnabled()
+})

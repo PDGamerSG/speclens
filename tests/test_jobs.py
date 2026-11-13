@@ -77,6 +77,36 @@ def test_a_job_left_running_by_a_dead_worker_is_recovered(tmp_path, monkeypatch)
     assert q.get(job['id'])['status'] == 'queued'
 
 
+@pytest.mark.parametrize('state', ['queued', 'retry', 'stale'])
+def test_inline_api_finishes_jobs_left_in_the_queue(tmp_path, monkeypatch, state):
+    from app.main import app
+    from app import db
+
+    _, routes = setup_client(tmp_path, monkeypatch)
+    monkeypatch.setenv('SPECLENS_WORKER', 'external')
+    q = queue(tmp_path, lambda job: {'finished': True})
+    monkeypatch.setattr(routes, 'jobs', q)
+    job = q.submit('inspect', {}, 'owner')
+    if state == 'retry':
+        claimed = q.claim()
+        q.fail(claimed, JobFailed(502, 'Temporary model outage', retryable=True))
+        with q.engine.begin() as c:
+            c.execute(db.jobs.update().where(db.jobs.c.id == job['id']).values(run_after=0))
+    elif state == 'stale':
+        q.claim()
+        with q.engine.begin() as c:
+            c.execute(db.jobs.update().where(db.jobs.c.id == job['id']).values(locked_at=0))
+    monkeypatch.setenv('SPECLENS_WORKER', 'inline')
+    monkeypatch.setenv('SPECLENS_HOUSEKEEPING', '1')
+    with TestClient(app):
+        deadline = time.monotonic() + 3
+        while q.get(job['id'])['status'] != 'done' and time.monotonic() < deadline:
+            time.sleep(0.02)
+        result = q.get(job['id'])
+    assert result['status'] == 'done'
+    assert result['result'] == {'finished': True}
+
+
 def worker_thread(routes, stop):
     worker = Worker(routes.jobs, routes.service, concurrency=1)
 

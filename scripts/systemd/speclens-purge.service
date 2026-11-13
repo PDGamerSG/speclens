@@ -1,0 +1,8 @@
+[Unit]
+Description=Remove expired SpecLens records and media
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec -e PYTHONPATH=/app/backend chief-skill-speclens-1 python -m app.jobs.purge

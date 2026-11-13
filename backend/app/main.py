@@ -5,7 +5,6 @@ import asyncio
 import hashlib
 import io
 import json
-import logging
 import os
 import threading
 import time
@@ -34,24 +33,21 @@ from .runs import manager
 from .public import PublicWorkspaceMiddleware, owner
 from .workspace import routes as workspace_routes
 from .workspace.routes import router as workspace_router
-
-def _housekeeping(stop: threading.Event) -> None:
-    """Without a separate worker, the API itself retries due memory syncs and recovers stale jobs each minute."""
-    while not stop.wait(60):
-        try:
-            workspace_routes.jobs.recover_stale()
-            workspace_routes.service.drain_outbox()
-        except Exception:
-            logging.getLogger("speclens").exception("Housekeeping failed")
+from .worker import Worker
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    stop = threading.Event()
+    worker = None
     if queue_mode() == "inline" and os.environ.get("SPECLENS_HOUSEKEEPING", "1") == "1":
-        threading.Thread(target=_housekeeping, args=(stop,), daemon=True, name="speclens-housekeeping").start()
-    yield
-    stop.set()
+        # Also drain persisted retries and jobs left behind by a stopped API.
+        worker = Worker(workspace_routes.jobs, workspace_routes.service, concurrency=1)
+        threading.Thread(target=worker.serve, daemon=True, name="speclens-housekeeping").start()
+    try:
+        yield
+    finally:
+        if worker is not None:
+            worker.stopping.set()
 
 
 setup("api")
