@@ -131,3 +131,13 @@ def test_sample_provenance_is_preserved_without_guessing_for_uploads(tmp_path, m
     assert uploaded['source_kind'] == 'upload'
     assert uploaded['source_group'] is None
     assert uploaded['sample_id'] is None
+
+
+def test_health_names_the_prompt_the_server_runs():
+    from fastapi.testclient import TestClient
+    from app.inspect.inspector import PROMPT_SHA256, PROMPT_VERSION
+    from app.main import app
+    health = TestClient(app).get('/api/health').json()
+    assert health['prompt_version'] == PROMPT_VERSION
+    assert health['prompt_sha256'] == PROMPT_SHA256 and len(PROMPT_SHA256) == 16
+    assert 'commit' in health

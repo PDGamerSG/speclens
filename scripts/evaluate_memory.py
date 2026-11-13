@@ -3,12 +3,16 @@
 Runs nine billable vision calls. The labels come from controlled image edits,
 not model judgments. Four cases from two source photos are not four independent
 production observations. Results are recorded without requiring an improvement.
+
+The report records which script commit, server commit, prompt and models produced
+it. A server in demo mode replays recorded results, so the script refuses it.
 """
 from __future__ import annotations
 
 import argparse
 import io
 import json
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -37,6 +41,13 @@ def cases():
     return result
 
 
+def git(*args) -> str:
+    try:
+        return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True, timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ''
+
+
 def summarize(rows):
     output = {}
     for arm in ('baseline', 'with_memory'):
@@ -51,18 +62,27 @@ def summarize(rows):
     return output
 
 
-def main():
+def main(argv=None, transport=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--base', default='http://localhost:8770')
     ap.add_argument('--out', type=Path, default=ROOT / 'var/evaluations')
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     id = uuid.uuid4().hex[:10]
     scope = {'factory': f'SpecLens memory evaluation {id}', 'part_family': 'Whole hazelnut', 'spec_text': ''}
     report = {'id': id, 'created_at': datetime.now(timezone.utc).isoformat(), 'scope': scope, 'rows': [],
               'training_source_group': 'generated-hazelnut-01', 'test_source_groups': ['generated-hazelnut-02', 'generated-hazelnut-03'],
-              'limits': 'Four synthetic cases from two source photos, one pass, one part family. Paired calls are stochastic. This is a regression probe, not a production accuracy benchmark.'}
+              'limits': 'Four synthetic cases from two source photos, one pass, one part family. Paired calls are stochastic. This is a regression probe, not a production accuracy benchmark.',
+              'provenance': {'script_commit': git('rev-parse', 'HEAD'), 'script_dirty': bool(git('status', '--porcelain')),
+                             'base_url': args.base}}
     try:
-        with httpx.Client(base_url=args.base.rstrip('/'), timeout=httpx.Timeout(240, connect=8)) as client:
+        with httpx.Client(base_url=args.base.rstrip('/'), timeout=httpx.Timeout(240, connect=8), transport=transport) as client:
+            health = client.get('/api/health')
+            if not health.is_success:
+                raise RuntimeError(f'HTTP {health.status_code} from /api/health. Check that the server is running.')
+            health = health.json()
+            report['provenance']['server'] = {k: health.get(k) for k in ('models', 'prompt_version', 'prompt_sha256', 'commit')}
+            if health.get('demo_mode'):
+                raise RuntimeError('The server is in demo mode, so results would be recorded replays. Set MODEL_API_KEY and HINDSIGHT_API_KEY.')
             def call(path, **kwargs):
                 response = client.post('/api/workspace' + path, **kwargs)
                 if not response.is_success:
@@ -89,7 +109,7 @@ def main():
         report['summary'] = summarize(report['rows'])
         report['passed'] = True
         print(json.dumps(report['summary'], indent=2), flush=True)
-    except (httpx.HTTPError, RuntimeError, KeyError) as exc:
+    except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:
         report['passed'] = False
         report['error'] = str(exc)
         print(f'Evaluation stopped: {exc}', file=sys.stderr, flush=True)

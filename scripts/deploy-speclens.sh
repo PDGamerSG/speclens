@@ -81,6 +81,9 @@ deploy_temp=$(mktemp -d "${TMPDIR:-/tmp}/chief-skill-deploy.XXXXXX")
 trap 'rm -rf -- "$deploy_temp"' EXIT
 ssh_options=(-i "$ssh_key" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
 ssh_target="$ssh_user@$ssh_host"
+# Shown by /api/health so evaluation reports can name the code they ran against.
+commit=$(git -C "$project_root" rev-parse HEAD 2>/dev/null || true)
+if [[ -n $commit && -n $(git -C "$project_root" status --porcelain 2>/dev/null) ]]; then commit="$commit-dirty"; fi
 
 tar -C "$project_root" \
   --exclude=.git --exclude=.env --exclude='.env.*' --exclude=.venv \
@@ -98,13 +101,14 @@ if [[ -n $env_file ]]; then
   env_uploaded=1
 fi
 
-ssh "${ssh_options[@]}" "$ssh_target" bash -s -- "$release_id" "$hostname" "$publish" "$env_uploaded" "${alias_hostnames[@]-}" <<'REMOTE'
+ssh "${ssh_options[@]}" "$ssh_target" bash -s -- "$release_id" "$hostname" "$publish" "$env_uploaded" "$commit" "${alias_hostnames[@]-}" <<'REMOTE'
 set -euo pipefail
 release_id=$1
 hostname=$2
 publish=$3
 env_uploaded=$4
-shift 4
+commit=$5
+shift 5
 alias_hostnames=("$@")
 release_dir="/opt/chief-skill/releases/$release_id"
 shared_dir=/opt/chief-skill/shared
@@ -123,7 +127,7 @@ if ! sudo test -s "$shared_dir/runtime.env"; then
 fi
 sudo tar -xzf "$source_archive" -C "$release_dir"
 sudo ln -s "$shared_dir/runtime.env" "$release_dir/.env"
-sudo docker compose --project-name chief-skill -f "$release_dir/compose.yaml" \
+sudo SPECLENS_COMMIT="$commit" docker compose --project-name chief-skill -f "$release_dir/compose.yaml" \
   -f "$release_dir/compose.public.yaml" up --build --detach
 ready=0
 for ((attempt=0; attempt<45; attempt++)); do
