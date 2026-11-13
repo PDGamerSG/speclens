@@ -165,6 +165,7 @@ def test_a_recall_outage_does_not_silently_fall_back_to_a_memory_on_result(tmp_p
     st = fixture_store(tmp_path)
     _, mm, service = modules()
     memory = mm.HindsightMemory('https://memory.example', 'key', transport=httpx.MockTransport(lambda req: httpx.Response(503)))
+    memory.sleep = lambda seconds: None
     def never_inspect(*args, **kwargs):
         pytest.fail('A failed required recall must be shown before model inspection.')
     svc = service.WorkspaceService(st, memory, inspector=never_inspect, media_root=tmp_path / 'images')
@@ -341,3 +342,65 @@ def test_a_late_failed_sync_retry_cannot_revert_a_successful_retain(tmp_path):
     saved = st.correction(correction['id'])
     assert saved['sync_status'] == 'synced'
     assert saved['sync_error'] is None
+
+
+def scripted_memory(*responses):
+    """Hindsight that answers each request with the next scripted response and records sleeps instead of waiting."""
+    _, mm, _ = modules()
+    queue, requests, slept = list(responses), [], []
+    def respond(req):
+        requests.append(req.url.path)
+        return queue.pop(0)
+    memory = mm.HindsightMemory('https://memory.example', 'key', transport=httpx.MockTransport(respond))
+    memory.sleep = slept.append
+    return memory, requests, slept
+
+
+def test_a_single_rate_limit_on_recall_is_retried():
+    fact = {'id': 'f1', 'text': 'Reject ink.', 'type': 'world', 'document_id': 'correction-1'}
+    memory, requests, slept = scripted_memory(httpx.Response(429), httpx.Response(200, json={'results': [fact]}))
+    assert [f['source_id'] for f in memory.recall(scope())] == ['correction-1']
+    assert len(requests) == 2
+    assert slept == [1.0]
+
+
+def test_a_sustained_rate_limit_on_recall_still_fails_with_the_busy_message():
+    _, mm, _ = modules()
+    memory, requests, slept = scripted_memory(*[httpx.Response(429) for _ in range(3)])
+    with pytest.raises(mm.MemoryUnavailable, match='busy'):
+        memory.recall(scope())
+    assert len(requests) == 3
+    assert len(slept) == 2
+
+
+def test_a_server_error_on_recall_is_not_retried():
+    _, mm, _ = modules()
+    memory, requests, slept = scripted_memory(httpx.Response(500))
+    with pytest.raises(mm.MemoryUnavailable):
+        memory.recall(scope())
+    assert len(requests) == 1
+    assert slept == []
+
+
+def test_a_long_retry_after_is_capped_so_an_inspection_does_not_hang():
+    memory, _, slept = scripted_memory(httpx.Response(429, headers={'retry-after': '30'}),
+                                       httpx.Response(200, json={'results': []}))
+    assert memory.recall(scope()) == []
+    assert slept == [4.0]
+
+
+def test_a_retry_after_date_falls_back_to_the_default_wait():
+    memory, _, slept = scripted_memory(httpx.Response(429, headers={'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT'}),
+                                       httpx.Response(200, json={'text': 'Reject ink.', 'facts': []}))
+    assert memory.reflect(scope())['summary'] == 'Reject ink.'
+    assert slept == [1.0]
+
+
+def test_a_rate_limited_retain_is_left_to_the_outbox():
+    _, mm, _ = modules()
+    memory, requests, slept = scripted_memory(httpx.Response(429), httpx.Response(200, json={'success': True}))
+    with pytest.raises(mm.MemoryUnavailable, match='busy'):
+        memory.retain(scope(), {'id': 'c-one', 'rule_text': 'Reject ink.', 'original_rationale': 'Gloss.',
+                                'verdict': 'defect', 'defect_type': 'print', 'reviewer': 'A', 'inspection_id': 'i-one'})
+    assert len(requests) == 1
+    assert slept == []

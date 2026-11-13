@@ -1,13 +1,28 @@
 """Small HTTP adapter for the documented Hindsight retain / recall / reflect API."""
 from __future__ import annotations
 
+import time
+
 import httpx
 
 from .store import Scope
 
 
+RETRY_STATUS = {429, 503}
+MAX_WAIT = 4.0  # seconds; an inspection must not hang on memory
+
+
 class MemoryUnavailable(RuntimeError):
     pass
+
+
+def retry_wait(response: httpx.Response, attempt: int) -> float:
+    """Seconds to wait before retrying a rate-limited request: Retry-After if given in seconds, capped."""
+    try:
+        wait = float(response.headers.get('retry-after') or 0)
+    except ValueError:  # Retry-After may also be an HTTP date
+        wait = 0.0
+    return min(wait if wait > 0 else 1.0 * (attempt + 1), MAX_WAIT)
 
 
 class HindsightMemory:
@@ -15,18 +30,24 @@ class HindsightMemory:
         self.base_url = base_url.rstrip('/')
         self.api_key = api_key
         self.transport = transport
+        self.sleep = time.sleep  # swapped in tests so retries do not wait
 
     @property
     def configured(self) -> bool:
         return bool(self.base_url) and (self.base_url != 'https://api.hindsight.vectorize.io' or bool(self.api_key))
 
-    def _post(self, scope: Scope, path: str, payload: dict, *, empty_if_missing=False) -> dict:
+    def _post(self, scope: Scope, path: str, payload: dict, *, empty_if_missing=False, retries=0) -> dict:
+        """POST to a bank. With retries, a 429 or 503 is retried after a short wait before it fails."""
         if not self.configured:
             raise MemoryUnavailable('Connect Hindsight in the server settings to use memory, or switch memory off for a baseline inspection.')
         headers = {'Authorization': f'Bearer {self.api_key}'} if self.api_key else {}
         try:
-            with httpx.Client(timeout=httpx.Timeout(120, connect=8), headers=headers, transport=self.transport) as client:
-                response = client.post(f'{self.base_url}/v1/default/banks/{scope.bank_id}/{path}', json=payload)
+            for attempt in range(retries + 1):
+                with httpx.Client(timeout=httpx.Timeout(120, connect=8), headers=headers, transport=self.transport) as client:
+                    response = client.post(f'{self.base_url}/v1/default/banks/{scope.bank_id}/{path}', json=payload)
+                if response.status_code not in RETRY_STATUS or attempt == retries:
+                    break
+                self.sleep(retry_wait(response, attempt))
             if empty_if_missing and response.status_code == 404:
                 missing = response.json()
                 detail = missing.get('detail', '') if isinstance(missing, dict) else ''
@@ -92,7 +113,7 @@ class HindsightMemory:
         data = self._post(scope, 'memories/recall', {
             'query': f'Which visual quality standards and human corrections must be applied when inspecting {scope.part_family}? Include ink markings, white print versus gloss, holes, cracks, cuts, and acceptable natural texture.',
             'types': ['world', 'experience'], 'budget': 'mid', 'max_tokens': 1800,
-        }, empty_if_missing=True)
+        }, empty_if_missing=True, retries=2)
         rows = data.get('results')
         if not isinstance(rows, list):
             raise MemoryUnavailable('Hindsight returned an unreadable recall result. Retry before inspecting with memory.')
@@ -111,7 +132,7 @@ class HindsightMemory:
         data = self._post(scope, 'reflect', {
             'query': f'Summarize the specific visual quality standards learned from quality engineer corrections for {scope.part_family} at {scope.factory}. State only standards supported by these corrections. Cite the source correction IDs. If none exist, say no corrections have been learned yet. Never claim a measured accuracy improvement.',
             'budget': 'low', 'max_tokens': 1000, 'include': {'facts': {}},
-        })
+        }, retries=2)
         if not isinstance(data.get('text'), str):
             raise MemoryUnavailable('Hindsight did not return a standards summary. Retry shortly.')
         return {'summary': data['text'], 'facts': data.get('facts', []), 'bank_id': scope.bank_id}
