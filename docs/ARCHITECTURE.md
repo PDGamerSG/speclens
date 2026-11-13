@@ -290,15 +290,25 @@ Sources: `frontend/vercel.json`, `scripts/deploy-speclens.sh`, `compose.yaml`, `
 
 [The deployment guide](deployment.md) covers server access, backups and recovery.
 
+## Render deployment
+
+`render.yaml` describes the production backend: the API (`speclens-api`), a background worker (`speclens-worker`), a nightly purge (`speclens-purge`), Postgres (`speclens-db`) and Key Value (`speclens-kv`), in the `singapore` region. Photos, masks and crops go to Cloudflare R2. With `SPECLENS_WORKER=external`, the inspect and compare routes write a job and wait for the worker, so the API process never calls the model. The [deployment guide](deployment.md#moving-the-backend-to-render) lists the cut-over steps.
+
+| Concern | Production | Local default | Code |
+| --- | --- | --- | --- |
+| Records, jobs, ledger, budget | Postgres through `DATABASE_URL` | SQLite in `SPECLENS_VAR` | `backend/app/db.py`, `backend/app/workspace/store.py` |
+| Photos, masks, crops | Cloudflare R2 | `SPECLENS_VAR/workspace` | `backend/app/media.py` |
+| Hourly request limits | Key Value through `REDIS_URL` | In-process counters | `backend/app/public.py` |
+| Model calls | `python -m app.worker` | A thread pool in the API | `backend/app/jobs/queue.py`, `backend/app/worker.py` |
+| Memory sync retries | The worker, every minute | A housekeeping thread in the API | `backend/app/workspace/service.py` |
+
 ## What is not built yet
 
 | Part | Status | Evidence |
 | --- | --- | --- |
-| Synthetic defect pipeline: runs, stress tests, COCO export | Partial. The routes work in local mode, the page never calls them, and public mode returns 404 | `backend/app/main.py:89-162`, `frontend/src/workspace/api.ts:3`, `backend/app/public.py:95-98` |
-| SAM 3.1 defect masks | Partial. `inspect()` supports masks, and the workspace turns them off | `backend/app/inspect/inspector.py:84-87`, `backend/app/workspace/service.py:40` |
-| `POST /api/workspace/recall` in the page | Partial. `api.ts` defines the call but no component uses it. `scripts/system_check.py` uses the route | `frontend/src/workspace/api.ts:38`, `scripts/system_check.py:64` |
-| Evaluation report | Partial. `/api/eval` reads `docs/results/eval.json` and names `eval/run_eval.py`. Neither file is in the repository | `backend/app/main.py:205-211`, `backend/app/config.py:21` |
-| More than four defect classes | Not built. The classes are fixed in the service and the correction route | `backend/app/workspace/service.py:39`, `backend/app/workspace/routes.py:145` |
-| Editing or deleting records | Not built. The store has no update for a saved rule and no delete, and the routes offer neither | `backend/app/workspace/store.py:78-151`, `backend/app/workspace/routes.py:103-218` |
-| Accounts, roles and team administration | Not built, by design | `docs/design.md:22` |
-| More than one server process | Not built. The request limiter lives in process memory, and the container starts one Uvicorn process | `backend/app/public.py:27`, `Dockerfile:22` |
+| Synthetic defect pipeline: runs, stress tests, COCO export | Partial. The routes work in local mode, the page never calls them, and public mode returns 404 | `backend/app/main.py`, `backend/app/public.py` |
+| `POST /api/workspace/recall` in the page | Partial. `api.ts` defines the call but no component uses it. `scripts/system_check.py` uses the route | `frontend/src/workspace/api.ts` |
+| A live benchmark result | Not run. `scripts/benchmark.py` is built and tested offline; a live run is billable and waits for the team's go-ahead | `scripts/benchmark.py` |
+| Render in production | Ready, not live. The Vercel rewrites still point at Lightsail | `render.yaml`, `frontend/vercel.json` |
+| Editing a saved rule | Not built. Corrections are immutable; delete and export exist | `backend/app/workspace/store.py` |
+| Accounts, roles and team administration | Not built. Public visitors are separated by a browser cookie | `docs/design.md:22` |

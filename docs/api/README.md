@@ -13,15 +13,29 @@ Every route the SpecLens server answers, with its input and output. The page use
 
 | Method | Path | Outside calls | What it does | Defined in |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/workspace/status` | None | Reports configuration, spend and defaults | `backend/app/workspace/routes.py:103-108` |
-| `GET` | `/api/workspace/samples` | None | Lists the six sample parts | `backend/app/workspace/routes.py:111-114` |
-| `GET` | `/api/workspace/overview` | None | Returns all records and counts for a scope | `backend/app/workspace/routes.py:117-129` |
-| `POST` | `/api/workspace/inspect` | 1 vision call, plus a recall with memory on | Inspects one part | `backend/app/workspace/routes.py:132-139` |
-| `POST` | `/api/workspace/corrections` | Hindsight retain | Saves a correction, then sends it to memory | `backend/app/workspace/routes.py:165-175` |
-| `POST` | `/api/workspace/corrections/{id}/sync` | Hindsight retain, unless already synced | Retries a pending correction | `backend/app/workspace/routes.py:178-186` |
-| `POST` | `/api/workspace/recall` | Hindsight recall | Returns recalled standards for a scope | `backend/app/workspace/routes.py:198-203` |
-| `POST` | `/api/workspace/reflect` | Hindsight reflect | Returns a written summary of the standards | `backend/app/workspace/routes.py:206-208` |
-| `POST` | `/api/workspace/compare` | 2 vision calls and 1 recall | Inspects one part with and without memory | `backend/app/workspace/routes.py:211-218` |
+| `GET` | `/healthz` | None | Load balancer probe; reads nothing | `backend/app/main.py`, `healthz` |
+| `GET` | `/api/workspace/status` | None | Reports configuration, spend and defaults | `backend/app/workspace/routes.py`, `status` |
+| `GET` | `/api/workspace/samples` | None | Lists the six sample parts | `routes.py`, `samples` |
+| `GET` | `/api/workspace/overview` | None | One page of history for a scope, its corrections, comparisons, counts and reject classes. `limit` (1-500, default 100) and `before` (a `created_at` cursor) page the inspections | `routes.py`, `overview` |
+| `POST` | `/api/workspace/inspect` | 1 vision call, a SAM mask per boxed defect, plus a recall with memory on | Inspects one part. With `SPECLENS_WORKER=external` it queues a job and waits for the worker | `routes.py`, `inspect_part` |
+| `POST` | `/api/workspace/compare` | 2 vision calls and 1 recall | Inspects one part with and without memory | `routes.py`, `compare` |
+| `POST` | `/api/workspace/jobs/inspect` | As `/inspect`, run later | Queues one inspection and answers `202` with the job. Optional `batch_id` (`batch-` and 8 to 32 hex characters) groups jobs | `routes.py`, `queue_inspection` |
+| `POST` | `/api/workspace/jobs/compare` | As `/compare`, run later | Queues one comparison and answers `202` | `routes.py`, `queue_comparison` |
+| `GET` | `/api/workspace/jobs/{id}` | None | A job's status, result or error | `routes.py`, `get_job` |
+| `GET` | `/api/workspace/jobs/{id}/events` | None | Server-sent events: `status` on each change, then `done` or `failed`, with a 15 s ping | `routes.py`, `job_events` |
+| `GET` | `/api/workspace/batches/{id}` | None | Every job in a batch, with counts and a `finished` flag | `routes.py`, `get_batch` |
+| `POST` | `/api/workspace/corrections` | Hindsight retain | Saves a correction and a crop of the corrected region, then sends it to memory. `defect_type` must be one of the specification's classes | `routes.py`, `correct` |
+| `POST` | `/api/workspace/corrections/{id}/sync` | Hindsight retain, unless already synced | Retries a pending correction | `routes.py`, `sync_correction` |
+| `POST` | `/api/workspace/recall` | Hindsight recall | Returns recalled standards for a scope | `routes.py`, `recall` |
+| `POST` | `/api/workspace/reflect` | Hindsight reflect | Returns a written summary of the standards | `routes.py`, `reflect` |
+| `POST` | `/api/workspace/specs/parse` | None | Reads reject classes, clauses, limits and part width by rules. Not counted against the hourly limit | `routes.py`, `parse_specification` |
+| `POST` | `/api/workspace/specs/extract` | 1 model call with `use_model=true` | Reads a PDF or text file, or text. With `use_model`, the model's reading is saved for that specification | `routes.py`, `extract_specification` |
+| `GET` | `/api/workspace/dashboard` | None | Totals, daily decisions, defect Pareto, weekly corrections, cost and time for a scope over `days` (1-365, default 30) | `routes.py`, `quality_dashboard` |
+| `GET` | `/api/workspace/export` | None | Every record the visitor stored, as a JSON download | `routes.py`, `export_data` |
+| `DELETE` | `/api/workspace/data` | Hindsight bank deletes | With the body `{"confirm": "DELETE"}`, deletes the visitor's records, media and memory banks | `routes.py`, `delete_data` |
+| `GET` | `/api/eval` | None | The latest live benchmark run, without per-case rows | `backend/app/main.py`, `get_eval` |
+
+Every response carries `X-Request-ID`. A valid incoming ID is kept and stored on any job the request queues.
 
 ### `GET /api/workspace/status`
 
@@ -48,8 +62,10 @@ Query parameters: `factory`, `part_family`, `spec_text`. There is no paging, and
 | Field | Meaning |
 | --- | --- |
 | `scope_id`, `bank_id` | Scope hash and Hindsight bank name |
-| `inspections`, `corrections`, `comparisons` | Full records for the scope. In public mode, only yours |
-| `stats` | Counts: `inspections`, `corrections`, `synced`, `pending` |
+| `inspections`, `corrections`, `comparisons` | Records for the scope, without the repeated specification text. In public mode, only yours. Comparisons are the latest 50 |
+| `has_more`, `next_before` | Whether older inspections exist, and the cursor to pass as `before` |
+| `taxonomy` | The specification's reject classes, clauses, limits and part width |
+| `stats` | Counts: `inspections`, `corrections`, `comparisons`, `synced`, `pending` |
 
 ### `POST /api/workspace/inspect`
 

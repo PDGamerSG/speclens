@@ -67,3 +67,22 @@ Move the backend from one Lightsail VM to Render, with Postgres, Key Value, a ba
 - Create the Render Blueprint from `render.yaml`, fill the secrets, and create the R2 bucket.
 - Run `scripts/migrate_to_render.py`, then point the two rewrites in `frontend/vercel.json` at the Render API.
 - Run the benchmark once with a budget the team approves.
+
+## Status, end of 13 November 2026
+
+Built and committed on `render-finals`: P1 to P12, A1 to A6 and A8. A7 (standards governance) is not started.
+
+Checked:
+
+- `scripts/check.sh`: build, lint, 153 pytest tests and 24 Playwright tests pass.
+- The store, budget, job claims, purge, export and the migration script were also run against a local Postgres 16.2 server. On Postgres, eight threads drained 20 jobs and each job was claimed once.
+- `python -m app.db upgrade`, `python -m app.jobs.purge` and `python -m app.worker` were started against Postgres. The worker recovered a stale job and stopped cleanly on SIGTERM.
+- The batch section, dashboard, settings panel and correction form were checked in a browser against the local server with a simulated model.
+
+Not checked:
+
+- The Docker image was not built, because Docker was not running on the build machine.
+- `render.yaml` has not been applied in Render.
+- The R2 backend was tested with a fake S3 client, not a real bucket. The Key Value limiter was tested with a fake client, not a real Redis server.
+- No live model, SAM or Hindsight call was made. Masks, sizes in millimetres and reference crops are tested with simulated model output.
+- The benchmark has run only offline. A live run (18 cases, 29 vision calls, about $0.17) waits for the team's go-ahead.
